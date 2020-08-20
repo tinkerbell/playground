@@ -1,0 +1,32 @@
+# Network interface for Tinkerbell's network
+export TINKERBELL_NETWORK_INTERFACE="eth1"
+
+# Decide on a subnet for provisioning. Tinkerbell should "own" this
+# network space. Its subnet should be just large enough to be able
+# to provision your hardware.
+export TINKERBELL_CIDR=29
+
+# Host IP is used by provisioner to expose different services such as
+# tink, boots, etc.
+#
+# The host IP should the first IP in the range, and the Nginx IP
+# should be the second address.
+export TINKERBELL_HOST_IP=192.168.1.1
+
+# NGINX IP is used by provisioner to serve files required for iPXE boot
+export TINKERBELL_NGINX_IP=192.168.1.2
+
+# Tink server username and password
+export TINKERBELL_TINK_USERNAME=admin
+export TINKERBELL_TINK_PASSWORD="ef53a532afe700a521b4aee97dc55c402a71dce5566dc3c7ef89bea7ffd6c8ea"
+
+# Docker Registry's username and password
+export TINKERBELL_REGISTRY_USERNAME=admin
+export TINKERBELL_REGISTRY_PASSWORD="9ca5d519f54b5345fb0451a3dda58506c3a7a7f8c2ce8eb234b82018c82c0a2c"
+
+# Legacy options, to be deleted:
+export FACILITY=onprem
+export ROLLBAR_TOKEN=ignored
+export ROLLBAR_DISABLE=1
+
+export OSIE_DOWNLOAD_LINK=https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/osie-v0-n=252,c=bc454bc,b=master.tar.gz
