@@ -2,7 +2,7 @@ This repository is a quick way to get the Tinkerbell stack up and running.
 
 Currently it supports:
 
-1. Vagrant with vlib and VirtualBox
+1. Vagrant with libvirt and VirtualBox
 2. Terraform on Packet
 
 Tinkerbell is made of different components: osie, boots, tink-server,
