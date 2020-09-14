@@ -8,7 +8,7 @@ set -eu
 # See https://tinkerbell.org/setup for the installation steps.
 
 # file to hold all environment variables
-ENV_FILE=envrc
+ENV_FILE=.env
 
 SCRATCH=$(mktemp -d -t tmp.XXXXXXXXXX)
 readonly SCRATCH
@@ -407,7 +407,7 @@ bootstrap_docker_registry() (
 
     # osie looks for tink-worker:latest, so we have to play with it a bit
     # https://github.com/tinkerbell/osie/blob/master/apps/workflow-helper.sh#L66
-	docker_mirror_image "quay.io/tinkerbell/tink-worker:sha-adb49da" "${TINKERBELL_HOST_IP}/tink-worker:latest"
+	docker_mirror_image "${TINKERBELL_TINK_WORKER_IMAGE}" "${TINKERBELL_HOST_IP}/tink-worker:latest"
 )
 
 setup_docker_registry() (
@@ -482,7 +482,7 @@ check_prerequisites() (
 )
 
 whats_next() (
-	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../envrc; docker-compose up -d"
+	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../.env; docker-compose up -d"
 	echo "$BLANK 2. Try executing your fist workflow."
 	echo "$BLANK    Follow the steps described in https://tinkerbell.org/examples/hello-world/ to say 'Hello World!' with a workflow."
 )

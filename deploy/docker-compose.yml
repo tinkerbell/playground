@@ -1,7 +1,7 @@
 version: "2.1"
 services:
   tink-server:
-    image: quay.io/tinkerbell/tink:sha-adb49da
+    image: ${TINKERBELL_TINK_SERVER_IMAGE}
     restart: unless-stopped
     environment:
       FACILITY: ${FACILITY:-onprem}
@@ -52,7 +52,7 @@ services:
       retries: 30
 
   tink-cli:
-    image: quay.io/tinkerbell/tink-cli:sha-adb49da
+    image: ${TINKERBELL_TINK_CLI_IMAGE}
     restart: unless-stopped
     environment:
       TINKERBELL_GRPC_AUTHORITY: 127.0.0.1:42113
@@ -89,7 +89,7 @@ services:
     network_mode: host
 
   boots:
-    image: quay.io/tinkerbell/boots:327-58ab49913b5498908b16e2607d265a61a05f73b6
+    image: ${TINKERBELL_TINK_BOOTS_IMAGE}
     restart: unless-stopped
     network_mode: host
     command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
@@ -133,7 +133,7 @@ services:
       - ./state/webroot:/usr/share/nginx/html/
 
   hegel:
-    image: quay.io/tinkerbell/hegel:196-fa897aa020769db8becb9be29adaeb6be92a7fc7
+    image: ${TINKERBELL_TINK_HEGEL_IMAGE}
     restart: unless-stopped
     network_mode: host
     environment:

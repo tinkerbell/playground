@@ -80,12 +80,12 @@ main() (
 		sudo apt-get install -y jq
 	fi
 
-	if [ ! -f ./envrc ]; then
-		./generate-envrc.sh eth1 >envrc
+	if [ ! -f ./.env ]; then
+		./generate-envrc.sh eth1 > .env
 	fi
 
 	# shellcheck disable=SC1091
-	. ./envrc
+	. ./.env
 
 	make_certs_writable
 

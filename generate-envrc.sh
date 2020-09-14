@@ -52,6 +52,15 @@ generate_envrc() (
 	local registry_password
 	registry_password=$(generate_password)
 	cat <<EOF
+# Tinkerbell Stack version
+
+export OSIE_DOWNLOAD_LINK=https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/osie-v0-n=252,c=bc454bc,b=master.tar.gz
+export TINKERBELL_TINK_SERVER_IMAGE=quay.io/tinkerbell/tink:sha-adb49da
+export TINKERBELL_TINK_CLI_IMAGE=quay.io/tinkerbell/tink-cli:sha-adb49da
+export TINKERBELL_TINK_BOOTS_IMAGE=quay.io/tinkerbell/boots:327-58ab49913b5498908b16e2607d265a61a05f73b6
+export TINKERBELL_TINK_HEGEL_IMAGE=quay.io/tinkerbell/hegel:196-fa897aa020769db8becb9be29adaeb6be92a7fc7
+export TINKERBELL_TINK_WORKER_IMAGE=quay.io/tinkerbell/tink-worker:sha-adb49da
+
 # Network interface for Tinkerbell's network
 export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
 
@@ -82,14 +91,12 @@ export TINKERBELL_REGISTRY_PASSWORD="$registry_password"
 export FACILITY=onprem
 export ROLLBAR_TOKEN=ignored
 export ROLLBAR_DISABLE=1
-
-export OSIE_DOWNLOAD_LINK=https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/osie-v0-n=252,c=bc454bc,b=master.tar.gz
 EOF
 )
 
 main() (
 	if [ -z "${1:-}" ]; then
-		err "Usage: $0 network-interface-name > envrc"
+		err "Usage: $0 network-interface-name > .env"
 		exit 1
 	fi
 
