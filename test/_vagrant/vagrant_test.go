@@ -35,7 +35,7 @@ func TestVagrantSetupGuide(t *testing.T) {
 		}
 	}()
 
-	_, err = machine.Exec(ctx, "cd /vagrant/deploy && source ../envrc && docker-compose up -d")
+	_, err = machine.Exec(ctx, "cd /vagrant/deploy && source ../.env && docker-compose up -d")
 	if err != nil {
 		t.Fatal(err)
 	}
