@@ -95,7 +95,6 @@ func TestVagrantSetupGuide(t *testing.T) {
 
 	t.Logf("WorkflowID: %s", workflowID)
 
-	os.Setenv("VAGRANT_WORKER_GUI", "false")
 	worker, err := vagrant.Up(ctx,
 		vagrant.WithLogger(t.Logf),
 		vagrant.WithMachineName("worker"),
