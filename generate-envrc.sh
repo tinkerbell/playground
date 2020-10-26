@@ -55,11 +55,11 @@ generate_envrc() (
 # Tinkerbell Stack version
 
 export OSIE_DOWNLOAD_LINK=https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/osie-v0-n=252,c=bc454bc,b=master.tar.gz
-export TINKERBELL_TINK_SERVER_IMAGE=quay.io/tinkerbell/tink:sha-adb49da
-export TINKERBELL_TINK_CLI_IMAGE=quay.io/tinkerbell/tink-cli:sha-adb49da
-export TINKERBELL_TINK_BOOTS_IMAGE=quay.io/tinkerbell/boots:327-58ab49913b5498908b16e2607d265a61a05f73b6
-export TINKERBELL_TINK_HEGEL_IMAGE=quay.io/tinkerbell/hegel:196-fa897aa020769db8becb9be29adaeb6be92a7fc7
-export TINKERBELL_TINK_WORKER_IMAGE=quay.io/tinkerbell/tink-worker:sha-adb49da
+export TINKERBELL_TINK_SERVER_IMAGE=quay.io/tinkerbell/tink:sha-2683ed2b
+export TINKERBELL_TINK_CLI_IMAGE=quay.io/tinkerbell/tink-cli:sha-2683ed2b
+export TINKERBELL_TINK_BOOTS_IMAGE=quay.io/tinkerbell/boots:sha-78c7c264
+export TINKERBELL_TINK_HEGEL_IMAGE=quay.io/tinkerbell/hegel:sha-4ff78c79
+export TINKERBELL_TINK_WORKER_IMAGE=quay.io/tinkerbell/tink-worker:sha-2683ed2b
 
 # Network interface for Tinkerbell's network
 export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
