@@ -405,8 +405,8 @@ start_registry() (
 bootstrap_docker_registry() (
 	docker_login
 
-    # osie looks for tink-worker:latest, so we have to play with it a bit
-    # https://github.com/tinkerbell/osie/blob/master/apps/workflow-helper.sh#L66
+	# osie looks for tink-worker:latest, so we have to play with it a bit
+	# https://github.com/tinkerbell/osie/blob/master/apps/workflow-helper.sh#L66
 	docker_mirror_image "${TINKERBELL_TINK_WORKER_IMAGE}" "${TINKERBELL_HOST_IP}/tink-worker:latest"
 )
 

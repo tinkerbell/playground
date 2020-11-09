@@ -9,9 +9,9 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'ci-check/vagrant-setup')
     runs-on: vagrant
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Vagrant Test
-      run: |
-        export VAGRANT_DEFAULT_PROVIDER="virtualbox"
-        go test --timeout 1h -v ./test/_vagrant
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Vagrant Test
+        run: |
+          export VAGRANT_DEFAULT_PROVIDER="virtualbox"
+          go test --timeout 1h -v ./test/_vagrant
