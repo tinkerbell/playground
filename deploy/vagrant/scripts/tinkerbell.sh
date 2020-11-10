@@ -81,7 +81,7 @@ main() (
 	fi
 
 	if [ ! -f ./.env ]; then
-		./generate-envrc.sh eth1 > .env
+		./generate-envrc.sh eth1 >.env
 	fi
 
 	# shellcheck disable=SC1091
