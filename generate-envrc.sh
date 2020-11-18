@@ -11,6 +11,8 @@ fi
 
 ERR="${RED:-}ERROR:${RESET:-}"
 
+source ./current_versions.sh
+
 err() (
 	if [ -z "${1:-}" ]; then
 		cat >&2
@@ -54,12 +56,12 @@ generate_envrc() (
 	cat <<EOF
 # Tinkerbell Stack version
 
-export OSIE_DOWNLOAD_LINK=https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/osie-v0-n=366,c=1aec189,b=master.tar.gz
-export TINKERBELL_TINK_SERVER_IMAGE=quay.io/tinkerbell/tink:sha-0e8e5733
-export TINKERBELL_TINK_CLI_IMAGE=quay.io/tinkerbell/tink-cli:sha-0e8e5733
-export TINKERBELL_TINK_BOOTS_IMAGE=quay.io/tinkerbell/boots:sha-e81a291c
-export TINKERBELL_TINK_HEGEL_IMAGE=quay.io/tinkerbell/hegel:sha-c17b512f
-export TINKERBELL_TINK_WORKER_IMAGE=quay.io/tinkerbell/tink-worker:sha-0e8e5733
+export OSIE_DOWNLOAD_LINK=${OSIE_DOWNLOAD_LINK}
+export TINKERBELL_TINK_SERVER_IMAGE=${TINKERBELL_TINK_SERVER_IMAGE}
+export TINKERBELL_TINK_CLI_IMAGE=${TINKERBELL_TINK_CLI_IMAGE}
+export TINKERBELL_TINK_BOOTS_IMAGE=${TINKERBELL_TINK_BOOTS_IMAGE}
+export TINKERBELL_TINK_HEGEL_IMAGE=${TINKERBELL_TINK_HEGEL_IMAGE}
+export TINKERBELL_TINK_WORKER_IMAGE=${TINKERBELL_TINK_WORKER_IMAGE}
 
 # Network interface for Tinkerbell's network
 export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
