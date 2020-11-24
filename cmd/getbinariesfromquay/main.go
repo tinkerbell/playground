@@ -98,14 +98,14 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = copyBinaryFromLastLayer(path.Join(imgsDir, imgDir), path.Join(releaseDir, imgDir), binaryToCopy)
+		err = untarLayers(path.Join(imgsDir, imgDir), path.Join(releaseDir, imgDir), binaryToCopy)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func copyBinaryFromLastLayer(src, dest, binaryPath string) error {
+func untarLayers(src, dest, binaryPath string) error {
 	b, err := ioutil.ReadFile(path.Join(src, "manifest.json"))
 	if err != nil {
 		return err
@@ -114,14 +114,15 @@ func copyBinaryFromLastLayer(src, dest, binaryPath string) error {
 	if err != nil {
 		return err
 	}
-	last := man.LayerInfos()[len(man.LayerInfos())-1]
-	layerTar, err := os.Open(path.Join(src, last.Digest.String()[7:]))
-	if err != nil {
-		return err
-	}
-	err = tar.Untar(src, layerTar)
-	if err != nil {
-		return err
+	for _, l := range man.LayerInfos() {
+		layerTar, err := os.Open(path.Join(src, l.Digest.String()[7:]))
+		if err != nil {
+			return err
+		}
+		err = tar.Untar(src, layerTar)
+		if err != nil {
+			return err
+		}
 	}
 
 	input, err := ioutil.ReadFile(path.Join(src, binaryPath))
