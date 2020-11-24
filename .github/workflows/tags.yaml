@@ -7,7 +7,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt install -y libgpgme-dev libassuan-dev libdevmapper-dev
+      - run: sudo apt-get update && sudo apt install -y libgpgme-dev libassuan-dev libdevmapper-dev
       - name: Checkout code
         uses: actions/checkout@v2
       - uses: actions/setup-go@v2
