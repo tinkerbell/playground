@@ -1,0 +1,2 @@
+# Use Unix line endings for scripts
+*.sh text eol=lf
