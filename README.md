@@ -14,7 +14,7 @@ is running the hood. Sandbox runs a pinned version for all the components via
 commit sha. In this way as a user you won't be effected (ideally) from new code
 that will may change a bit how Tinkerbell works.
 
-We are keeping the number of bc break as low as possible but in the current
+We are keeping the number of breaking changes as low as possible but in the current
 state they are expected.
 
 ## Binary release
