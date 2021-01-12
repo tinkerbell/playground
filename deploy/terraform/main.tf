@@ -7,6 +7,11 @@ terraform {
     }
     null = {
       source = "hashicorp/null"
+      version = "~> 2.1.2"
+    }
+    template = {
+      source = "hashicorp/template"
+      version = "~> 2.1.2"
     }
   }
 }
