@@ -88,7 +88,7 @@ func main() {
 		}
 		if arch.Platform.Variant != "" {
 			syss.VariantChoice = arch.Platform.Variant
-			imgDir = imgDir + "-" + arch.Platform.Variant
+			imgDir = imgDir + arch.Platform.Variant
 		}
 		archImg, err := docker.ImageFromName(ctx, syss, imageR)
 		if err != nil {
