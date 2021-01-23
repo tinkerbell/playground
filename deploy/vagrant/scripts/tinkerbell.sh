@@ -63,6 +63,12 @@ configure_vagrant_user() (
 			--password-stdin "$TINKERBELL_HOST_IP"
 )
 
+setup_nat() (
+	iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
+	iptables -A FORWARD -i eth0 -o eth1 -m state --state ESTABLISHED,RELATED -j ACCEPT
+	iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+)
+
 main() (
 	export DEBIAN_FRONTEND=noninteractive
 
@@ -90,6 +96,8 @@ main() (
 	make_certs_writable
 
 	./setup.sh
+
+    setup_nat
 
 	secure_certs
 
