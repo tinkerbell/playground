@@ -97,7 +97,7 @@ main() (
 
 	./setup.sh
 
-    setup_nat
+	setup_nat
 
 	secure_certs
 
