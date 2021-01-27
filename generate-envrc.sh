@@ -78,9 +78,6 @@ export TINKERBELL_CIDR=29
 # should be the second address.
 export TINKERBELL_HOST_IP=192.168.1.1
 
-# NGINX IP is used by provisioner to serve files required for iPXE boot
-export TINKERBELL_NGINX_IP=192.168.1.2
-
 # Tink server username and password
 export TINKERBELL_TINK_USERNAME=admin
 export TINKERBELL_TINK_PASSWORD="$tink_password"

@@ -124,7 +124,7 @@ services:
       PACKET_VERSION: ${PACKET_VERSION:-ignored}
       ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
       ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
-      MIRROR_HOST: ${TINKERBELL_NGINX_IP:-127.0.0.1}
+      MIRROR_HOST: ${TINKERBELL_HOST_IP:-127.0.0.1}:8080
       DNS_SERVERS: 8.8.8.8
       PUBLIC_IP: $TINKERBELL_HOST_IP
       BOOTP_BIND: $TINKERBELL_HOST_IP:67
@@ -151,7 +151,7 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - $TINKERBELL_NGINX_IP:80:80/tcp
+      - $TINKERBELL_HOST_IP:8080:80/tcp
     volumes:
       - ./state/webroot:/usr/share/nginx/html/
 

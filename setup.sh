@@ -59,14 +59,9 @@ get_distro_version() (
 )
 
 is_network_configured() (
-	# Require the provisioner interface have both the host and nginx IP
+	# Require the provisioner interface have the host IP
 	if ! ip addr show "$TINKERBELL_NETWORK_INTERFACE" |
 		grep -q "$TINKERBELL_HOST_IP"; then
-		return 1
-	fi
-
-	if ! ip addr show "$TINKERBELL_NETWORK_INTERFACE" |
-		grep -q "$TINKERBELL_NGINX_IP"; then
 		return 1
 	fi
 
@@ -144,15 +139,13 @@ setup_networking_netplan() (
 		--arg interface "$TINKERBELL_NETWORK_INTERFACE" \
 		--arg cidr "$TINKERBELL_CIDR" \
 		--arg host_ip "$TINKERBELL_HOST_IP" \
-		--arg nginx_ip "$TINKERBELL_NGINX_IP" \
 		'{
   network: {
     renderer: "networkd",
     ethernets: {
       ($interface): {
         addresses: [
-          "\($host_ip)/\($cidr)",
-          "\($nginx_ip)/\($cidr)"
+          "\($host_ip)/\($cidr)"
         ]
       }
     }
@@ -179,32 +172,23 @@ setup_networking_ubuntu_legacy() (
 		echo ""
 		echo "$BLANK Then run the following commands:"
 		echo "$BLANK ip link set $TINKERBELL_NETWORK_INTERFACE nomaster"
-		echo "$BLANK ifdown $TINKERBELL_NETWORK_INTERFACE:0"
-		echo "$BLANK ifdown $TINKERBELL_NETWORK_INTERFACE:1"
-		echo "$BLANK ifup $TINKERBELL_NETWORK_INTERFACE:0"
-		echo "$BLANK ifup $TINKERBELL_NETWORK_INTERFACE:1"
+		echo "$BLANK ifdown $TINKERBELL_NETWORK_INTERFACE"
+		echo "$BLANK ifup $TINKERBELL_NETWORK_INTERFACE"
 		exit 1
 	else
 		generate_iface_config >>/etc/network/interfaces
 		ip link set "$TINKERBELL_NETWORK_INTERFACE" nomaster
-		ifdown "$TINKERBELL_NETWORK_INTERFACE:0"
-		ifdown "$TINKERBELL_NETWORK_INTERFACE:1"
-		ifup "$TINKERBELL_NETWORK_INTERFACE:0"
-		ifup "$TINKERBELL_NETWORK_INTERFACE:1"
+		ifdown "$TINKERBELL_NETWORK_INTERFACE"
+		ifup "$TINKERBELL_NETWORK_INTERFACE"
 	fi
 )
 
 generate_iface_config() (
 	cat <<EOF
 
-auto $TINKERBELL_NETWORK_INTERFACE:0
-iface $TINKERBELL_NETWORK_INTERFACE:0 inet static
+auto $TINKERBELL_NETWORK_INTERFACE
+iface $TINKERBELL_NETWORK_INTERFACE inet static
     address $TINKERBELL_HOST_IP/$TINKERBELL_CIDR
-    pre-up sleep 4
-
-auto $TINKERBELL_NETWORK_INTERFACE:1
-iface $TINKERBELL_NETWORK_INTERFACE:1 inet static
-    address $TINKERBELL_NGINX_IP/$TINKERBELL_CIDR
     pre-up sleep 4
 EOF
 )
@@ -221,10 +205,8 @@ ONBOOT=yes
 HWADDR=$HWADDRESS
 BOOTPROTO=static
 
-IPADDR0=$TINKERBELL_HOST_IP
-PREFIX0=$TINKERBELL_CIDR
-IPADDR1=$TINKERBELL_NGINX_IP
-PREFIX1=$TINKERBELL_CIDR
+IPADDR=$TINKERBELL_HOST_IP
+PREFIX=$TINKERBELL_CIDR
 EOF
 	)
 
