@@ -14,5 +14,5 @@ in
 with pkgs;
 
 mkShell {
-  buildInputs = [ go nodePackages.prettier shellcheck shfmt terraform gpgme ];
+  buildInputs = [ go nodePackages.prettier shellcheck shfmt terraform gpgme packer vagrant ];
 }
