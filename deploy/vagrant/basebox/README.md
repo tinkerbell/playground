@@ -2,7 +2,7 @@ This directory contains a provisioning mechanism for the Vagrant boxes we ship
 as part of Sandbox.
 
 In order to self contain and distribute the required dependencies for Tinkerbell
-and Sandbox without having to download all of them runtime we decided to use
+and Sandbox without having to download all of them at runtime we decided to use
 [Packer.io](https://packer.io) to build boxes that you can use when provisioning
 Tinkerbell on Vagrant.
 
