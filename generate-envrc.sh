@@ -13,6 +13,9 @@ ERR="${RED:-}ERROR:${RESET:-}"
 
 source ./current_versions.sh
 
+TINKERBELL_HOST_IP=${TINKERBELL_HOST_IP:-192.168.1.1}
+TINKERBELL_CIDR=${TINKERBELL_CIDR:-29}
+
 err() (
 	if [ -z "${1:-}" ]; then
 		cat >&2
@@ -69,14 +72,14 @@ export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
 # Decide on a subnet for provisioning. Tinkerbell should "own" this
 # network space. Its subnet should be just large enough to be able
 # to provision your hardware.
-export TINKERBELL_CIDR=29
+export TINKERBELL_CIDR=${TINKERBELL_CIDR}
 
 # Host IP is used by provisioner to expose different services such as
 # tink, boots, etc.
 #
 # The host IP should the first IP in the range, and the Nginx IP
 # should be the second address.
-export TINKERBELL_HOST_IP=192.168.1.1
+export TINKERBELL_HOST_IP=${TINKERBELL_HOST_IP}
 
 # Tink server username and password
 export TINKERBELL_TINK_USERNAME=admin
