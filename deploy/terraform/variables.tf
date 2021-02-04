@@ -1,4 +1,4 @@
-variable "packet_api_token" {
+variable "metal_api_token" {
   description = "Packet user api token"
   type        = string
 }
