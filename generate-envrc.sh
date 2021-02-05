@@ -56,6 +56,7 @@ generate_envrc() (
 	cat <<EOF
 # Tinkerbell Stack version
 
+export TINKERBELL_SANDBOX_VERSION=${TINKERBELL_SANDBOX_VERSION}
 export OSIE_DOWNLOAD_LINK=${OSIE_DOWNLOAD_LINK}
 export TINKERBELL_TINK_SERVER_IMAGE=${TINKERBELL_TINK_SERVER_IMAGE}
 export TINKERBELL_TINK_CLI_IMAGE=${TINKERBELL_TINK_CLI_IMAGE}
@@ -81,6 +82,10 @@ export TINKERBELL_HOST_IP=192.168.1.1
 # Tink server username and password
 export TINKERBELL_TINK_USERNAME=admin
 export TINKERBELL_TINK_PASSWORD="$tink_password"
+
+# Tink cli: Tink Server location and CERT
+export TINKERBELL_GRPC_AUTHORITY=127.0.0.1:42113
+export TINKERBELL_CERT_URL=http://127.0.0.1:42114/cert
 
 # Docker Registry's username and password
 export TINKERBELL_REGISTRY_USERNAME=admin

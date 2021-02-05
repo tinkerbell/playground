@@ -31,6 +31,13 @@ setup_nat() (
 	iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 )
 
+get_tink_cli() {
+	sudo wget -O /usr/local/bin/tink \
+	"https://github.com/tinkerbell/sandbox/releases/download/v$TINKERBELL_SANDBOX_VERSION/tink-linux-386"
+	sudo chmod 755 /usr/local/bin/tink
+	sudo chown "root" /usr/local/bin/tink
+}
+
 main() (
 	export DEBIAN_FRONTEND=noninteractive
 
@@ -44,6 +51,8 @@ main() (
 	make_certs_writable
 
 	./setup.sh
+
+	get_tink_cli
 
 	setup_nat
 	secure_certs
