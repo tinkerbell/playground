@@ -1,9 +1,9 @@
 # Configure the Packet Provider.
 terraform {
   required_providers {
-    packet = {
-      source  = "packethost/packet"
-      version = "~> 3.0.1"
+    metal = {
+      source  = "equinix/metal"
+      version = "1.0.0"
     }
     null = {
       source  = "hashicorp/null"
@@ -16,19 +16,19 @@ terraform {
   }
 }
 
-provider "packet" {
-  auth_token = var.packet_api_token
+provider "metal" {
+  auth_token = var.metal_api_token
 }
 
 # Create a new VLAN in datacenter "ewr1"
-resource "packet_vlan" "provisioning_vlan" {
+resource "metal_vlan" "provisioning_vlan" {
   description = "provisioning_vlan"
   facility    = var.facility
   project_id  = var.project_id
 }
 
 # Create a device and add it to tf_project_1
-resource "packet_device" "tink_provisioner" {
+resource "metal_device" "tink_provisioner" {
   hostname         = "tink-provisioner"
   plan             = var.device_type
   facilities       = [var.facility]
@@ -42,7 +42,7 @@ resource "null_resource" "tink_directory" {
   connection {
     type = "ssh"
     user = var.ssh_user
-    host = packet_device.tink_provisioner.network[0].address
+    host = metal_device.tink_provisioner.network[0].address
   }
 
   provisioner "remote-exec" {
@@ -81,13 +81,13 @@ resource "null_resource" "tink_directory" {
   }
 }
 
-resource "packet_device_network_type" "tink_provisioner_network_type" {
-  device_id = packet_device.tink_provisioner.id
+resource "metal_device_network_type" "tink_provisioner_network_type" {
+  device_id = metal_device.tink_provisioner.id
   type      = "hybrid"
 }
 
 # Create a device and add it to tf_project_1
-resource "packet_device" "tink_worker" {
+resource "metal_device" "tink_worker" {
   count = var.worker_count
 
   hostname         = "tink-worker-${count.index}"
@@ -100,40 +100,40 @@ resource "packet_device" "tink_worker" {
   project_id       = var.project_id
 }
 
-resource "packet_device_network_type" "tink_worker_network_type" {
+resource "metal_device_network_type" "tink_worker_network_type" {
   count = var.worker_count
 
-  device_id = packet_device.tink_worker[count.index].id
+  device_id = metal_device.tink_worker[count.index].id
   type      = "layer2-individual"
 }
 
 # Attach VLAN to provisioner
-resource "packet_port_vlan_attachment" "provisioner" {
-  depends_on = [packet_device_network_type.tink_provisioner_network_type]
-  device_id  = packet_device.tink_provisioner.id
+resource "metal_port_vlan_attachment" "provisioner" {
+  depends_on = [metal_device_network_type.tink_provisioner_network_type]
+  device_id  = metal_device.tink_provisioner.id
   port_name  = "eth1"
-  vlan_vnid  = packet_vlan.provisioning_vlan.vxlan
+  vlan_vnid  = metal_vlan.provisioning_vlan.vxlan
 }
 
 # Attach VLAN to worker
-resource "packet_port_vlan_attachment" "worker" {
+resource "metal_port_vlan_attachment" "worker" {
   count      = var.worker_count
-  depends_on = [packet_device_network_type.tink_worker_network_type]
+  depends_on = [metal_device_network_type.tink_worker_network_type]
 
-  device_id = packet_device.tink_worker[count.index].id
+  device_id = metal_device.tink_worker[count.index].id
   port_name = "eth0"
-  vlan_vnid = packet_vlan.provisioning_vlan.vxlan
+  vlan_vnid = metal_vlan.provisioning_vlan.vxlan
 }
 
 data "template_file" "worker_hardware_data" {
   count    = var.worker_count
   template = file("${path.module}/hardware_data.tpl")
   vars = {
-    id            = packet_device.tink_worker[count.index].id
-    facility_code = packet_device.tink_worker[count.index].deployed_facility
-    plan_slug     = packet_device.tink_worker[count.index].plan
+    id            = metal_device.tink_worker[count.index].id
+    facility_code = metal_device.tink_worker[count.index].deployed_facility
+    plan_slug     = metal_device.tink_worker[count.index].plan
     address       = "192.168.1.${count.index + 5}"
-    mac           = packet_device.tink_worker[count.index].ports[1].mac
+    mac           = metal_device.tink_worker[count.index].ports[1].mac
   }
 }
 
@@ -144,7 +144,7 @@ resource "null_resource" "hardware_data" {
   connection {
     type = "ssh"
     user = var.ssh_user
-    host = packet_device.tink_provisioner.network[0].address
+    host = metal_device.tink_provisioner.network[0].address
   }
 
   provisioner "file" {
