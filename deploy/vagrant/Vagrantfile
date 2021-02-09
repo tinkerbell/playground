@@ -15,7 +15,8 @@ end
 Vagrant.configure('2') do |config|
 
   config.vm.define :provisioner do |provisioner|
-    provisioner.vm.box = 'generic/ubuntu1804'
+    provisioner.vm.box = "tinkerbelloss/sandbox-ubuntu1804"
+    provisioner.vm.box_version = "0.1.0"
     provisioner.vm.hostname = 'provisioner'
     provisioner.vm.synced_folder './../../', '/vagrant'
     provisioner.vm.provision :shell, path: './scripts/tinkerbell.sh'
