@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -69,26 +68,32 @@ func TestVagrantSetupGuide(t *testing.T) {
 
 	t.Log("Tinkerbell is up and running")
 
-	os.Setenv("TINKERBELL_CERT_URL", "http://127.0.0.1:42114/cert")
-	os.Setenv("TINKERBELL_GRPC_AUTHORITY", "127.0.0.1:42113")
-	client.Setup()
-	_, err = client.HardwareClient.All(ctx, &hardware.Empty{})
+	conn, err := client.NewClientConn(&client.ConnOptions{
+		CertURL:       "http://127.0.0.1:42114/cert",
+		GRPCAuthority: "127.0.0.1:42113",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = registerHardware(ctx)
+	cl := client.NewFullClient(conn)
+
+	_, err = cl.HardwareClient.All(ctx, &hardware.Empty{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = registerHardware(ctx, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	templateID, err := registerTemplate(ctx)
+	templateID, err := registerTemplate(ctx, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Logf("templateID: %s", templateID)
 
-	workflowID, err := createWorkflow(ctx, templateID)
+	workflowID, err := createWorkflow(ctx, cl, templateID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +118,7 @@ func TestVagrantSetupGuide(t *testing.T) {
 	}()
 
 	for iii := 0; iii < 30; iii++ {
-		events, err := client.WorkflowClient.ShowWorkflowEvents(ctx, &workflow.GetRequest{
+		events, err := cl.WorkflowClient.ShowWorkflowEvents(ctx, &workflow.GetRequest{
 			Id: workflowID,
 		})
 		if err != nil {
@@ -130,8 +135,8 @@ func TestVagrantSetupGuide(t *testing.T) {
 	t.Fatal("Workflow never got to a complite state or it didn't make it on time (10m)")
 }
 
-func createWorkflow(ctx context.Context, templateID string) (string, error) {
-	res, err := client.WorkflowClient.CreateWorkflow(ctx, &workflow.CreateRequest{
+func createWorkflow(ctx context.Context, cl *client.FullClient, templateID string) (string, error) {
+	res, err := cl.WorkflowClient.CreateWorkflow(ctx, &workflow.CreateRequest{
 		Template: templateID,
 		Hardware: `{"device_1":"08:00:27:00:00:01"}`,
 	})
@@ -141,8 +146,8 @@ func createWorkflow(ctx context.Context, templateID string) (string, error) {
 	return res.Id, nil
 }
 
-func registerTemplate(ctx context.Context) (string, error) {
-	resp, err := client.TemplateClient.CreateTemplate(ctx, &template.WorkflowTemplate{
+func registerTemplate(ctx context.Context, cl *client.FullClient) (string, error) {
+	resp, err := cl.TemplateClient.CreateTemplate(ctx, &template.WorkflowTemplate{
 		Name: "hello-world",
 		Data: `version: "0.1"
 name: hello_world_workflow
@@ -162,7 +167,7 @@ tasks:
 	return resp.Id, nil
 }
 
-func registerHardware(ctx context.Context) error {
+func registerHardware(ctx context.Context, cl *client.FullClient) error {
 	data := []byte(`{
   "id": "ce2e62ed-826f-4485-a39f-a82bb74338e2",
   "metadata": {
@@ -198,6 +203,6 @@ func registerHardware(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.HardwareClient.Push(context.Background(), &hardware.PushRequest{Data: hw.Hardware})
+	_, err = cl.HardwareClient.Push(context.Background(), &hardware.PushRequest{Data: hw.Hardware})
 	return err
 }
