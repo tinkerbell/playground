@@ -114,7 +114,6 @@ services:
   boots:
     image: ${TINKERBELL_TINK_BOOTS_IMAGE}
     restart: unless-stopped
-    network_mode: host
     command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
     environment:
       API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN:-ignored}
