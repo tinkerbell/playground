@@ -62,6 +62,11 @@ resource "null_resource" "tink_directory" {
   }
 
   provisioner "file" {
+    source      = "../../current_versions.sh"
+    destination = "/root/tink/current_versions.sh"
+  }
+
+  provisioner "file" {
     source      = "../../deploy"
     destination = "/root/tink"
   }
