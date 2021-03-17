@@ -45,10 +45,12 @@ main() (
 
 	./setup.sh
 
-	setup_nat
+	if [[ ${TINKERBELL_CONFIGURE_NAT:=true} != "false" ]]; then
+		setup_nat
+	fi
+
 	secure_certs
 	configure_vagrant_user
-
 )
 
 main
