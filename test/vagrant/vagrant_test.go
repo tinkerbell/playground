@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -16,6 +17,11 @@ import (
 )
 
 func TestVagrantSetupGuide(t *testing.T) {
+	_, ok := os.LookupEnv("TEST_WITH_VAGRANT")
+	if !ok {
+		t.Skip("You can run e2e tests that depends from Vagrant setting the envvar TEST_WITH_VAGRANT")
+	}
+
 	ctx := context.Background()
 
 	machine, err := vagrant.Up(ctx,
