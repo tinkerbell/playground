@@ -165,6 +165,7 @@ services:
       TINKERBELL_GRPC_AUTHORITY: 127.0.0.1:42113
       TINKERBELL_CERT_URL: http://127.0.0.1:42114/cert
       DATA_MODEL_VERSION: 1
+      CUSTOM_ENDPOINTS: '{"/metadata":""}'
     depends_on:
       db:
         condition: service_healthy
