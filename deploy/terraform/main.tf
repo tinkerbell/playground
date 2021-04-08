@@ -71,12 +71,9 @@ resource "null_resource" "tink_directory" {
     destination = "/root/tink"
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "iptables -A FORWARD -i eth1 -o bond0 -j ACCEPT",
-      "iptables -A FORWARD -i bond0 -o eth1 -m state --state ESTABLISHED,RELATED -j ACCEPT",
-      "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
-    ]
+  provisioner "file" {
+    source      = "nat_interface"
+    destination = "/root/tink/.nat_interface"
   }
 
   provisioner "remote-exec" {

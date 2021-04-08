@@ -110,6 +110,17 @@ setup_networking() (
 	else
 		echo "$ERR tinkerbell network interface configuration failed"
 	fi
+
+	if [ -r .nat_interface ]; then
+		NAT_INTERFACE=$(cat .nat_interface)
+	fi
+	if [ -n "$NAT_INTERFACE" ] && ip addr show "$NAT_INTERFACE" &>/dev/null; then
+		# TODO(nshalman) the terraform code would just run these commands as-is once
+		# but it would be nice to make these more persistent based on OS
+		iptables -A FORWARD -i "$TINKERBELL_NETWORK_INTERFACE" -o "$NAT_INTERFACE" -j ACCEPT
+		iptables -A FORWARD -i "$NAT_INTERFACE" -o "$TINKERBELL_NETWORK_INTERFACE" -m state --state ESTABLISHED,RELATED -j ACCEPT
+		iptables -t nat -A POSTROUTING -o "$NAT_INTERFACE" -j MASQUERADE
+	fi
 )
 
 setup_networking_manually() (
