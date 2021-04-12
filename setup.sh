@@ -111,6 +111,7 @@ setup_networking() (
 		echo "$ERR tinkerbell network interface configuration failed"
 	fi
 
+	NAT_INTERFACE=""
 	if [ -r .nat_interface ]; then
 		NAT_INTERFACE=$(cat .nat_interface)
 	fi
