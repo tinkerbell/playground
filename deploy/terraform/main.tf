@@ -57,8 +57,8 @@ resource "null_resource" "tink_directory" {
   }
 
   provisioner "file" {
-    source      = "../../generate-envrc.sh"
-    destination = "/root/tink/generate-envrc.sh"
+    source      = "../../generate-env.sh"
+    destination = "/root/tink/generate-env.sh"
   }
 
   provisioner "file" {
