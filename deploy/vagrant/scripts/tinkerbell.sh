@@ -35,7 +35,7 @@ main() (
 	export DEBIAN_FRONTEND=noninteractive
 
 	if [ ! -f ./.env ]; then
-		./generate-envrc.sh eth1 >.env
+		./generate-env.sh eth1 >.env
 	fi
 
 	# shellcheck disable=SC1091
