@@ -53,44 +53,45 @@ generate_env() (
 	tink_password=$(generate_password)
 	local registry_password
 	registry_password=$(generate_password)
-	cat <<EOF
-# Tinkerbell Stack version
 
-export OSIE_DOWNLOAD_LINK=${OSIE_DOWNLOAD_LINK}
-export TINKERBELL_TINK_SERVER_IMAGE=${TINKERBELL_TINK_SERVER_IMAGE}
-export TINKERBELL_TINK_CLI_IMAGE=${TINKERBELL_TINK_CLI_IMAGE}
-export TINKERBELL_TINK_BOOTS_IMAGE=${TINKERBELL_TINK_BOOTS_IMAGE}
-export TINKERBELL_TINK_HEGEL_IMAGE=${TINKERBELL_TINK_HEGEL_IMAGE}
-export TINKERBELL_TINK_WORKER_IMAGE=${TINKERBELL_TINK_WORKER_IMAGE}
+	cat <<-EOF
+		# Tinkerbell Stack version
 
-# Network interface for Tinkerbell's network
-export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
+		export OSIE_DOWNLOAD_LINK=${OSIE_DOWNLOAD_LINK}
+		export TINKERBELL_TINK_SERVER_IMAGE=${TINKERBELL_TINK_SERVER_IMAGE}
+		export TINKERBELL_TINK_CLI_IMAGE=${TINKERBELL_TINK_CLI_IMAGE}
+		export TINKERBELL_TINK_BOOTS_IMAGE=${TINKERBELL_TINK_BOOTS_IMAGE}
+		export TINKERBELL_TINK_HEGEL_IMAGE=${TINKERBELL_TINK_HEGEL_IMAGE}
+		export TINKERBELL_TINK_WORKER_IMAGE=${TINKERBELL_TINK_WORKER_IMAGE}
 
-# Decide on a subnet for provisioning. Tinkerbell should "own" this
-# network space. Its subnet should be just large enough to be able
-# to provision your hardware.
-export TINKERBELL_CIDR=29
+		# Network interface for Tinkerbell's network
+		export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
 
-# Host IP is used by provisioner to expose different services such as
-# tink, boots, etc.
-#
-# The host IP should the first IP in the range, and the Nginx IP
-# should be the second address.
-export TINKERBELL_HOST_IP=192.168.1.1
+		# Decide on a subnet for provisioning. Tinkerbell should "own" this
+		# network space. Its subnet should be just large enough to be able
+		# to provision your hardware.
+		export TINKERBELL_CIDR=29
 
-# Tink server username and password
-export TINKERBELL_TINK_USERNAME=admin
-export TINKERBELL_TINK_PASSWORD="$tink_password"
+		# Host IP is used by provisioner to expose different services such as
+		# tink, boots, etc.
+		#
+		# The host IP should the first IP in the range, and the Nginx IP
+		# should be the second address.
+		export TINKERBELL_HOST_IP=192.168.1.1
 
-# Docker Registry's username and password
-export TINKERBELL_REGISTRY_USERNAME=admin
-export TINKERBELL_REGISTRY_PASSWORD="$registry_password"
+		# Tink server username and password
+		export TINKERBELL_TINK_USERNAME=admin
+		export TINKERBELL_TINK_PASSWORD="$tink_password"
 
-# Legacy options, to be deleted:
-export FACILITY=onprem
-export ROLLBAR_TOKEN=ignored
-export ROLLBAR_DISABLE=1
-EOF
+		# Docker Registry's username and password
+		export TINKERBELL_REGISTRY_USERNAME=admin
+		export TINKERBELL_REGISTRY_PASSWORD="$registry_password"
+
+		# Legacy options, to be deleted:
+		export FACILITY=onprem
+		export ROLLBAR_TOKEN=ignored
+		export ROLLBAR_DISABLE=1
+	EOF
 )
 
 main() (
