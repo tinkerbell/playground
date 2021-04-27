@@ -30,13 +30,17 @@ setup_docker() (
 		;
 )
 
+# from https://docs.docker.com/compose/install/
 setup_docker_compose() (
-	# from https://docs.docker.com/compose/install/
-	sudo curl -L \
-		"https://github.com/docker/compose/releases/download/1.26.0/docker-compose-$(uname -s)-$(uname -m)" \
-		-o /usr/local/bin/docker-compose
-
-	sudo chmod +x /usr/local/bin/docker-compose
+	local name url
+	name=docker-compose-$(uname -s)-$(uname -m)
+	url=https://github.com/docker/compose/releases/download/1.26.0/$name
+	curl -fsSLO "$url"
+	curl -fsSLO "$url.sha256"
+	sha256sum -c <"$name.sha256"
+	rm -f "$name.sha256"
+	chmod +x "$name"
+	sudo mv "$name" /usr/local/bin/docker-compose
 )
 
 main() (
@@ -50,3 +54,4 @@ main() (
 )
 
 main
+sync # do not remove!
