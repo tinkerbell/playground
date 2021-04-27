@@ -39,7 +39,7 @@ main() (
 	fi
 
 	# shellcheck disable=SC1091
-	. ./.env
+	source ./.env
 
 	make_certs_writable
 
