@@ -347,8 +347,8 @@ generate_certificates() (
 	local certs_dir="/etc/docker/certs.d/$TINKERBELL_HOST_IP"
 
 	# copy public key to NGINX for workers
-	if ! cmp --quiet "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"; then
-		cp "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"
+	if ! cmp --quiet "$STATEDIR/certs/ca.pem" "$STATEDIR/webroot/workflow/ca.pem"; then
+		cp "$STATEDIR/certs/ca.pem" "$STATEDIR/webroot/workflow/ca.pem"
 	fi
 
 	# update host to trust registry certificate
