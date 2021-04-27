@@ -9,7 +9,8 @@ setup_docker() (
 		ca-certificates \
 		curl \
 		gnupg-agent \
-		software-properties-common
+		software-properties-common \
+		;
 
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg |
 		sudo apt-key add -
@@ -22,7 +23,11 @@ setup_docker() (
 	sudo add-apt-repository "$repo"
 
 	sudo apt-get update
-	sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+	sudo apt-get install -y \
+		containerd.io \
+		docker-ce \
+		docker-ce-cli \
+		;
 )
 
 setup_docker_compose() (
