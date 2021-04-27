@@ -51,6 +51,9 @@ main() (
 
 	secure_certs
 	configure_vagrant_user
+
+	set +x # don't want the stderr output from xtrace messing with the post-setup-message
+	[[ -f /tmp/post-setup-message ]] && cat /tmp/post-setup-message
 )
 
 main

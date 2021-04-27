@@ -503,7 +503,7 @@ do_setup() (
 	setup_docker_registry
 
 	echo "$INFO tinkerbell stack setup completed successfully on $lsb_dist server"
-	whats_next
+	whats_next | tee /tmp/post-setup-message
 )
 
 # wrapped up in a function so that we have some protection against only getting
