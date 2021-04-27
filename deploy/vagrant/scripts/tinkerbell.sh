@@ -34,7 +34,7 @@ setup_nat() (
 main() (
 	export DEBIAN_FRONTEND=noninteractive
 
-	if [ ! -f ./.env ]; then
+	if ! [[ -f ./.env ]]; then
 		./generate-env.sh eth1 >.env
 	fi
 

@@ -14,7 +14,7 @@ ERR="${RED:-}ERROR:${RESET:-}"
 source ./current_versions.sh
 
 err() (
-	if [ -z "${1:-}" ]; then
+	if [[ -z ${1:-} ]]; then
 		cat >&2
 	else
 		echo "$ERR " "$@" >&2
@@ -94,7 +94,7 @@ EOF
 )
 
 main() (
-	if [ -z "${1:-}" ]; then
+	if [[ -z ${1:-} ]]; then
 		err "Usage: $0 network-interface-name > .env"
 		exit 1
 	fi
