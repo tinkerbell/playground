@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # stops the execution if a command or pipeline has an error
-set -eu
+set -euxo pipefail
 
 # Tinkerbell stack Linux setup script
 #
