@@ -427,13 +427,15 @@ command_exists() (
 )
 
 check_command() (
-	if command_exists "$1"; then
-		echo "$BLANK Found prerequisite: $1"
-		return 0
-	else
-		echo "$ERR Prerequisite command not installed: $1"
+	if ! command_exists "$1"; then
+		echo "$ERR Prerequisite executable command not found: $1"
 		return 1
 	fi
+	if ! [[ -s "$(which "$1")" ]]; then
+		echo "$ERR Prerequisite command is an empty file: $1"
+	fi
+	echo "$BLANK Found prerequisite: $1"
+	return 0
 )
 
 check_prerequisites() (
