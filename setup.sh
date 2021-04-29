@@ -479,7 +479,7 @@ check_prerequisites() (
 
 whats_next() (
 	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../.env; docker-compose up -d"
-	echo "$BLANK 2. Try executing your fist workflow."
+	echo "$BLANK 2. Try executing your first workflow."
 	echo "$BLANK    Follow the steps described in https://tinkerbell.org/examples/hello-world/ to say 'Hello World!' with a workflow."
 )
 
