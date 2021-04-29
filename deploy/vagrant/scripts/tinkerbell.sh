@@ -34,12 +34,12 @@ setup_nat() (
 main() (
 	export DEBIAN_FRONTEND=noninteractive
 
-	if [ ! -f ./.env ]; then
+	if ! [[ -f ./.env ]]; then
 		./generate-env.sh eth1 >.env
 	fi
 
 	# shellcheck disable=SC1091
-	. ./.env
+	source ./.env
 
 	make_certs_writable
 
@@ -51,6 +51,9 @@ main() (
 
 	secure_certs
 	configure_vagrant_user
+
+	set +x # don't want the stderr output from xtrace messing with the post-setup-message
+	[[ -f /tmp/post-setup-message ]] && cat /tmp/post-setup-message
 )
 
 main

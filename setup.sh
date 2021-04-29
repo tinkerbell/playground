@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # stops the execution if a command or pipeline has an error
-set -eu
+set -euxo pipefail
 
 # Tinkerbell stack Linux setup script
 #
@@ -38,7 +38,7 @@ NEXT="${GREEN:-}NEXT:${RESET:-}"
 get_distribution() (
 	local lsb_dist=""
 	# Every system that we officially support has /etc/os-release
-	if [ -r /etc/os-release ]; then
+	if [[ -r /etc/os-release ]]; then
 		# shellcheck disable=SC1091
 		lsb_dist="$(. /etc/os-release && echo "$ID")"
 	fi
@@ -50,7 +50,7 @@ get_distribution() (
 get_distro_version() (
 	local lsb_version="0"
 	# Every system that we officially support has /etc/os-release
-	if [ -r /etc/os-release ]; then
+	if [[ -r /etc/os-release ]]; then
 		# shellcheck disable=SC1091
 		lsb_version="$(. /etc/os-release && echo "$VERSION_ID")"
 	fi
@@ -112,10 +112,10 @@ setup_networking() (
 	fi
 
 	NAT_INTERFACE=""
-	if [ -r .nat_interface ]; then
+	if [[ -r .nat_interface ]]; then
 		NAT_INTERFACE=$(cat .nat_interface)
 	fi
-	if [ -n "$NAT_INTERFACE" ] && ip addr show "$NAT_INTERFACE" &>/dev/null; then
+	if [[ -n $NAT_INTERFACE ]] && ip addr show "$NAT_INTERFACE" &>/dev/null; then
 		# TODO(nshalman) the terraform code would just run these commands as-is once
 		# but it would be nice to make these more persistent based on OS
 		iptables -A FORWARD -i "$TINKERBELL_NETWORK_INTERFACE" -o "$NAT_INTERFACE" -j ACCEPT
@@ -135,10 +135,10 @@ setup_networking_manually() (
 
 setup_network_forwarding() (
 	# enable IP forwarding for docker
-	if [ "$(sysctl -n net.ipv4.ip_forward)" != "1" ]; then
-		if [ -d /etc/sysctl.d ]; then
+	if (($(sysctl -n net.ipv4.ip_forward) != 1)); then
+		if [[ -d /etc/sysctl.d ]]; then
 			echo "net.ipv4.ip_forward=1" >/etc/sysctl.d/99-tinkerbell.conf
-		elif [ -f /etc/sysctl.conf ]; then
+		elif [[ -f /etc/sysctl.conf ]]; then
 			echo "net.ipv4.ip_forward=1" >>/etc/sysctl.conf
 		fi
 
@@ -171,7 +171,7 @@ setup_networking_netplan() (
 )
 
 setup_networking_ubuntu_legacy() (
-	if [ ! -f /etc/network/interfaces ]; then
+	if ! [[ -f /etc/network/interfaces ]]; then
 		echo "$ERR file /etc/network/interfaces not found"
 		exit 1
 	fi
@@ -224,7 +224,7 @@ EOF
 
 	local cfgfile="/etc/sysconfig/network-scripts/ifcfg-$TINKERBELL_NETWORK_INTERFACE"
 
-	if [ -f "$cfgfile" ]; then
+	if [[ -f $cfgfile ]]; then
 		echo "$ERR network config already exists: $cfgfile"
 		echo "$BLANK Please update it to match this configuration:"
 		echo "$content"
@@ -245,12 +245,12 @@ setup_osie() (
 
 	local osie_current=$STATEDIR/webroot/misc/osie/current
 	local tink_workflow=$STATEDIR/webroot/workflow/
-	if [ ! -d "$osie_current" ] || [ ! -d "$tink_workflow" ]; then
+	if [[ ! -d $osie_current ]] || [[ ! -d $tink_workflow ]]; then
 		mkdir -p "$osie_current"
 		mkdir -p "$tink_workflow"
 		pushd "$SCRATCH"
 
-		if [ -z "${TB_OSIE_TAR:-}" ]; then
+		if [[ -z ${TB_OSIE_TAR:-} ]]; then
 			curl "${OSIE_DOWNLOAD_LINK}" -o ./osie.tar.gz
 			tar -zxf osie.tar.gz
 		else
@@ -305,7 +305,7 @@ check_container_status() (
 		--filter "event=health_status" \
 		--format '{{.Status}}')
 
-	if [ "$status" != "health_status: healthy" ]; then
+	if [[ $status != "health_status: healthy" ]]; then
 		echo "$ERR $container_name is not healthy. status: $status"
 		exit 1
 	fi
@@ -314,7 +314,7 @@ check_container_status() (
 generate_certificates() (
 	mkdir -p "$STATEDIR/certs"
 
-	if [ ! -f "$STATEDIR/certs/ca.json" ]; then
+	if ! [[ -f "$STATEDIR/certs/ca.json" ]]; then
 		jq \
 			'.
 			 | .names[0].L = $facility
@@ -325,7 +325,7 @@ generate_certificates() (
 			>"$STATEDIR/certs/ca.json"
 	fi
 
-	if [ ! -f "$STATEDIR/certs/server-csr.json" ]; then
+	if ! [[ -f "$STATEDIR/certs/server-csr.json" ]]; then
 		jq \
 			'.
 			| .hosts += [ $ip, "tinkerbell.\($facility).packet.net" ]
@@ -347,13 +347,13 @@ generate_certificates() (
 	local certs_dir="/etc/docker/certs.d/$TINKERBELL_HOST_IP"
 
 	# copy public key to NGINX for workers
-	if ! cmp --quiet "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"; then
-		cp "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"
+	if ! cmp --quiet "$STATEDIR/certs/ca.pem" "$STATEDIR/webroot/workflow/ca.pem"; then
+		cp "$STATEDIR/certs/ca.pem" "$STATEDIR/webroot/workflow/ca.pem"
 	fi
 
 	# update host to trust registry certificate
 	if ! cmp --quiet "$STATEDIR/certs/ca.pem" "$certs_dir/tinkerbell.crt"; then
-		if [ ! -d "$certs_dir/tinkerbell.crt" ]; then
+		if ! [[ -d "$certs_dir/" ]]; then
 			# The user will be told to create the directory
 			# in the next block, if copying the certs there
 			# fails.
@@ -363,7 +363,7 @@ generate_certificates() (
 			echo "$ERR please copy $STATEDIR/certs/ca.pem to $certs_dir/tinkerbell.crt"
 			echo "$BLANK and run $0 again:"
 
-			if [ ! -d "$certs_dir" ]; then
+			if ! [[ -d $certs_dir ]]; then
 				echo "sudo mkdir -p '$certs_dir'"
 			fi
 			echo "sudo cp '$STATEDIR/certs/ca.pem' '$certs_dir/tinkerbell.crt'"
@@ -406,7 +406,7 @@ bootstrap_docker_registry() (
 
 setup_docker_registry() (
 	local registry_images="$STATEDIR/registry"
-	if [ ! -d "$registry_images" ]; then
+	if ! [[ -d $registry_images ]]; then
 		mkdir -p "$registry_images"
 	fi
 	start_registry
@@ -427,13 +427,15 @@ command_exists() (
 )
 
 check_command() (
-	if command_exists "$1"; then
-		echo "$BLANK Found prerequisite: $1"
-		return 0
-	else
-		echo "$ERR Prerequisite command not installed: $1"
+	if ! command_exists "$1"; then
+		echo "$ERR Prerequisite executable command not found: $1"
 		return 1
 	fi
+	if ! [[ -s "$(which "$1")" ]]; then
+		echo "$ERR Prerequisite command is an empty file: $1"
+	fi
+	echo "$BLANK Found prerequisite: $1"
+	return 0
 )
 
 check_prerequisites() (
@@ -469,7 +471,7 @@ check_prerequisites() (
 		;;
 	esac
 
-	if [ $failed -eq 1 ]; then
+	if ((failed == 1)); then
 		echo "$ERR Prerequisites not met. Please install the missing commands and re-run $0."
 		exit 1
 	fi
@@ -477,7 +479,7 @@ check_prerequisites() (
 
 whats_next() (
 	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../.env; docker-compose up -d"
-	echo "$BLANK 2. Try executing your fist workflow."
+	echo "$BLANK 2. Try executing your first workflow."
 	echo "$BLANK    Follow the steps described in https://tinkerbell.org/examples/hello-world/ to say 'Hello World!' with a workflow."
 )
 
@@ -489,7 +491,7 @@ do_setup() (
 	echo "$INFO starting tinkerbell stack setup"
 	check_prerequisites "$lsb_dist" "$lsb_version"
 
-	if [ ! -f "$ENV_FILE" ]; then
+	if ! [[ -f $ENV_FILE ]]; then
 		echo "$ERR Run './generate-env.sh network-interface > \"$ENV_FILE\"' before continuing."
 		exit 1
 	fi
@@ -503,7 +505,7 @@ do_setup() (
 	setup_docker_registry
 
 	echo "$INFO tinkerbell stack setup completed successfully on $lsb_dist server"
-	whats_next
+	whats_next | tee /tmp/post-setup-message
 )
 
 # wrapped up in a function so that we have some protection against only getting
