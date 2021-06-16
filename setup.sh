@@ -478,7 +478,7 @@ check_prerequisites() (
 )
 
 whats_next() (
-	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../.env; docker-compose up -d"
+	echo "$NEXT  1. Enter /deploy and run: source ../.env; docker-compose up -d"
 	echo "$BLANK 2. Try executing your first workflow."
 	echo "$BLANK    Follow the steps described in https://tinkerbell.org/examples/hello-world/ to say 'Hello World!' with a workflow."
 )
@@ -499,7 +499,9 @@ do_setup() (
 	# shellcheck disable=SC1090
 	source "$ENV_FILE"
 
-	setup_networking "$lsb_dist" "$lsb_version"
+	if [[ -z $TINKERBELL_SKIP_NETWORKING ]]; then
+		setup_networking "$lsb_dist" "$lsb_version"
+	fi
 	setup_osie
 	generate_certificates
 	setup_docker_registry

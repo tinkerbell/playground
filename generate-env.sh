@@ -70,14 +70,14 @@ generate_env() (
 		# Decide on a subnet for provisioning. Tinkerbell should "own" this
 		# network space. Its subnet should be just large enough to be able
 		# to provision your hardware.
-		export TINKERBELL_CIDR=29
+		export TINKERBELL_CIDR=${TINKERBELL_CIDR:-"29"}
 
 		# Host IP is used by provisioner to expose different services such as
 		# tink, boots, etc.
 		#
 		# The host IP should the first IP in the range, and the Nginx IP
 		# should be the second address.
-		export TINKERBELL_HOST_IP=192.168.1.1
+		export TINKERBELL_HOST_IP=${TINKERBELL_HOST_IP:-"192.168.1.1"}
 
 		# Tink server username and password
 		export TINKERBELL_TINK_USERNAME=admin
@@ -86,6 +86,10 @@ generate_env() (
 		# Docker Registry's username and password
 		export TINKERBELL_REGISTRY_USERNAME=admin
 		export TINKERBELL_REGISTRY_PASSWORD="$registry_password"
+
+		# Tink cli options
+		export TINKERBELL_GRPC_AUTHORITY=${TINKERBELL_HOST_IP:-"192.168.1.1"}:42113
+		export TINKERBELL_CERT_URL=http://${TINKERBELL_HOST_IP:-"192.168.1.1"}:42114/cert
 
 		# Legacy options, to be deleted:
 		export FACILITY=onprem
