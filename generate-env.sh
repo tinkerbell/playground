@@ -64,6 +64,9 @@ generate_env() (
 		export TINKERBELL_TINK_HEGEL_IMAGE=${TINKERBELL_TINK_HEGEL_IMAGE}
 		export TINKERBELL_TINK_WORKER_IMAGE=${TINKERBELL_TINK_WORKER_IMAGE}
 
+		# Populate the quotes with anything to make it "true"
+		export TINKERBELL_SKIP_NETWORKING=""
+		
 		# Network interface for Tinkerbell's network
 		export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
 
