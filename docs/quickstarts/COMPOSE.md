@@ -37,7 +37,7 @@ You will need to bring your own machines to provision.
 4. Start the provisioner
 
    ```bash
-   cd deploy
+   cd deploy/compose
    docker-compose up -d
    # This process will take about 5-10 minutes depending on your internet connection.
    # OSIE is about 2GB in size and the Ubuntu Focal image is about 500MB
@@ -181,7 +181,7 @@ You will need to bring your own machines to provision.
    ```bash
    # watch the workflow events and status for workflow completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(cat compose/manifests/workflow/workflow_id.txt); docker exec -it deploy_tink-cli_1 watch "tink workflow events ${wid}; tink workflow state ${wid}"
+   wid=$(cat manifests/workflow/workflow_id.txt); docker exec -it compose_tink-cli_1 watch "tink workflow events ${wid}; tink workflow state ${wid}"
    ```
 
    <details>

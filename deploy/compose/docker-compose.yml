@@ -31,7 +31,7 @@ services:
     entrypoint: /scripts/lastmile.sh
     command: ["${OSIE_DOWNLOAD_URL}", "/source", "/source", "/destination"]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/compose/osie:/scripts
+      - ${REPO_TOP_LEVEL:-.}/osie:/scripts
       - ${REPO_TOP_LEVEL:-.}/state/webroot/misc/osie/current:/source
       - ${REPO_TOP_LEVEL:-.}/state/webroot/workflow:/destination
 
@@ -47,7 +47,7 @@ services:
         "/registry/registry_images.txt",
       ]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/compose/registry:/registry
+      - ${REPO_TOP_LEVEL:-.}/registry:/registry
     depends_on:
       registry:
         condition: service_healthy
@@ -83,7 +83,7 @@ services:
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/compose/manifests:/manifests
+      - ${REPO_TOP_LEVEL:-.}/manifests:/manifests
     depends_on:
       tink-server:
         condition: service_healthy
@@ -101,7 +101,7 @@ services:
         "/destination/focal-server-cloudimg-amd64.raw",
       ]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/compose/ubuntu:/scripts
+      - ${REPO_TOP_LEVEL:-.}/ubuntu:/scripts
       - ${REPO_TOP_LEVEL:-.}/state/webroot:/destination
 
   tink-server:

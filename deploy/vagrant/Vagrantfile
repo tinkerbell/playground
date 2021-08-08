@@ -35,12 +35,12 @@ Vagrant.configure("2") do |config|
       # vagrant plugin install vagrant-docker-compose
       override.vm.provision :docker_compose,
         compose_version: "1.29.1",
-        yml: "/vagrant/docker-compose.yml",
+        yml: "/vagrant/compose/docker-compose.yml",
         run:"always",
         env: {
           "TINKERBELL_HOST_IP": PROVISIONER_IP,
           "TINKERBELL_CLIENT_IP": MACHINE1_IP,
-          "REPO_TOP_LEVEL": "/vagrant",
+          "REPO_TOP_LEVEL": "/vagrant/compose",
           "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware.json",
           "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu.yaml"
         }
@@ -51,12 +51,12 @@ Vagrant.configure("2") do |config|
       # vagrant plugin install vagrant-docker-compose
       override.vm.provision :docker_compose,
         compose_version: "1.29.1",
-        yml: "/vagrant/docker-compose.yml",
+        yml: "/vagrant/compose/docker-compose.yml",
         run:"always",
         env: {
           "TINKERBELL_HOST_IP": PROVISIONER_IP,
           "TINKERBELL_CLIENT_IP": MACHINE1_IP,
-          "REPO_TOP_LEVEL": "/vagrant",
+          "REPO_TOP_LEVEL": "/vagrant/compose",
           "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware-libvirt.json",
           "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu-libvirt.yaml"
         }
