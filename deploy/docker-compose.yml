@@ -72,8 +72,8 @@ services:
     entrypoint: /manifests/apply_manifests.sh
     command:
       [
-        "/manifests/hardware/hardware.json",
-        "/manifests/template/ubuntu.yaml",
+        "$TINKERBELL_HARDWARE_MANIFEST",
+        "$TINKERBELL_TEMPLATE_MANIFEST",
         "/manifests/workflow",
         "$TINKERBELL_HOST_IP",
         "$TINKERBELL_CLIENT_IP",

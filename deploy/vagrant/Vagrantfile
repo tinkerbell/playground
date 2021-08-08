@@ -4,6 +4,11 @@
 PROVISIONER_IP = "192.168.50.4"
 MACHINE1_IP = "192.168.50.43"
 
+$script = <<-SCRIPT
+ip addr add 192.168.50.4/24 dev eth1
+ip link set dev eth1 up
+SCRIPT
+
 unless Vagrant.has_plugin?("vagrant-docker-compose")
   system("vagrant plugin install vagrant-docker-compose")
   puts "Dependencies installed, please try the command again."
@@ -14,20 +19,74 @@ Vagrant.configure("2") do |config|
   config.vm.define "provisioner" do |provisioner|
     provisioner.vm.box = "generic/ubuntu2004"
     provisioner.vm.synced_folder '../', '/vagrant'
-    provisioner.vm.provider "virtualbox" do |v|
+    provisioner.vm.provision :docker
+    provisioner.vm.provision "shell", inline: $script
+    provisioner.vm.network "private_network", ip: PROVISIONER_IP,
+      libvirt__network_name: "tink_network",
+      libvirt__host_ip: '192.168.50.1',
+      libvirt__netmask: "255.255.255.0",
+      libvirt__dhcp_enabled: false,
+      auto_config: false
+
+    provisioner.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
+      override.vm.synced_folder '../', '/vagrant'
+      # vagrant plugin install vagrant-docker-compose
+      override.vm.provision :docker_compose,
+        compose_version: "1.29.1",
+        yml: "/vagrant/docker-compose.yml",
+        run:"always",
+        env: {
+          "TINKERBELL_HOST_IP": PROVISIONER_IP,
+          "TINKERBELL_CLIENT_IP": MACHINE1_IP,
+          "REPO_TOP_LEVEL": "/vagrant",
+          "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware.json",
+          "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu.yaml"
+        }
     end
-    provisioner.vm.network "private_network", ip: PROVISIONER_IP
 
-    provisioner.vm.provision :docker
-    # vagrant plugin install vagrant-docker-compose
-    provisioner.vm.provision :docker_compose, compose_version: "1.29.1", yml: "/vagrant/docker-compose.yml", run:"always", env: {"TINKERBELL_HOST_IP": PROVISIONER_IP, "TINKERBELL_CLIENT_IP": MACHINE1_IP, "REPO_TOP_LEVEL": "/vagrant"}
+    provisioner.vm.provider "libvirt" do |l, override|
+      override.vm.synced_folder '../', '/vagrant', type: "nfs", nfs_version: 4, "nfs_udp": false, mount_options: ["rw", "vers=4", "tcp"]
+      # vagrant plugin install vagrant-docker-compose
+      override.vm.provision :docker_compose,
+        compose_version: "1.29.1",
+        yml: "/vagrant/docker-compose.yml",
+        run:"always",
+        env: {
+          "TINKERBELL_HOST_IP": PROVISIONER_IP,
+          "TINKERBELL_CLIENT_IP": MACHINE1_IP,
+          "REPO_TOP_LEVEL": "/vagrant",
+          "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware-libvirt.json",
+          "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu-libvirt.yaml"
+        }
+    end
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
-    machine1.vm.box = 'jtyr/pxe'
-    machine1.vm.provider "virtualbox" do |v|
+
+    machine1.ssh.insert_key = false
+    machine1.vm.boot_timeout = 10
+    machine1.vm.synced_folder '.', '/vagrant', disabled: true
+    machine1.vm.network :private_network, ip: MACHINE1_IP,
+          mac: "0800279EF53A",
+          adapter: 1,
+          libvirt__network_name: "tink_network",
+          libvirt__dhcp_enabled: false,
+          libvirt__forward_mode: 'nat'
+
+    machine1.vm.provider "libvirt" do |v|
+      v.storage :file, :size => '20G'
+      v.memory = 4096
+      v.cpus = 2
+      v.boot 'hd'
+      v.boot 'network'
+      v.graphics_ip = '0.0.0.0'
+      v.machine_arch = 'x86_64'
+    end
+
+    machine1.vm.provider "virtualbox" do |v, override|
+      override.vm.box = 'jtyr/pxe'
       v.memory = 2048
       v.cpus = 2
       v.gui = true
@@ -35,9 +94,5 @@ Vagrant.configure("2") do |config|
       v.customize ['setextradata', :id, 'GUI/ScaleFactor', '3.0']
       v.check_guest_additions = false
     end
-    machine1.ssh.insert_key = false
-    machine1.vm.boot_timeout = 10
-    machine1.vm.synced_folder '.', '/vagrant', disabled: true
-    machine1.vm.network "private_network", ip: MACHINE1_IP,  mac: "0800279EF53A", adapter: 1
   end
 end

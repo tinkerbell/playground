@@ -56,6 +56,10 @@ workflow_exists() {
 		return 0
 	fi
 	local workflow_id=$(cat "${workflow_dir}"/workflow_id.txt)
+	if [ -z "${workflow_id}" ]; then
+		workflow "${workflow_dir}" "${mac_address}"
+		return 0
+	fi
 	tink workflow get | grep -q "${workflow_id}"
 	local result=$?
 	if [ "${result}" -ne 0 ]; then
