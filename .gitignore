@@ -1,3 +1,10 @@
 envrc
 out
-.env
+!deploy/.env
+.vagrant
+deploy/state/webroot/misc/osie/current/*
+deploy/state/webroot/workflow/*
+!deploy/state/webroot/misc/osie/current/.keep
+!deploy/state/webroot/workflow/.keep
+deploy/state/webroot/*.gz
+workflow_id.txt

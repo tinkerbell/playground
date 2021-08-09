@@ -1,0 +1,42 @@
+#cloud-config
+
+package_update: true
+package_reboot_if_required: true
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+packages:
+  - make
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg-agent
+  - gnupg2
+  - software-properties-common
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+write_files:
+  - path: /etc/netplan/60-cloud-init.yaml
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          enp0s8:
+            dhcp4: no
+            addresses:
+              - 192.168.2.111/24
+            nameservers:
+              addresses: [1.1.1.1, 8.8.8.8]
+
+runcmd:
+  - usermod -aG docker ubuntu
+  - curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  - chmod +x /usr/local/bin/docker-compose
+  - netplan apply

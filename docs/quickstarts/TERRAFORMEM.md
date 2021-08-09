@@ -1,0 +1,3 @@
+# Quick start guide for Terraform on Equinix Metal
+
+> coming soon...
