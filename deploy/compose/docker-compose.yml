@@ -29,7 +29,14 @@ services:
   osie-work:
     image: alpine
     entrypoint: /scripts/lastmile.sh
-    command: ["${OSIE_DOWNLOAD_URL}", "/source", "/source", "/destination"]
+    command:
+      [
+        "${OSIE_DOWNLOAD_URL}",
+        "/source",
+        "/source",
+        "/destination",
+        "${TINKERBELL_USE_HOOK}",
+      ]
     volumes:
       - ${REPO_TOP_LEVEL:-.}/osie:/scripts
       - ${REPO_TOP_LEVEL:-.}/state/webroot/misc/osie/current:/source
