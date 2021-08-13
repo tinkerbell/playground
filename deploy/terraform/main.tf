@@ -62,7 +62,7 @@ resource "metal_device" "tink_provisioner" {
   operating_system = "ubuntu_20_04"
   billing_cycle    = "hourly"
   project_id       = var.project_id
-  user_data        = file("setup.sh")
+  user_data        = data.cloudinit_config.setup.rendered
 }
 
 resource "metal_device_network_type" "tink_provisioner_network_type" {
@@ -78,31 +78,30 @@ resource "metal_port_vlan_attachment" "provisioner" {
   vlan_vnid  = metal_vlan.provisioning_vlan.vxlan
 }
 
+data "archive_file" "compose" {
+  type        = "zip"
+  source_dir  = "${path.module}/../compose"
+  output_path = "${path.module}/compose.zip"
+}
 
+data "cloudinit_config" "setup" {
+  depends_on = [
+    data.archive_file.compose,
+    // resource.null_resource.setup
+  ]
+  gzip          = false # not supported on Equinix Metal
+  base64_encode = false # not supported on Equinix Metal
 
-resource "null_resource" "setup" {
-  connection {
-    type        = "ssh"
-    user        = "root"
-    host        = metal_device.tink_provisioner.network[0].address
-    agent       = var.use_ssh_agent
-    private_key = var.use_ssh_agent ? null : file(var.ssh_private_key)
+  part {
+    content_type = "text/x-shellscript"
+    content      = file("${path.module}/setup.sh")
   }
-
-  # need to tar the compose directory because the 'provisioner "file"' does not preserve file permissions
-  provisioner "local-exec" {
-    command = "cd ../ && tar zcvf compose.tar.gz compose"
-  }
-
-  provisioner "file" {
-    source      = "../compose.tar.gz"
-    destination = "/root/compose.tar.gz"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "cd /root && tar zxvf /root/compose.tar.gz -C /root/sandbox",
-      "cd /root/sandbox/compose && TINKERBELL_CLIENT_MAC=${metal_device.tink_worker.ports[1].mac} TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json docker-compose up -d",
-    ]
+  part {
+    content_type = "text/cloud-config"
+    content = templatefile("${path.module}/cloud-config.cfg", {
+      COMPOSE_ZIP    = filebase64("${path.module}/compose.zip")
+      WORKER_MAC     = metal_device.tink_worker.ports[1].mac
+      PROVISIONER_IP = metal_device.tink_provisioner.network[0].address
+    })
   }
 }
