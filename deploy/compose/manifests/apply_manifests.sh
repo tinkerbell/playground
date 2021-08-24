@@ -1,5 +1,8 @@
-#!/usr/bin/env sh
-# shellcheck disable=SC2039,SC2155,SC2086
+#!/usr/bin/env bash
+# This script is used to push (hardware) and create (template, workflow) Tink Server data/objects
+# This script assumes that the `tink` binary is in the PATH and
+# TINKERBELL_CERT_URL and TINKERBELL_GRPC_AUTHORITY environment variables are set
+# See https://docs.tinkerbell.org/services/tink-cli/ for more details
 
 set -xo pipefail
 
@@ -40,11 +43,13 @@ template() {
 workflow() {
 	local workflow_dir="$1"
 	local mac_address="$2"
-	local mac=$(echo "${mac_address}" | tr '[:upper:]' '[:lower:]')
-	local template_id=$(tink template get --no-headers 2>/dev/null | grep -v "+" | cut -d" " -f2 | xargs)
-	tink workflow create --template "${template_id}" --hardware "{\"device_1\":\"${mac}\"}" | tee "${workflow_dir}"/workflow_id.txt
+	local mac
+	mac=$(echo "${mac_address}" | tr '[:upper:]' '[:lower:]')
+	local template_id
+	template_id=$(tink template get --no-headers 2>/dev/null | grep -v "+" | cut -d" " -f2 | xargs)
+	tink workflow create --template "${template_id}" --hardware "{\"device_1\":\"${mac}\"}" | tee "${workflow_dir}/workflow_id.txt"
 	# write just the workflow id to a file. `|| true` is a failsafe in case the workflow creation fails
-	sed -i 's/Created Workflow:  //g' ${workflow_dir}/workflow_id.txt || true
+	sed -i 's/Created Workflow:  //g' "${workflow_dir}/workflow_id.txt" || true
 }
 
 # workflow_exists checks if a workflow record exists in tink before creating a new one
@@ -55,7 +60,8 @@ workflow_exists() {
 		workflow "${workflow_dir}" "${mac_address}"
 		return 0
 	fi
-	local workflow_id=$(cat "${workflow_dir}"/workflow_id.txt)
+	local workflow_id
+	workflow_id=$(cat "${workflow_dir}"/workflow_id.txt)
 	if [ -z "${workflow_id}" ]; then
 		workflow "${workflow_dir}" "${mac_address}"
 		return 0

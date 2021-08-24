@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
+# This script handles the generation of the TLS certificates.
+# The output is 2 files:
+# 1. /certs/${FACILITY:-onprem}/server-key.pem (TLS private key)
+# 2. /certs/${FACILITY:-onprem}/bundle.pem (TLS public certificate)
 
 set -xo pipefail
 
-# update_csr will add the sans_ip to the csr
+# update_csr will add the sans_ip, as a valid host domain in the csr
 update_csr() {
 	local sans_ip="$1"
 	local csr_file="$2"

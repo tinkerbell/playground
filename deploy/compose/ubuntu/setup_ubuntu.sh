@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# This script is designed to download a cloud image file (.img) and then convert it to a .raw file.
+# This is purpose built for the Ubuntu Cloud image https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img
+# so that the .raw file can be used in the Tinkerbell action "image2disk": https://artifacthub.io/packages/tbaction/tinkerbell-community/image2disk
 
 set -xo pipefail
 

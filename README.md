@@ -44,4 +44,4 @@ The following docs will help you get started.
    docker exec -i compose_tink-cli_1 tink workflow create -t <TEMPLATE ID> -r '{"device_1":"08:00:27:00:00:01"}')
    ```
 
-4. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running vagrant destroy -f machine1 && vagrant up machine1
+4. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)

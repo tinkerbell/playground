@@ -1,5 +1,6 @@
-#!/usr/bin/env sh
-# shellcheck disable=SC2039
+#!/usr/bin/env bash
+# This script handles downloading, extracting, and copying/moving files in place
+# for OSIE and Hook. For more info on OSIE and Hook, see: https://docs.tinkerbell.org/services/osie/
 
 set -xo pipefail
 
