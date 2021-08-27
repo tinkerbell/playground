@@ -3,7 +3,7 @@ terraform {
   required_providers {
     metal = {
       source  = "equinix/metal"
-      version = "1.0.0"
+      version = "3.1.0"
     }
     null = {
       source  = "hashicorp/null"
@@ -28,71 +28,8 @@ resource "metal_vlan" "provisioning_vlan" {
 }
 
 # Create a device and add it to tf_project_1
-resource "metal_device" "tink_provisioner" {
-  hostname         = "tink-provisioner"
-  plan             = var.device_type
-  facilities       = [var.facility]
-  operating_system = "ubuntu_18_04"
-  billing_cycle    = "hourly"
-  project_id       = var.project_id
-  user_data        = file("install_package.sh")
-}
-
-resource "null_resource" "tink_directory" {
-  connection {
-    type = "ssh"
-    user = var.ssh_user
-    host = metal_device.tink_provisioner.network[0].address
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "mkdir -p /root/tink/deploy"
-    ]
-  }
-
-  provisioner "file" {
-    source      = "../../setup.sh"
-    destination = "/root/tink/setup.sh"
-  }
-
-  provisioner "file" {
-    source      = "../../generate-env.sh"
-    destination = "/root/tink/generate-env.sh"
-  }
-
-  provisioner "file" {
-    source      = "../../current_versions.sh"
-    destination = "/root/tink/current_versions.sh"
-  }
-
-  provisioner "file" {
-    source      = "../../deploy"
-    destination = "/root/tink"
-  }
-
-  provisioner "file" {
-    source      = "nat_interface"
-    destination = "/root/tink/.nat_interface"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /root/tink/*.sh /root/tink/deploy/tls/*.sh"
-    ]
-  }
-}
-
-resource "metal_device_network_type" "tink_provisioner_network_type" {
-  device_id = metal_device.tink_provisioner.id
-  type      = "hybrid"
-}
-
-# Create a device and add it to tf_project_1
 resource "metal_device" "tink_worker" {
-  count = var.worker_count
-
-  hostname         = "tink-worker-${count.index}"
+  hostname         = "tink-worker"
   plan             = var.device_type
   facilities       = [var.facility]
   operating_system = "custom_ipxe"
@@ -103,10 +40,34 @@ resource "metal_device" "tink_worker" {
 }
 
 resource "metal_device_network_type" "tink_worker_network_type" {
-  count = var.worker_count
-
-  device_id = metal_device.tink_worker[count.index].id
+  device_id = metal_device.tink_worker.id
   type      = "layer2-individual"
+}
+
+# Attach VLAN to worker
+resource "metal_port_vlan_attachment" "worker" {
+  depends_on = [metal_device_network_type.tink_worker_network_type]
+
+  device_id = metal_device.tink_worker.id
+  port_name = "eth0"
+  vlan_vnid = metal_vlan.provisioning_vlan.vxlan
+}
+
+
+# Create a device and add it to tf_project_1
+resource "metal_device" "tink_provisioner" {
+  hostname         = "tink-provisioner"
+  plan             = var.device_type
+  facilities       = [var.facility]
+  operating_system = "ubuntu_20_04"
+  billing_cycle    = "hourly"
+  project_id       = var.project_id
+  user_data        = file("setup.sh")
+}
+
+resource "metal_device_network_type" "tink_provisioner_network_type" {
+  device_id = metal_device.tink_provisioner.id
+  type      = "hybrid"
 }
 
 # Attach VLAN to provisioner
@@ -117,40 +78,30 @@ resource "metal_port_vlan_attachment" "provisioner" {
   vlan_vnid  = metal_vlan.provisioning_vlan.vxlan
 }
 
-# Attach VLAN to worker
-resource "metal_port_vlan_attachment" "worker" {
-  count      = var.worker_count
-  depends_on = [metal_device_network_type.tink_worker_network_type]
 
-  device_id = metal_device.tink_worker[count.index].id
-  port_name = "eth0"
-  vlan_vnid = metal_vlan.provisioning_vlan.vxlan
-}
 
-data "template_file" "worker_hardware_data" {
-  count    = var.worker_count
-  template = file("${path.module}/hardware_data.tpl")
-  vars = {
-    id            = metal_device.tink_worker[count.index].id
-    facility_code = metal_device.tink_worker[count.index].deployed_facility
-    plan_slug     = metal_device.tink_worker[count.index].plan
-    address       = "192.168.1.${count.index + 5}"
-    mac           = metal_device.tink_worker[count.index].ports[1].mac
-  }
-}
-
-resource "null_resource" "hardware_data" {
-  count      = var.worker_count
-  depends_on = [null_resource.tink_directory]
-
+resource "null_resource" "setup" {
   connection {
-    type = "ssh"
-    user = var.ssh_user
-    host = metal_device.tink_provisioner.network[0].address
+    type        = "ssh"
+    user        = "root"
+    host        = metal_device.tink_provisioner.network[0].address
+    private_key = file("~/.ssh/id_rsa")
+  }
+
+  # need to tar the compose directory because the 'provisioner "file"' does not preserve file permissions
+  provisioner "local-exec" {
+    command = "cd ../ && tar zcvf compose.tar.gz compose"
   }
 
   provisioner "file" {
-    content     = data.template_file.worker_hardware_data[count.index].rendered
-    destination = "/root/tink/deploy/hardware-data-${count.index}.json"
+    source      = "../compose.tar.gz"
+    destination = "/root/compose.tar.gz"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cd /root && tar zxvf /root/compose.tar.gz -C /root/sandbox",
+      "cd /root/sandbox/compose && TINKERBELL_CLIENT_MAC=${metal_device.tink_worker.ports[1].mac} TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json docker-compose up -d"
+    ]
   }
 }

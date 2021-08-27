@@ -1,0 +1,21 @@
+{
+  "CN": "tinkerbell",
+  "hosts": [
+    "tinkerbell.registry",
+    "tinkerbell.tinkerbell",
+    "tinkerbell",
+    "tink-server",
+    "192.168.50.4",
+    "127.0.0.1",
+    "localhost"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "L": "@FACILITY@"
+    }
+  ]
+}

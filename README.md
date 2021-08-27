@@ -1,59 +1,47 @@
-This repository is a quick way to get the Tinkerbell stack up and running.
+# Quick-Starts
 
-Currently it supports:
+The following quick-start guides will walk you through standing up the Tinkerbell stack.
+There are a few options for this.
+Pick the one that works best for you.
 
-1. Vagrant with libvirt and VirtualBox
-2. Terraform on Packet
+## Options
 
-Tinkerbell is made of different components: osie, boots, tink-server,
-tink-worker and so on. Currently they are under heavy development and we are
-working around the release process for all the components.
+- [Vagrant and VirtualBox](docs/quickstarts/VAGRANTVBOX.md)
+- [Vagrant and Libvirt](docs/quickstarts/VAGRANTLVIRT.md)
+- [Docker Compose](docs/quickstarts/COMPOSE.md)
+- [Terraform and Equinix Metal](docs/quickstarts/TERRAFORMEM.md)
+- [Kubernetes](docs/quickstarts/KUBERNETES.md)
+- [Multipass](docs/quickstarts/MULTIPASS.md)
 
-We need a way to serve a version of Tinkerbell that you can use and we know what
-is running the hood. Sandbox runs a pinned version for all the components via
-commit sha. In this way as a user you won't be effected (ideally) from new code
-that will may change a bit how Tinkerbell works.
+## Next Steps
 
-We are keeping the number of breaking changes as low as possible but in the current
-state they are expected.
+Now that you have a Tinkerbell stack up and running, you can start provisioning machines.
+Tinkerbell.org has a [list of guides](https://docs.tinkerbell.org/deploying-operating-systems/the-deployment/) for provisioning machines.
+You can also create your own.
+The following docs will help you get started.
 
-## Binary release
+1. [Create Hardware Data](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workers-hardware-data)
+2. [Create a Template](https://docs.tinkerbell.org/setup/local-vagrant/#creating-a-template)
+3. [Create a Workflow](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workflow)
 
-As part of a new release for sandbox we want to push binaries to GitHub Release
-in this way the community will be able to use them if needed.
+### In the Sandbox
 
-We build Docker images across many architectures, each of them in its own
-repository: boots, hegel, tink and so on.
+1. Create your own templates
 
-Sandbox is just a collection of those services and we follow the same pattern
-for getting binaries as well.
+   ```bash
+   docker exec -i compose_tink-cli_1 tink template create < ./custom-template.yaml
+   ```
 
-There is a go program available in `./cmd/getbinariesfromquay/main.go`. You can
-run it with `go run` or build it with `go build`:
+2. Upload any container images you want to use in the templates to the internal registry
 
-```terminal
-$ go run cmd/getbinariesfromquay/main.go -h
-  -binary-to-copy string
-        The location of the binary you want to copy from inside the image. (default "/usr/bin/hegel")
-  -image string
-        The image you want to download binaries from. It has to be a multi stage image. (default "docker://quay.io/tinkerbell/hegel")
-  -out string
-        The directory that will be used to store the release binaries (default "./out")
-  -program string
-        The name of the program you are extracing binaries for. (eg tink-worker, hegel, tink-server, tink, boots) (default "hegel")
-```
+   ```bash
+   docker run -it --rm quay.io/containers/skopeo copy --all --dest-tls-verify=false --dest-creds="admin":"Admin1234" docker://hello-world docker://192.168.50.4/hello-world
+   ```
 
-By default it uses the image running on Quay for Hegel and it gets the binary
-`/usr/bin/hegel` from there. The directory `./out` is used to store images and
-binaries inside `./out/releases`.
+3. Create a workflow
 
-To get the binaries for example for boots you can run:
+   ```bash
+   docker exec -i compose_tink-cli_1 tink workflow create -t <TEMPLATE ID> -r '{"device_1":"08:00:27:00:00:01"}')
+   ```
 
-```terminal
-$ go run cmd/getbinariesfromquay/main.go \
-    -binary-to-copy /usr/bin/boots \
-    -image docker://quay.io/tinkerbell/boots:sha-9625559b \
-    -program boots
-```
-
-You will find them in `./out/release`
+4. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)

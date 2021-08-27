@@ -1,0 +1,6 @@
+quay.io/tinkerbell/tink-worker:latest tinkerbell/tink-worker:latest
+quay.io/tinkerbell/tink-worker:latest tink-worker:latest
+quay.io/tinkerbell/tink-worker:latest tinkerbell/tink-worker:sha-5e1f0fd8
+quay.io/tinkerbell-actions/image2disk:v1.0.0 image2disk:v1.0.0
+quay.io/tinkerbell-actions/cexec:v1.0.0 cexec:v1.0.0
+quay.io/tinkerbell-actions/writefile:v1.0.0 writefile:v1.0.0
