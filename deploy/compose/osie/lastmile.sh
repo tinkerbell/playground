@@ -8,14 +8,16 @@ set -xo pipefail
 osie_download() {
 	local url="$1"
 	local directory="$2"
-	wget "${url}" -O "${directory}"/osie.tar.gz
+	local filename="$3"
+	wget "${url}" -O "${directory}"/"${filename}".tar.gz
 }
 
 # osie_extract from tarball and save it to directory
 osie_extract() {
 	local source_dir="$1"
 	local dest_dir="$2"
-	tar -zxvf "${source_dir}"/osie.tar.gz -C "${dest_dir}" --strip-components 1
+	local filename="$3"
+	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}" --strip-components 1
 }
 
 # osie_move_helper_scripts moves workflow helper scripts to the workflow directory
@@ -45,9 +47,16 @@ main() {
 	local dest_dir="$4"
 	local use_hook="$5"
 
-	if [ ! -f "${extract_dir}"/osie.tar.gz ]; then
+	local filename
+	if [ "${use_hook}" == "true" ]; then
+		filename="osie-hook"
+	else
+		filename="osie"
+	fi
+
+	if [ ! -f "${extract_dir}"/"${filename}".tar.gz ]; then
 		echo "downloading osie..."
-		osie_download "${url}" "${extract_dir}"
+		osie_download "${url}" "${extract_dir}" "${filename}"
 	else
 		echo "osie already downloaded"
 	fi
@@ -55,7 +64,7 @@ main() {
 	if [ "${use_hook}" == "true" ]; then
 		if [ ! -f "${source_dir}"/hook-x86_64-kernel ] && [ ! -f "${source_dir}"/hook-x86_64-initrd.img ]; then
 			echo "extracting hook..."
-			osie_extract "${extract_dir}" "${source_dir}"
+			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
 		else
 			echo "hook files already exist, not extracting"
 		fi
@@ -63,7 +72,7 @@ main() {
 	else
 		if [ ! -f "${source_dir}"/workflow-helper.sh ] && [ ! -f "${source_dir}"/workflow-helper-rc ]; then
 			echo "extracting osie..."
-			osie_extract "${extract_dir}" "${source_dir}"
+			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
 		else
 			echo "osie files already exist, not extracting"
 		fi
