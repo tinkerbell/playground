@@ -151,5 +151,4 @@ func getImageTagFromRepo(repoName string) (string, error) {
 	}
 
 	return tag, nil
-
 }
