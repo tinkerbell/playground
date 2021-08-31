@@ -18,7 +18,7 @@ if ! shfmt -f . | xargs shfmt -s -l -d; then
 	failed=1
 fi
 
-if ! shfmt -f . | xargs shellcheck; then
+if ! make lint; then
 	failed=1
 fi
 
