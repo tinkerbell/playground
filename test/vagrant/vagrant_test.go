@@ -61,7 +61,13 @@ func TestVagrantSetupGuide(t *testing.T) {
 	}
 
 	for ii := 0; ii < 5; ii++ {
-		resp, err := http.Get("http://localhost:42114/healthz")
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:42114/healthz", nil)
+		if err != nil {
+			t.Errorf("error forming request: %v", err)
+		}
+
+		h := &http.Client{}
+		resp, err := h.Do(req)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			if err != nil {
 				t.Logf("err tinkerbell healthcheck... retrying: %s", err)
@@ -69,6 +75,9 @@ func TestVagrantSetupGuide(t *testing.T) {
 				t.Logf("err tinkerbell healthcheck... expected status code 200 got %d retrying", resp.StatusCode)
 			}
 			time.Sleep(10 * time.Second)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("error closing body: %v", err)
 		}
 	}
 
@@ -173,7 +182,7 @@ tasks:
 	return resp.Id, nil
 }
 
-func registerHardware(ctx context.Context, cl *client.FullClient) error {
+func registerHardware(_ context.Context, cl *client.FullClient) error {
 	data := []byte(`{
   "id": "ce2e62ed-826f-4485-a39f-a82bb74338e2",
   "metadata": {
