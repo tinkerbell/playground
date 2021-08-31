@@ -29,9 +29,9 @@ linters-settings:
     min-complexity: 8
 
   nolintlint:
-      require-explanation: true
-      allow-unused: false
-      require-specific: true
+    require-explanation: true
+    allow-unused: false
+    require-specific: true
 
   revive:
     ignore-generated-header: true
@@ -154,16 +154,13 @@ linters:
   # - nlreturn
   # - testpackage
   # - wsl
-
   # Disabled linters, due to not being relevant to our code base:
   # - maligned
   # - prealloc "For most programs usage of prealloc will be a premature optimization."
-
   # Disabled linters due to bad error messages or bugs
   # - gofumpt
   # - gosec
   # - tagliatelle
-
 
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
