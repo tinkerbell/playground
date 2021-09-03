@@ -97,7 +97,7 @@ Please read and understand the DCO found [here](DCO.md).
 
 ### Code of Conduct
 
-Please read and understand the code of conduct found [here](https://github.com/tinkerbell/.github/blob/master/CODE_OF_CONDUCT.md).
+Please read and understand the code of conduct found [here](https://github.com/tinkerbell/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Linting
 
