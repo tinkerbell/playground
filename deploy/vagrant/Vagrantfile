@@ -47,7 +47,7 @@ Vagrant.configure("2") do |config|
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
-      override.vm.synced_folder '../', '/vagrant', type: "nfs", nfs_version: 4, "nfs_udp": false, mount_options: ["rw", "vers=4", "tcp"]
+      override.vm.synced_folder '../', '/vagrant', type: "rsync"
       # vagrant plugin install vagrant-docker-compose
       override.vm.provision :docker_compose,
         compose_version: "1.29.1",
