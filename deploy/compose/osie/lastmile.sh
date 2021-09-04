@@ -17,7 +17,7 @@ osie_extract() {
 	local source_dir="$1"
 	local dest_dir="$2"
 	local filename="$3"
-	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}" --strip-components 1
+	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}"
 }
 
 # osie_move_helper_scripts moves workflow helper scripts to the workflow directory
@@ -62,13 +62,12 @@ main() {
 	fi
 
 	if [ "${use_hook}" == "true" ]; then
-		if [ ! -f "${source_dir}"/hook-x86_64-kernel ] && [ ! -f "${source_dir}"/hook-x86_64-initrd.img ]; then
+		if [ ! -f "${source_dir}"/vmlinuz-x86_64 ] && [ ! -f "${source_dir}"/initramfs-x86_64 ]; then
 			echo "extracting hook..."
 			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
 		else
 			echo "hook files already exist, not extracting"
 		fi
-		hook_rename_files "${source_dir}"/hook-x86_64-kernel "${source_dir}"/hook-x86_64-initrd.img "${source_dir}"
 	else
 		if [ ! -f "${source_dir}"/workflow-helper.sh ] && [ ! -f "${source_dir}"/workflow-helper-rc ]; then
 			echo "extracting osie..."
