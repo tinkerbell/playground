@@ -12,12 +12,20 @@ osie_download() {
 	wget "${url}" -O "${directory}"/"${filename}".tar.gz
 }
 
+# hook_extract Hook from a tarball and save it to directory
+hook_extract() {
+	local source_dir="$1"
+	local dest_dir="$2"
+	local filename="$3"
+	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}"
+}
+
 # osie_extract from tarball and save it to directory
 osie_extract() {
 	local source_dir="$1"
 	local dest_dir="$2"
 	local filename="$3"
-	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}"
+	tar -zxvf "${source_dir}"/"${filename}".tar.gz -C "${dest_dir}" --strip-components 1
 }
 
 # osie_move_helper_scripts moves workflow helper scripts to the workflow directory
@@ -64,7 +72,7 @@ main() {
 	if [ "${use_hook}" == "true" ]; then
 		if [ ! -f "${source_dir}"/vmlinuz-x86_64 ] && [ ! -f "${source_dir}"/initramfs-x86_64 ]; then
 			echo "extracting hook..."
-			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
+			hook_extract "${extract_dir}" "${source_dir}" "${filename}"
 		else
 			echo "hook files already exist, not extracting"
 		fi
