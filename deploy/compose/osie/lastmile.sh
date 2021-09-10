@@ -5,6 +5,7 @@
 set -xo pipefail
 
 # osie_download from url and save it to directory
+# requires a filename so that any subsequent calls can check if the file has been downloaded
 osie_download() {
 	local url="$1"
 	local directory="$2"
@@ -47,20 +48,14 @@ hook_rename_files() {
 	mv "${src_initrd}" "${dest_dir}/initramfs-x86_64"
 }
 
-# main runs the functions in order to download, extract, and move helper scripts
-main() {
+# process_osie_files processes the OSIE files and moves them to the correct location
+process_osie_file() {
 	local url="$1"
-	local extract_dir="$2"
-	local source_dir="$3"
-	local dest_dir="$4"
-	local use_hook="$5"
-
-	local filename
-	if [ "${use_hook}" == "true" ]; then
-		filename="osie-hook"
-	else
-		filename="osie"
-	fi
+	local filename="$2"
+	local extract_dir="$3"
+	local source_dir="$4"
+	local dest_dir="$5"
+	local use_hook="$6"
 
 	if [ ! -f "${extract_dir}"/"${filename}".tar.gz ]; then
 		echo "downloading osie..."
@@ -70,21 +65,37 @@ main() {
 	fi
 
 	if [ "${use_hook}" == "true" ]; then
-		if [ ! -f "${source_dir}"/vmlinuz-x86_64 ] && [ ! -f "${source_dir}"/initramfs-x86_64 ]; then
-			echo "extracting hook..."
-			hook_extract "${extract_dir}" "${source_dir}" "${filename}"
-		else
-			echo "hook files already exist, not extracting"
-		fi
+		echo "extracting hook..."
+		hook_extract "${extract_dir}" "${source_dir}" "${filename}"
 	else
-		if [ ! -f "${source_dir}"/workflow-helper.sh ] && [ ! -f "${source_dir}"/workflow-helper-rc ]; then
-			echo "extracting osie..."
-			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
-		else
-			echo "osie files already exist, not extracting"
-		fi
+		echo "extracting osie..."
+		osie_extract "${extract_dir}" "${source_dir}" "${filename}"
 		osie_move_helper_scripts "${source_dir}" "${dest_dir}"
 	fi
+
+}
+
+# main runs the functions in order to download, extract, and move helper scripts
+main() {
+	local urls="$1"
+	local extract_dir="$2"
+	local source_dir="$3"
+	local dest_dir="$4"
+	local use_hook="$5"
+
+	# create an array using the urls variable, delimited by commas (IFS=,)
+	# store the array in the variable "urls_array"
+	IFS=, read -ra urls_array <<<"${urls}"
+	for index in "${!urls_array[@]}"; do
+		echo "$index: ${urls_array[$index]}"
+		local filename
+		if [ "${use_hook}" == "true" ]; then
+			filename="osie-hook-${index}"
+		else
+			filename="osie-${index}"
+		fi
+		process_osie_file "${urls_array[$index]}" "${filename}" "${extract_dir}" "${source_dir}" "${dest_dir}" "${use_hook}"
+	done
 }
 
 main "$1" "$2" "$3" "$4" "$5"
