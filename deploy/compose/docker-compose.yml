@@ -31,7 +31,7 @@ services:
     entrypoint: /scripts/lastmile.sh
     command:
       [
-        "${OSIE_DOWNLOAD_URL}",
+        "${OSIE_DOWNLOAD_URLS}",
         "/source",
         "/source",
         "/destination",
