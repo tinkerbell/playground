@@ -60,19 +60,17 @@ process_osie_file() {
 	if [ ! -f "${extract_dir}"/"${filename}".tar.gz ]; then
 		echo "downloading osie..."
 		osie_download "${url}" "${extract_dir}" "${filename}"
+		if [ "${use_hook}" == "true" ]; then
+			echo "extracting hook..."
+			hook_extract "${extract_dir}" "${source_dir}" "${filename}"
+		else
+			echo "extracting osie..."
+			osie_extract "${extract_dir}" "${source_dir}" "${filename}"
+			osie_move_helper_scripts "${source_dir}" "${dest_dir}"
+		fi
 	else
 		echo "osie already downloaded"
 	fi
-
-	if [ "${use_hook}" == "true" ]; then
-		echo "extracting hook..."
-		hook_extract "${extract_dir}" "${source_dir}" "${filename}"
-	else
-		echo "extracting osie..."
-		osie_extract "${extract_dir}" "${source_dir}" "${filename}"
-		osie_move_helper_scripts "${source_dir}" "${dest_dir}"
-	fi
-
 }
 
 # main runs the functions in order to download, extract, and move helper scripts
