@@ -84,10 +84,13 @@ data "archive_file" "compose" {
   output_path = "${path.module}/compose.zip"
 }
 
+locals {
+  compose_zip = data.archive_file.compose.output_size > 0 ? "" : filebase64("${path.module}/compose.zip")
+}
+
 data "cloudinit_config" "setup" {
   depends_on = [
     data.archive_file.compose,
-    // resource.null_resource.setup
   ]
   gzip          = false # not supported on Equinix Metal
   base64_encode = false # not supported on Equinix Metal
@@ -99,7 +102,7 @@ data "cloudinit_config" "setup" {
   part {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/cloud-config.cfg", {
-      COMPOSE_ZIP    = filebase64("${path.module}/compose.zip")
+      COMPOSE_ZIP    = local.compose_zip
       WORKER_MAC     = metal_device.tink_worker.ports[1].mac
       PROVISIONER_IP = metal_device.tink_provisioner.network[0].address
     })
