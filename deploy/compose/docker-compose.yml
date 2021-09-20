@@ -294,7 +294,9 @@ services:
     depends_on:
       tink-server:
         condition: service_healthy
-
+    ports:
+      - 50060:50060/tcp
+      - 50061:50061/tcp
 volumes:
   postgres_data:
   certs:
