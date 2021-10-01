@@ -85,7 +85,8 @@ resource "null_resource" "setup" {
     type        = "ssh"
     user        = "root"
     host        = metal_device.tink_provisioner.network[0].address
-    private_key = file("~/.ssh/id_rsa")
+    agent       = var.use_ssh_agent
+    private_key = var.use_ssh_agent ? null : file(var.ssh_private_key)
   }
 
   # need to tar the compose directory because the 'provisioner "file"' does not preserve file permissions
