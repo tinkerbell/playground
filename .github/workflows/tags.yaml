@@ -7,14 +7,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt-get update && sudo apt install -y libgpgme-dev libassuan-dev libdevmapper-dev btrfs-progs libbtrfs-dev
       - name: Checkout code
         uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: "1.15.5"
-      - run: ./releases/script/release-binaries.sh
-        name: get binaries
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -25,9 +19,3 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-      - name: Upload release binaries
-        uses: alexellis/upload-assets@0.2.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["./releases/out/release/*"]'
