@@ -19,3 +19,15 @@ variable "device_type" {
   description = "Type of device to provision"
   default     = "c3.small.x86"
 }
+
+variable "use_ssh_agent" {
+  type        = bool
+  description = "Use ssh agent to connect to provisioner machine"
+  default     = false
+}
+
+variable "ssh_private_key" {
+  type        = string
+  description = "ssh private key file to use"
+  default     = "~/.ssh/id_rsa"
+}
