@@ -9,6 +9,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Generate Release Notes
+        run: |
+          release_notes=$(gh api repos/{owner}/{repo}/releases/generate-notes -F tag_name=${{ github.ref }} --jq .body)
+          echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
+          echo "${release_notes}" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -17,5 +27,6 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
+          body: ${{ env.RELEASE_NOTES }}
           draft: false
           prerelease: false
