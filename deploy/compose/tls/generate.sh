@@ -25,7 +25,7 @@ gen() {
 	local ca_crt_destination="$1"
 	local server_crt_destination="$2"
 	local server_key_destination="$3"
-	cfssl gencert -initca /code/tls/csr.json | cfssljson -bare ca -
+	cfssl gencert -initca /code/tls/ca-csr.json | cfssljson -bare ca -
 	cfssl gencert -config /code/tls/ca-config.json -ca ca.pem -ca-key ca-key.pem -profile server /code/tls/csr.json | cfssljson -bare server
 	mv ca.pem "${ca_crt_destination}"
 	mv server.pem "${server_crt_destination}"
