@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # This script handles the generation of the TLS certificates.
-# The output is 4 files:
+# This generates the files:
 # 1. /certs/${FACILITY:-onprem}/ca-crt.pem (CA TLS public certificate)
 # 2. /certs/${FACILITY:-onprem}/server-crt.pem (server TLS certificate)
 # 3. /certs/${FACILITY:-onprem}/server-key.pem (server TLS private key)
 # 4. /certs/${FACILITY:-onprem}/bundle.pem (server TLS certificate; backward compat)
+# 5. /code/state/webroot/workflow/ca.pem (CA TLS public certificate)
 
-set -xo pipefail
+set -euxo pipefail
 
 # update_csr will add the sans_ip, as a valid host domain in the csr
 update_csr() {
@@ -36,6 +37,7 @@ gen() {
 main() {
 	local sans_ip="$1"
 	local csr_file="/code/tls/csr.json"
+	local ca_crt_workflow_file="/code/state/webroot/workflow/ca.pem"
 	local ca_crt_file="/certs/${FACILITY:-onprem}/ca-crt.pem"
 	local server_crt_file="/certs/${FACILITY:-onprem}/server-crt.pem"
 	local server_key_file="/certs/${FACILITY:-onprem}/server-key.pem"
@@ -54,6 +56,11 @@ main() {
 		cp "${server_crt_file}" "${bundle_crt_file}"
 	else
 		echo "Files [${ca_crt_file}, ${server_crt_file}, ${server_key_file}] already exist"
+	fi
+	if [ ! -f "${ca_crt_workflow_file}" ]; then
+		cp "${ca_crt_file}" "${ca_crt_workflow_file}"
+	else
+		echo "File ${ca_crt_workflow_file} already exist"
 	fi
 	cleanup
 }
