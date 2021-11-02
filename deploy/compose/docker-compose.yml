@@ -172,7 +172,7 @@ services:
       - certs:/certs/${FACILITY:-onprem}:rw
 
   db:
-    image: postgres:10-alpine
+    image: postgres:14-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: tinkerbell
