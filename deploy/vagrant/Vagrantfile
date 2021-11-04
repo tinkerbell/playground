@@ -1,11 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-PROVISIONER_IP = "192.168.50.4"
-MACHINE1_IP = "192.168.50.43"
+PROVISIONER_IP = "192.168.56.4"
+MACHINE1_IP = "192.168.56.43"
 
 $script = <<-SCRIPT
-ip addr add 192.168.50.4/24 dev eth1
+ip addr add 192.168.56.4/24 dev eth1
 ip link set dev eth1 up
 SCRIPT
 
@@ -47,7 +47,7 @@ Vagrant.configure("2") do |config|
     provisioner.vm.provision "shell", inline: $script
     provisioner.vm.network "private_network", ip: PROVISIONER_IP,
       libvirt__network_name: "tink_network",
-      libvirt__host_ip: '192.168.50.1',
+      libvirt__host_ip: '192.168.56.1',
       libvirt__netmask: "255.255.255.0",
       libvirt__dhcp_enabled: false,
       auto_config: false
