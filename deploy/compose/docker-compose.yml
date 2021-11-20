@@ -44,7 +44,7 @@ services:
 
   # Uploads images in /registry/registry_images.txt to the local registry
   images-to-local-registry:
-    image: quay.io/containers/skopeo:latest
+    image: quay.io/containers/skopeo:v1.4.1
     entrypoint: /registry/upload.sh
     command:
       [
