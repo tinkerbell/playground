@@ -202,6 +202,7 @@ services:
 
   registry:
     image: registry:2.7.1
+    init: true
     restart: unless-stopped
     network_mode: host
     healthcheck:
