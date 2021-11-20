@@ -114,6 +114,11 @@ services:
 
   tink-server:
     image: ${TINK_SERVER_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     environment:
       FACILITY: ${FACILITY:-onprem}
@@ -173,6 +178,11 @@ services:
 
   db:
     image: postgres:14-alpine
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     environment:
       POSTGRES_DB: tinkerbell
@@ -190,6 +200,11 @@ services:
 
   tink-cli:
     image: ${TINK_CLI_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     environment:
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
@@ -203,6 +218,11 @@ services:
   registry:
     image: registry:2.7.1
     init: true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     network_mode: host
     healthcheck:
@@ -232,6 +252,11 @@ services:
 
   boots:
     image: ${BOOTS_SERVER_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
     network_mode: host
@@ -264,6 +289,11 @@ services:
 
   osie-bootloader:
     image: nginx:alpine
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     tty: true
     user: root
@@ -279,6 +309,11 @@ services:
 
   hegel:
     image: ${HEGEL_SERVER_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
     restart: unless-stopped
     environment:
       ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
