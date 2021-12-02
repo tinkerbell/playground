@@ -59,20 +59,6 @@ services:
       registry:
         condition: service_healthy
 
-  # registry ca.crt download
-  registry-ca-crt-download:
-    image: alpine
-    entrypoint: wget
-    working_dir: /code
-    command: ["http://$TINKERBELL_HOST_IP:42114/cert", "-O", "ca.pem"]
-    volumes:
-      - ${REPO_TOP_LEVEL:-.}/state/webroot/workflow:/code
-    depends_on:
-      tink-server:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-
   # Create hardware, template, and workflow records in tink-server
   create-tink-records:
     image: ${TINK_CLI_IMAGE}
@@ -218,7 +204,7 @@ services:
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/bundle.pem
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
       REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
       REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
     volumes:
