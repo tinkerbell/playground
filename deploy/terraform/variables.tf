@@ -8,10 +8,10 @@ variable "project_id" {
   type        = string
 }
 
-variable "facility" {
-  description = "Packet facility to provision in"
+variable "metro" {
+  description = "Equinix Metal metr to provision in"
   type        = string
-  default     = "sjc1"
+  default     = "sv"
 }
 
 variable "device_type" {
