@@ -14,7 +14,7 @@ tasks:
         timeout: 600
         environment:
           DEST_DISK: /dev/sda
-          IMG_URL: "http://192.168.50.4:8080/focal-server-cloudimg-amd64.raw.gz"
+          IMG_URL: "http://192.168.56.4:8080/focal-server-cloudimg-amd64.raw.gz"
           COMPRESSED: true
       - name: "grow-partition"
         image: cexec:v1.0.0

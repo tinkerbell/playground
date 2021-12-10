@@ -35,7 +35,7 @@ The following docs will help you get started.
 2. Upload any container images you want to use in the templates to the internal registry
 
    ```bash
-   docker run -it --rm quay.io/containers/skopeo copy --all --dest-tls-verify=false --dest-creds="admin":"Admin1234" docker://hello-world docker://192.168.50.4/hello-world
+   docker run -it --rm quay.io/containers/skopeo copy --all --dest-tls-verify=false --dest-creds="admin":"Admin1234" docker://hello-world docker://192.168.56.4/hello-world
    ```
 
 3. Create a workflow
