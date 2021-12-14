@@ -274,5 +274,5 @@ This option will also show you how to create a machine to provision.
 
    ```bash
    vagrant ssh provisioner
-   ssh tink@192.168.50.43 # user/pass => tink/tink
+   ssh tink@192.168.56.43 # user/pass => tink/tink
    ```

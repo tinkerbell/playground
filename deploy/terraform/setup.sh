@@ -37,7 +37,7 @@ setup_layer2_network() {
 	#local ip_addr="$2"
 	ifenslave -d bond0 "${layer2_interface}"
 	#ip addr add ${ip_addr}/24 dev "${layer2_interface}"
-	ip addr add 192.168.50.4/24 dev "${layer2_interface}"
+	ip addr add 192.168.56.4/24 dev "${layer2_interface}"
 	ip link set dev "${layer2_interface}" up
 }
 
