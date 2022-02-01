@@ -230,6 +230,7 @@ services:
     volumes:
       - certs:/certs/${FACILITY:-onprem}:ro
       - auth:/auth:rw
+      - registry_data:/var/lib/registry:rw
     depends_on:
       tls-gen:
         condition: service_completed_successfully
@@ -323,3 +324,4 @@ volumes:
   postgres_data:
   certs:
   auth:
+  registry_data:
