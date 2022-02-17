@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hegel
+  name: hegel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hegel
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: hegel
+    spec:
+      containers:
+        - args:
+            - -log-level
+            - DEBUG
+          envFrom:
+            - configMapRef:
+                name: tink-client
+            - secretRef:
+                name: packet
+          env:
+            - name: GRPC_PORT
+              value: "42115"
+            - name: HEGEL_FACILITY
+              value: "$(FACILITY)"
+            - name: HEGEL_HTTP_PORT
+              value: "50061"
+            - name: HEGEL_USE_TLS
+              value: "0"
+          image: quay.io/tinkerbell/hegel:sha-c17b512f
+          imagePullPolicy: Always
+          name: hegel
+          ports:
+            - containerPort: 42115
+              hostPort: 42115
+              name: grpc
+            - containerPort: 50061
+              hostPort: 50061
+              name: http
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: hegel
+  name: hegel
+spec:
+  ports:
+    - name: grpc
+      port: 42115
+      targetPort: grpc
+    - name: http
+      port: 50061
+      targetPort: http
+  selector:
+    app: hegel

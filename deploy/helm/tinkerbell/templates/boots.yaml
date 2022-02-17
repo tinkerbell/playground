@@ -1,0 +1,101 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: boots
+  name: boots
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: boots
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |
+          [
+            {
+              "interface": "net1",
+              "ips": [
+                "192.168.1.1/29"
+              ],
+              "name": "tink",
+              "namespace": "default"
+            }
+          ]
+      labels:
+        app: boots
+    spec:
+      containers:
+        - args:
+            - -log-level
+            - DEBUG
+          envFrom:
+            - configMapRef:
+                name: boots
+            - secretRef:
+                name: packet
+            - secretRef:
+                name: registry
+          env:
+            - name: BOOTP_BIND
+              value: 0.0.0.0:67
+            - name: FACILITY_CODE
+              value: "$(FACILITY)"
+            - name: HTTP_BIND
+              value: 0.0.0.0:80
+            - name: SYSLOG_BIND
+              value: 0.0.0.0:514
+            - name: TFTP_BIND
+              value: 0.0.0.0:69
+          image: quay.io/tinkerbell/boots:sha-e81a291c
+          imagePullPolicy: Always
+          name: boots
+          ports:
+            - containerPort: 67
+              name: dhcp
+              protocol: UDP
+            - containerPort: 69
+              hostPort: 69
+              name: tftp
+              protocol: UDP
+            - containerPort: 80
+              hostPort: 80
+              name: http
+      initContainers:
+        - command:
+            - /bin/sh
+            - -c
+            - iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
+          image: docker.io/library/docker:dind
+          name: gateway
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+            privileged: true
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: boots
+  name: boots
+spec:
+  ports:
+    - name: dhcp
+      port: 67
+      protocol: UDP
+      targetPort: dhcp
+    - name: tftp
+      port: 69
+      protocol: UDP
+      targetPort: tftp
+    - name: http
+      port: 80
+      targetPort: http
+  selector:
+    app: boots

@@ -1,0 +1,116 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: tink-server
+  name: tink-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tink-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |
+          [
+            {
+              "interface": "net1",
+              "ips": [
+                "192.168.1.4/29"
+              ],
+              "name": "tink",
+              "namespace": "default"
+            }
+          ]
+      labels:
+        app: tink-server
+    spec:
+      containers:
+        - args:
+            - -log-level
+            - DEBUG
+          envFrom:
+            - secretRef:
+                name: db
+            - secretRef:
+                name: packet
+            - secretRef:
+                name: tink-auth
+          env:
+            - name: TINKERBELL_CERTS_DIR
+              value: /certs
+            - name: TINKERBELL_GRPC_AUTHORITY
+              value: :42113
+            - name: TINKERBELL_HTTP_AUTHORITY
+              value: :42114
+          image: quay.io/tinkerbell/tink:sha-0e8e5733
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /cert
+              port: 42114
+          name: tink-server
+          ports:
+            - containerPort: 42113
+              hostPort: 42113
+              name: grpc
+            - containerPort: 42114
+              hostPort: 42114
+              name: http
+          readinessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /cert
+              port: 42114
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+      initContainers:
+        - command:
+            - /bin/sh
+            - -c
+            - "cat /source-certs/tls.crt /source-certs/ca.crt >/certs/bundle.pem && cp /source-certs/tls.key /certs/server-key.pem"
+          image: docker.io/busybox:latest
+          name: certs
+          volumeMounts:
+            - mountPath: /source-certs
+              name: source-certs
+            - mountPath: /certs
+              name: certs
+        - envFrom:
+            - secretRef:
+                name: db
+          env:
+            - name: ONLY_MIGRATION
+              value: "1"
+          image: quay.io/tinkerbell/tink:sha-0e8e5733
+          imagePullPolicy: Always
+          name: migration
+      volumes:
+        - name: certs
+          emptyDir: {}
+        - name: source-certs
+          secret:
+            secretName: certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tink-server
+  name: tink-server
+spec:
+  ports:
+    - name: grpc
+      port: 42113
+      targetPort: grpc
+    - name: http
+      port: 42114
+      targetPort: http
+  selector:
+    app: tink-server

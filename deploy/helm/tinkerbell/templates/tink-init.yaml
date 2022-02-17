@@ -1,0 +1,62 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tink-init
+spec:
+  template:
+    spec:
+      containers:
+        - command:
+            - /bin/sh
+            - -c
+            - "skopeo copy --dest-creds=${REGISTRY_USERNAME}:${REGISTRY_PASSWORD} --dest-tls-verify=false docker://${TINKERBELL_TINK_WORKER_IMAGE} docker://${REGISTRY_HOST}/tink-worker:latest"
+          envFrom:
+            - configMapRef:
+                name: tink-init
+            - secretRef:
+                name: registry
+          image: quay.io/containers/skopeo:v1.1.1
+          name: tink-worker
+        - command:
+            - /bin/sh
+            - -c
+            - |
+              osie_current=/usr/share/nginx/html/misc/osie/current;
+              tink_workflow=/usr/share/nginx/html/workflow;
+              if [ ! -d "$osie_current" ] || [ ! -d "$tink_workflow" ]; then
+                mkdir -p "$osie_current";
+                mkdir -p "$tink_workflow";
+
+                wget ${OSIE_DOWNLOAD_LINK} -O - | tar -xz --strip-components=1 -C "$osie_current/";
+                mv "$osie_current/workflow-helper.sh" "$osie_current/workflow-helper-rc" "$tink_workflow/";
+              fi
+          envFrom:
+            - configMapRef:
+                name: tink-init
+          image: docker.io/busybox:latest
+          name: osie
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: nginx-data
+        - command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /usr/share/nginx/html/workflow;
+              cp /certs/ca.crt /usr/share/nginx/html/workflow/ca.pem;
+          image: docker.io/busybox:latest
+          name: certs
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+            - mountPath: /usr/share/nginx/html
+              name: nginx-data
+      restartPolicy: OnFailure
+      volumes:
+        - name: certs
+          secret:
+            secretName: certs
+        - name: nginx-data
+          persistentVolumeClaim:
+            claimName: nginx-data

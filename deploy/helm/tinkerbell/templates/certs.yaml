@@ -1,0 +1,55 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: self-signed
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: root-ca
+spec:
+  commonName: tinkerbell
+  isCA: true
+  issuerRef:
+    name: self-signed
+  secretName: root-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: root-ca
+spec:
+  ca:
+    secretName: root-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: server
+spec:
+  commonName: tinkerbell
+  dnsNames:
+    - tinkerbell.registry
+    - tinkerbell.tinkerbell
+    - tinkerbell
+    - localhost
+    - registry
+    - registry.default
+    - registry.default.svc
+    - registry.default.svc.cluster.local
+    - tink-server
+    - tink-server.default
+    - tink-server.default.svc
+    - tink-server.default.svc.cluster.local
+  ipAddresses:
+    - 127.0.0.1
+    - 192.168.1.1
+    - 192.168.1.2
+    - 192.168.1.3
+    - 192.168.1.4
+  issuerRef:
+    name: root-ca
+  secretName: certs
