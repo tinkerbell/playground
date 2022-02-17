@@ -7,22 +7,19 @@
 ########################
 # TODO: What does this do?
 facilityCode: "onprem"
-
-###################################
-# L2 network access configuration #
-###################################
-# TODO: I am familiar with K8S, but I have never seen this before,
-# so I need to do some additional research.
-networks:
-  - interface: net1
-    ips:
-      - 192.168.1.1/29
-    name: tink
+network:
+  # If you have an existing fabric with a
+  # NAT gateway, you configure this.
+  gateway: ""
+  # The network prefix length as used in
+  # the CIDR notation, e.g. /24, /16, /8.
+  prefix: 29
 
 ##############################################
 # Configuration for the "boots" DHCP server. #
 ##############################################
 boots:
+  ip: 192.168.1.1
   # TODO: Does Tinkerbell scale horizontally?
   # If so, do all components? What about race
   # conditions?

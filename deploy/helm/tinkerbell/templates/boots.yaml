@@ -19,12 +19,20 @@ spec:
   template:
     metadata:
       annotations:
+        # TODO: I am familiar with K8S, but I have never seen this before,
+        # so I need to do some additional research.
+        # TODO: Continue here!
         k8s.v1.cni.cncf.io/networks: |
-          {{- $networks := list }}
-          {{- range .Values.networks }}
-          {{- $networks = append $networks (set . "namespace" $.Release.Namespace) }}
-          {{- end }}
-          {{- $networks | toPrettyJson | nindent 10 }}
+          [
+            {
+              "interface": "net1",
+              "ips": [
+                "{{ .Values.boots.ip }}/{{ .Values.network.prefix }}"
+              ],
+              "name": "tink",
+              "namespace": "{{ .Release.Namespace }}"
+            }
+          ]
         {{- with .Values.boots.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
