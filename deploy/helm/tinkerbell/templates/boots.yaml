@@ -2,58 +2,64 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-boots" }}
   labels:
-    app: boots
-  name: boots
+    app.kubernetes.io/name: boots
+    app.kubernetes.io/version: {{ .Values.boots.image.tag }}
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.boots.replicas }}
   selector:
     matchLabels:
-      app: boots
+      app.kubernetes.io/name: boots
+      {{- include "tinkerbell.selectorLabels" . | nindent 6 }}
   strategy:
     type: Recreate
   template:
     metadata:
       annotations:
         k8s.v1.cni.cncf.io/networks: |
-          [
-            {
-              "interface": "net1",
-              "ips": [
-                "192.168.1.1/29"
-              ],
-              "name": "tink",
-              "namespace": "default"
-            }
-          ]
+          {{- .Values.networks | toPrettyJson | nindent 10 }}
+        {{- with .Values.boots.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
-        app: boots
+        app.kubernetes.io/name: boots
+        {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
     spec:
+      restartPolicy: Always
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "tinkerbell.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
       containers:
-        - args:
-            - -log-level
-            - DEBUG
-          envFrom:
-            - configMapRef:
-                name: boots
-            - secretRef:
-                name: packet
-            - secretRef:
-                name: registry
+        - name: boots
+          args: [ "-log-level", "DEBUG" ]
+          image: {{ printf "%s:%s" .Values.boots.image.repository (default "latest" .Values.boots.image.tag) }}
+          imagePullPolicy: {{ .Values.boots.image.pullPolicy }}
+          ## TODO: Remove secrets for container registry.
+          ## TODO: Configure environment variables.
+          # envFrom:
+          #   - configMapRef:
+          #       name: boots
+          #   - secretRef:
+          #       name: packet
+          #   - secretRef:
+          #       name: registry
           env:
             - name: BOOTP_BIND
               value: 0.0.0.0:67
             - name: FACILITY_CODE
-              value: "$(FACILITY)"
+              value: {{ .Values.facilityCode }}
             - name: HTTP_BIND
               value: 0.0.0.0:80
             - name: SYSLOG_BIND
               value: 0.0.0.0:514
             - name: TFTP_BIND
               value: 0.0.0.0:69
-          image: quay.io/tinkerbell/boots:sha-e81a291c
-          imagePullPolicy: Always
-          name: boots
           ports:
             - containerPort: 67
               name: dhcp
@@ -65,25 +71,41 @@ spec:
             - containerPort: 80
               hostPort: 80
               name: http
-      initContainers:
-        - command:
-            - /bin/sh
-            - -c
-            - iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
-          image: docker.io/library/docker:dind
-          name: gateway
+          ## TODO: Does boots have a health probe? If not,
+          ## should we add a health probe to boots?
+          # livenessProbe:
+          #   httpGet:
+          #     path: /healthz
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /healthz
+          #     port: http
           securityContext:
-            capabilities:
-              add: ["NET_ADMIN", "NET_RAW"]
-            privileged: true
-      restartPolicy: Always
+            {{- toYaml .Values.boots.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.boots.resources | nindent 12 }}
+      {{- with .Values.boots.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.boots.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.boots.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-boots" }}
   labels:
-    app: boots
-  name: boots
+    app.kubernetes.io/name: boots
+    app.kubernetes.io/version: {{ .Values.boots.image.tag }}
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   ports:
     - name: dhcp
@@ -98,4 +120,5 @@ spec:
       port: 80
       targetPort: http
   selector:
-    app: boots
+    app.kubernetes.io/name: boots
+    {{- include "tinkerbell.selectorLabels" . | nindent 4 }}

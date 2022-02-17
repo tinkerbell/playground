@@ -44,6 +44,7 @@ spec:
     - tink-server.default
     - tink-server.default.svc
     - tink-server.default.svc.cluster.local
+  # TODO: These IPs should depend on the network configuration.
   ipAddresses:
     - 127.0.0.1
     - 192.168.1.1

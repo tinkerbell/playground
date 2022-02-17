@@ -36,9 +36,6 @@ Common labels
 {{- define "tinkerbell.labels" -}}
 helm.sh/chart: {{ include "tinkerbell.chart" . }}
 {{ include "tinkerbell.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -46,7 +43,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "tinkerbell.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "tinkerbell.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
