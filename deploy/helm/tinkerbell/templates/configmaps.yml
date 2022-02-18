@@ -1,18 +1,19 @@
 ## TODO: I need to check the tinkerbell/k8s-sandbox
 ## repository again for how to set up the ConfigMaps.
 # configmaps:
-#   - boots
-#   - dhcprelay
+#   - name: boots
+#   - name: dhcprelay
+#     data:
+#       - name: IF_DOWNSTREAM
+#         value: ???
+#       - name: IF_UPSTREAM
+#         value: ???
 
 ## TODO: I need to check the tinkerbell/k8s-sandbox
 ## repository again for how to set up the Secrets.
 # secrets:
-#   - packet
-#   - registry
-
-## TODO: Figure out which environment variable belongs
-## to which ConfigMap and which Secret.
-# variables:
-#   - FACILITY
-#   - IF_DOWNSTREAM
-#   - IF_UPSTREAM
+#   - name: packet
+#     data:
+#       - name: FACILITY
+#         value: onprem
+#   - name: registry
