@@ -26,8 +26,8 @@ boots:
   replicas: 1
   image:
     repository: quay.io/tinkerbell/boots
-    pullPolicy: Always
     tag: sha-e81a291c
+    pullPolicy: Always
   podAnnotations: {}
   podSecurityContext: {}
   # fsGroup: 2000
@@ -49,6 +49,24 @@ boots:
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+#####################################
+# Configuration for the DHCP relay. #
+#####################################
+dhcpRelay:
+  enabled: true
+  replicas: 1
+  image:
+    repository: docker.io/modem7/dhcprelay
+    tag: latest
+    pullPolicy: Always
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  resources: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}

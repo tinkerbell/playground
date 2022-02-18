@@ -1,0 +1,93 @@
+## TODO: Figure out if this component is always needed.
+## My assumption is that we only need this if we want
+## to respond to DHCP requests on other subnets.
+{{- if .Values.dhcpRelay.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-dhcprelay" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: dhcprelay
+    app.kubernetes.io/version: {{ .Values.dhcpRelay.image.tag }}
+spec:
+  replicas: {{ .Values.dhcpRelay.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tinkerbell.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: dhcprelay
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      {{- with .Values.dhcpRelay.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: dhcprelay
+    spec:
+      restartPolicy: Always
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # This is important, because it enables the DHCP relay
+      # to use boots' hostname instead of its IP address.
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      containers:
+        ## TODO: Figure out if the hostname parameter needs fixing, because we
+        ## use the release full name in Helm.
+        - args: [ "-id", "$(IF_DOWNSTREAM)", "-iu", "$(IF_UPSTREAM)", "boots" ]
+          ## TODO: Configure environment variables.
+          # envFrom:
+          #   - configMapRef:
+          #       name: dhcprelay
+          image: {{ printf "%s:%s" .Values.dhcpRelay.image.repository (default "latest" .Values.dhcpRelay.image.tag) }}
+          imagePullPolicy: {{ .Values.dhcpRelay.image.pullPolicy }}
+          name: dhcprelay
+          ports:
+            - containerPort: 67
+              hostPort: 67
+              name: dhcp
+              protocol: UDP
+          securityContext:
+            {{- toYaml .Values.dhcpRelay.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.dhcpRelay.resources | nindent 12 }}
+      {{- with .Values.dhcpRelay.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dhcpRelay.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dhcpRelay.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-dhcprelay" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: dhcprelay
+    app.kubernetes.io/version: {{ .Values.dhcpRelay.image.tag }}
+spec:
+  ports:
+    - name: dhcp
+      port: 67
+      protocol: UDP
+      targetPort: dhcp
+  selector:
+    {{- include "tinkerbell.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: dhcprelay
+{{- end }}

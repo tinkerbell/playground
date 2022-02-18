@@ -35,7 +35,7 @@ spec:
             }
           ]
         {{- with .Values.boots.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
+          {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
         {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
@@ -51,7 +51,8 @@ spec:
         {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
       initContainers:
         ## TODO: I am not sure what the interface name depends on here.
-        ## My educated guess is that it depends on the host configuration.
+        ## My educated guess is that it refers to the WAN interface of
+        ## the underlying Kubernetes node.
         - command: [ "/bin/sh", "-c", "iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE" ]
           image: docker.io/library/docker:dind
           name: gateway
@@ -147,5 +148,5 @@ spec:
       port: 80
       targetPort: http
   selector:
-    app.kubernetes.io/name: boots
     {{- include "tinkerbell.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: boots
