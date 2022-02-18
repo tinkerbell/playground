@@ -2,55 +2,66 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: self-signed
+  name: {{ include "tinkerbell.fullname" . | printf "%s-self-signed" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   selfSigned: {}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: root-ca
+  name: {{ include "tinkerbell.fullname" . | printf "%s-root-ca" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   commonName: tinkerbell
   isCA: true
   issuerRef:
-    name: self-signed
-  secretName: root-ca
+    name: {{ include "tinkerbell.fullname" . | printf "%s-self-signed" }}
+  secretName: {{ include "tinkerbell.fullname" . | printf "%s-root-ca" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: root-ca
+  name: {{ include "tinkerbell.fullname" . | printf "%s-root-ca" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   ca:
-    secretName: root-ca
+    secretName: {{ include "tinkerbell.fullname" . | printf "%s-root-ca" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: server
+  name: {{ include "tinkerbell.fullname" . | printf "%s-server" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   commonName: tinkerbell
   dnsNames:
+    ## TODO: I assume this is only for gRPC so it does not need special treatment.
     - tinkerbell.registry
     - tinkerbell.tinkerbell
     - tinkerbell
     - localhost
-    - registry
-    - registry.default
-    - registry.default.svc
-    - registry.default.svc.cluster.local
-    - tink-server
-    - tink-server.default
-    - tink-server.default.svc
-    - tink-server.default.svc.cluster.local
-  # TODO: These IPs should depend on the network configuration.
+    {{- range tuple "tink-server" "registry" }}
+    - {{ printf "%s-%s" (include "tinkerbell.fullname" $) . }}
+    - {{ printf "%s-%s.%s" (include "tinkerbell.fullname" $) . $.Release.Namespace }}
+    - {{ printf "%s-%s.%s.svc" (include "tinkerbell.fullname" $) . $.Release.Namespace }}
+    - {{ printf "%s-%s.%s.svc.%s" (include "tinkerbell.fullname" $) . $.Release.Namespace $.Values.clusterDomain }}
+    {{- end }}
+  ## TODO: These IPs should depend on the network configuration.
   ipAddresses:
     - 127.0.0.1
-    - 192.168.1.1
+    - {{ .Values.boots.ip }}
     - 192.168.1.2
     - 192.168.1.3
     - 192.168.1.4
   issuerRef:
-    name: root-ca
-  secretName: certs
+    name: {{ include "tinkerbell.fullname" . | printf "%s-root-ca" }}
+  secretName: {{ include "tinkerbell.fullname" . | printf "%s-certs" }}

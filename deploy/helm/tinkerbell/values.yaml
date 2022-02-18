@@ -5,7 +5,7 @@
 ########################
 # Global configuration #
 ########################
-# TODO: What does this do?
+## TODO: What does this do?
 facilityCode: "onprem"
 network:
   # If you have an existing fabric with a
@@ -14,15 +14,18 @@ network:
   # The network prefix length as used in
   # the CIDR notation, e.g. /24, /16, /8.
   prefix: 29
+# The DNS domain for the cluster.
+clusterDomain: "cluster.local"
 
 ##############################################
 # Configuration for the "boots" DHCP server. #
 ##############################################
 boots:
   ip: 192.168.1.1
-  # TODO: Does Tinkerbell scale horizontally?
-  # If so, do all components? What about race
-  # conditions?
+  ## TODO: Does Tinkerbell scale horizontally? If so, do all
+  ## components? What about race conditions? I know that the
+  ## registry needs a volume provisioner that supports RWX
+  ## (ReadWriteMany) PVCs.
   replicas: 1
   image:
     repository: quay.io/tinkerbell/boots
@@ -86,12 +89,3 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80

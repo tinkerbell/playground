@@ -5,23 +5,24 @@ metadata:
   name: {{ include "tinkerbell.fullname" . | printf "%s-boots" }}
   namespace: {{ .Release.Namespace }}
   labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
     app.kubernetes.io/name: boots
     app.kubernetes.io/version: {{ .Values.boots.image.tag }}
-    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.boots.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: boots
       {{- include "tinkerbell.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: boots
   strategy:
     type: Recreate
   template:
     metadata:
       annotations:
-        # TODO: I am familiar with K8S, but I have never seen this before,
-        # so I need to do some additional research.
-        # TODO: Continue here!
+        ## TODO: I am familiar with K8S, but I have never seen this before,
+        ## so I need to do some additional research. As far as I understand
+        ## it, this is a way of assigning a specific IP of the host network
+        ## to the pod.
         k8s.v1.cni.cncf.io/networks: |
           [
             {
@@ -37,8 +38,8 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        app.kubernetes.io/name: boots
         {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: boots
     spec:
       restartPolicy: Always
       {{- with .Values.imagePullSecrets }}
@@ -62,6 +63,8 @@ spec:
           #       name: packet
           #   - secretRef:
           #       name: registry
+          ## TODO: How do I configure the IPs for the other services,
+          ## such as Nginx?
           env:
             - name: BOOTP_BIND
               value: 0.0.0.0:67
@@ -117,9 +120,9 @@ metadata:
   name: {{ include "tinkerbell.fullname" . | printf "%s-boots" }}
   namespace: {{ .Release.Namespace }}
   labels:
+    {{- include "tinkerbell.labels" . | nindent 4 }}
     app.kubernetes.io/name: boots
     app.kubernetes.io/version: {{ .Values.boots.image.tag }}
-    {{- include "tinkerbell.labels" . | nindent 4 }}
 spec:
   ports:
     - name: dhcp
