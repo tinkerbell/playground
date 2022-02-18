@@ -49,6 +49,16 @@ spec:
       serviceAccountName: {{ include "tinkerbell.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
+      initContainers:
+        ## TODO: I am not sure what the interface name depends on here.
+        ## My educated guess is that it depends on the host configuration.
+        - command: [ "/bin/sh", "-c", "iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE" ]
+          image: docker.io/library/docker:dind
+          name: gateway
+          securityContext:
+            capabilities:
+              add: [ "NET_ADMIN", "NET_RAW" ]
+            privileged: true
       containers:
         - name: boots
           args: [ "-log-level", "DEBUG" ]
@@ -69,7 +79,7 @@ spec:
             - name: BOOTP_BIND
               value: 0.0.0.0:67
             - name: FACILITY_CODE
-              value: {{ .Values.facilityCode }}
+              value: "$(FACILITY)"
             - name: HTTP_BIND
               value: 0.0.0.0:80
             - name: SYSLOG_BIND

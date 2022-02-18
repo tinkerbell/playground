@@ -1,3 +1,7 @@
+## TODO: Should we just deploy PostgreSQL by hand or use an external chart?
+## Currently, I prefer the option to deploy PostgreSQL by hand as it reduces
+## complexity regarding dependency management with external charts. On top of
+## that, the chart I was thinking of (bitnami/postgres) does not support ARM.
 ---
 apiVersion: apps/v1
 kind: Deployment

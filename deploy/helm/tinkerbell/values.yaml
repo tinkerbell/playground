@@ -8,9 +8,6 @@
 ## TODO: What does this do?
 facilityCode: "onprem"
 network:
-  # If you have an existing fabric with a
-  # NAT gateway, you configure this.
-  gateway: ""
   # The network prefix length as used in
   # the CIDR notation, e.g. /24, /16, /8.
   prefix: 29
