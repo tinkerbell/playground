@@ -2,30 +2,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-hegel" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: hegel
-  name: hegel
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: hegel
+    app.kubernetes.io/version: {{ .Values.hegel.image.tag }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.hegel.replicas }}
   selector:
     matchLabels:
-      app: hegel
+      {{- include "tinkerbell.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: hegel
   strategy:
     type: Recreate
   template:
     metadata:
+      {{- with .Values.hegel.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
-        app: hegel
+        {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: hegel
     spec:
+      restartPolicy: Always
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-        - args:
-            - -log-level
-            - DEBUG
-          envFrom:
-            - configMapRef:
-                name: tink-client
-            - secretRef:
-                name: packet
+        - args: [ "-log-level", "DEBUG" ]
+          image: {{ printf "%s:%s" .Values.hegel.image.repository (default "latest" .Values.hegel.image.tag) }}
+          imagePullPolicy: {{ .Values.hegel.image.pullPolicy }}
+          name: hegel
+          ## TODO: Configure environment variables.
+          # envFrom:
+          #   - configMapRef:
+          #       name: tink-client
+          #   - secretRef:
+          #       name: packet
           env:
             - name: GRPC_PORT
               value: "42115"
@@ -35,9 +51,6 @@ spec:
               value: "50061"
             - name: HEGEL_USE_TLS
               value: "0"
-          image: quay.io/tinkerbell/hegel:sha-c17b512f
-          imagePullPolicy: Always
-          name: hegel
           ports:
             - containerPort: 42115
               hostPort: 42115
@@ -45,14 +58,32 @@ spec:
             - containerPort: 50061
               hostPort: 50061
               name: http
-      restartPolicy: Always
+          securityContext:
+            {{- toYaml .Values.hegel.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.hegel.resources | nindent 12 }}
+      {{- with .Values.hegel.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hegel.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hegel.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-hegel" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: hegel
-  name: hegel
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: hegel
+    app.kubernetes.io/version: {{ .Values.hegel.image.tag }}
 spec:
   ports:
     - name: grpc
@@ -62,4 +93,5 @@ spec:
       port: 50061
       targetPort: http
   selector:
-    app: hegel
+    {{- include "tinkerbell.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: hegel

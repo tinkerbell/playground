@@ -5,12 +5,27 @@
 ########################
 # Global configuration #
 ########################
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
 ## TODO: What does this do?
 facilityCode: "onprem"
+
 network:
   # The network prefix length as used in
   # the CIDR notation, e.g. /24, /16, /8.
   prefix: 29
+
 # The DNS domain for the cluster.
 clusterDomain: "cluster.local"
 
@@ -71,18 +86,22 @@ dhcpRelay:
   tolerations: []
   affinity: {}
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+#####################################
+# Configuration for the DHCP relay. #
+#####################################
+hegel:
+  replicas: 1
+  image:
+    repository: quay.io/tinkerbell/hegel
+    tag: sha-c17b512f
+    pullPolicy: Always
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 service:
   type: ClusterIP

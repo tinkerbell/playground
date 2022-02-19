@@ -43,13 +43,13 @@ spec:
         ## TODO: Figure out if the hostname parameter needs fixing, because we
         ## use the release full name in Helm.
         - args: [ "-id", "$(IF_DOWNSTREAM)", "-iu", "$(IF_UPSTREAM)", "boots" ]
+          image: {{ printf "%s:%s" .Values.dhcpRelay.image.repository (default "latest" .Values.dhcpRelay.image.tag) }}
+          imagePullPolicy: {{ .Values.dhcpRelay.image.pullPolicy }}
+          name: dhcprelay
           ## TODO: Configure environment variables.
           # envFrom:
           #   - configMapRef:
           #       name: dhcprelay
-          image: {{ printf "%s:%s" .Values.dhcpRelay.image.repository (default "latest" .Values.dhcpRelay.image.tag) }}
-          imagePullPolicy: {{ .Values.dhcpRelay.image.pullPolicy }}
-          name: dhcprelay
           ports:
             - containerPort: 67
               hostPort: 67
