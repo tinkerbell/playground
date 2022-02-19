@@ -2,14 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-nginx" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: nginx
-  name: nginx
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: nginx
+    app.kubernetes.io/version: {{ .Values.nginx.image.tag }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.nginx.replicas }}
   selector:
     matchLabels:
-      app: nginx
+      {{- include "tinkerbell.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: nginx
   strategy:
     type: Recreate
   template:
@@ -20,18 +24,28 @@ spec:
             {
               "interface": "net1",
               "ips": [
-                "192.168.1.2/29"
+                "{{ .Values.nginx.ip }}/{{ .Values.network.prefix }}"
               ],
               "name": "tink",
-              "namespace": "default"
+              "namespace": "{{ .Release.Namespace }}"
             }
           ]
       labels:
-        app: nginx
+        {{- include "tinkerbell.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: nginx
     spec:
+      restartPolicy: Always
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "tinkerbell.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
       containers:
-        - image: docker.io/nginx:alpine
-          imagePullPolicy: Always
+        - name: nginx
+          image: {{ printf "%s:%s" .Values.nginx.image.repository (default "alpine" .Values.nginx.image.tag) }}
+          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
           name: nginx
           ports:
             - containerPort: 80
@@ -39,39 +53,68 @@ spec:
               name: http
           volumeMounts:
             - mountPath: /usr/share/nginx/html
-              name: nginx-data
-      restartPolicy: Always
+              name: webroot
+          securityContext:
+            {{- toYaml .Values.nginx.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.nginx.resources | nindent 12 }}
       volumes:
-        - name: nginx-data
+        - name: webroot
           persistentVolumeClaim:
-            claimName: nginx-data
+            claimName: {{ include "tinkerbell.fullname" . | printf "%s-nginx" }}
+        ## TODO: Why is this not mounted via the volumeMounts directive?
         - name: source-certs
           secret:
-            secretName: certs
+            secretName: {{ include "tinkerbell.fullname" . | printf "%s-certs" }}
+      {{- with .Values.nginx.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-nginx" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: nginx
-  name: nginx
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: nginx
+    app.kubernetes.io/version: {{ .Values.nginx.image.tag }}
 spec:
+  type: ClusterIP
   ports:
     - name: http
       port: 80
       targetPort: http
   selector:
-    app: nginx
+    {{- include "tinkerbell.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: nginx
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: {{ include "tinkerbell.fullname" . | printf "%s-nginx" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: nginx
-  name: nginx-data
+    {{- include "tinkerbell.labels" . | nindent 4 }}
+    app.kubernetes.io/name: nginx
+    app.kubernetes.io/version: {{ .Values.nginx.image.tag }}
 spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.nginx.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
+      storage: {{ .Values.nginx.persistence.size }}

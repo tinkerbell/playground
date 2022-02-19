@@ -103,6 +103,28 @@ hegel:
   tolerations: []
   affinity: {}
 
+################################################
+# Configuration for Nginx serving OSIE or Hook #
+################################################
+nginx:
+  ip: 192.168.1.2
+  replicas: 1
+  image:
+    repository: docker.io/library/nginx
+    tag: alpine
+    pullPolicy: Always
+  persistence:
+    size: 5Gi
+    storageClassName: ""
+  storageClassName: ""
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 service:
   type: ClusterIP
   port: 80

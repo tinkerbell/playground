@@ -35,6 +35,9 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "tinkerbell.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
       # This is important, because it enables the DHCP relay
       # to use boots' hostname instead of its IP address.
       dnsPolicy: ClusterFirstWithHostNet
@@ -42,10 +45,10 @@ spec:
       containers:
         ## TODO: Figure out if the hostname parameter needs fixing, because we
         ## use the release full name in Helm.
-        - args: [ "-id", "$(IF_DOWNSTREAM)", "-iu", "$(IF_UPSTREAM)", "boots" ]
+        - name: dhcprelay
+          args: [ "-id", "$(IF_DOWNSTREAM)", "-iu", "$(IF_UPSTREAM)", "boots" ]
           image: {{ printf "%s:%s" .Values.dhcpRelay.image.repository (default "latest" .Values.dhcpRelay.image.tag) }}
           imagePullPolicy: {{ .Values.dhcpRelay.image.pullPolicy }}
-          name: dhcprelay
           ## TODO: Configure environment variables.
           # envFrom:
           #   - configMapRef:
@@ -82,6 +85,7 @@ metadata:
     app.kubernetes.io/name: dhcprelay
     app.kubernetes.io/version: {{ .Values.dhcpRelay.image.tag }}
 spec:
+  type: ClusterIP
   ports:
     - name: dhcp
       port: 67

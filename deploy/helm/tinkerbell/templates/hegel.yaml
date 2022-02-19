@@ -31,11 +31,14 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "tinkerbell.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.boots.podSecurityContext | nindent 8 }}
       containers:
-        - args: [ "-log-level", "DEBUG" ]
+        - name: hegel
+          args: [ "-log-level", "DEBUG" ]
           image: {{ printf "%s:%s" .Values.hegel.image.repository (default "latest" .Values.hegel.image.tag) }}
           imagePullPolicy: {{ .Values.hegel.image.pullPolicy }}
-          name: hegel
           ## TODO: Configure environment variables.
           # envFrom:
           #   - configMapRef:
@@ -85,6 +88,7 @@ metadata:
     app.kubernetes.io/name: hegel
     app.kubernetes.io/version: {{ .Values.hegel.image.tag }}
 spec:
+  type: ClusterIP
   ports:
     - name: grpc
       port: 42115

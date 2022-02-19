@@ -135,6 +135,7 @@ metadata:
     app.kubernetes.io/name: boots
     app.kubernetes.io/version: {{ .Values.boots.image.tag }}
 spec:
+  type: ClusterIP
   ports:
     - name: dhcp
       port: 67
