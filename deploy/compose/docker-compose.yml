@@ -2,12 +2,6 @@ services:
   ##### Actual services first #####
   boots:
     image: ${BOOTS_SERVER_IMAGE}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
     command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
     network_mode: host
     environment:
@@ -36,15 +30,15 @@ services:
     depends_on:
       tink-server:
         condition: service_healthy
-
-  db:
-    image: postgres:14-alpine
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
     restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
     environment:
       POSTGRES_DB: tinkerbell
       POSTGRES_PASSWORD: tinkerbell
@@ -53,20 +47,22 @@ services:
       - postgres_data:/var/lib/postgresql/data:rw
     ports:
       - 5432:5432
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tinkerbell"]
-      interval: 1s
-      timeout: 1s
-      retries: 30
-
-  hegel:
-    image: ${HEGEL_SERVER_IMAGE}
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U tinkerbell"
+      interval: 1s
+      timeout: 1s
+      retries: 30
     restart: unless-stopped
+
+  hegel:
+    image: ${HEGEL_SERVER_IMAGE}
     environment:
       CUSTOM_ENDPOINTS: '{"/metadata":""}'
       DATA_MODEL_VERSION: 1
@@ -79,32 +75,21 @@ services:
       ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-    depends_on:
-      tink-server:
-        condition: service_healthy
     ports:
       - 50060:50060/tcp
       - 50061:50061/tcp
-
-  registry:
-    image: registry:2.7.1
-    init: true
+    depends_on:
+      tink-server:
+        condition: service_healthy
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
     restart: unless-stopped
-    network_mode: host
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget --no-check-certificate https://$TINKERBELL_HOST_IP -O -",
-        ]
-      interval: 5s
-      timeout: 1s
-      retries: 5
+
+  registry:
+    image: registry:2.7.1
     environment:
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
@@ -112,6 +97,8 @@ services:
       REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
       REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
       REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
+    init: true
+    network_mode: host
     volumes:
       - auth:/auth:rw
       - certs:/certs/${FACILITY:-onprem}:ro
@@ -121,15 +108,22 @@ services:
         condition: service_completed_successfully
       generate-registry-auth:
         condition: service_completed_successfully
-
-  tink-server:
-    image: ${TINK_SERVER_IMAGE}
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "wget --no-check-certificate https://$TINKERBELL_HOST_IP -O >/dev/null"
+      interval: 5s
+      timeout: 1s
+      retries: 5
     restart: unless-stopped
+
+  tink-server:
+    image: ${TINK_SERVER_IMAGE}
     environment:
       FACILITY: ${FACILITY:-onprem}
       PACKET_ENV: ${PACKET_ENV:-testing}
@@ -146,6 +140,11 @@ services:
       TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
+    volumes:
+      - certs:/certs/${FACILITY:-onprem}:rw
+    ports:
+      - 42113:42113/tcp
+      - 42114:42114/tcp
     depends_on:
       db:
         condition: service_healthy
@@ -153,25 +152,22 @@ services:
         condition: service_completed_successfully
       db-migrations:
         condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- 127.0.0.1:42114/cert"] # port needs to match TINKERBELL_HTTP_AUTHORITY
-      interval: 5s
-      timeout: 2s
-      retries: 30
-    volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
-    ports:
-      - 42113:42113/tcp
-      - 42114:42114/tcp
-
-  web-assets-server:
-    image: nginx:alpine
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "wget -qO- 127.0.0.1:42114/cert" # port needs to match TINKERBELL_HTTP_AUTHORITY
+      interval: 5s
+      timeout: 2s
+      retries: 30
     restart: unless-stopped
+
+  web-assets-server:
+    image: nginx:alpine
     tty: true
     user: root
     ports:
@@ -183,6 +179,12 @@ services:
         condition: service_completed_successfully
       fetch-osie:
         condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
 
   ##### One-off setup processes #####
   create-tink-records:
@@ -211,7 +213,6 @@ services:
 
   db-migrations:
     image: ${TINK_SERVER_IMAGE}
-    restart: on-failure
     environment:
       FACILITY: ${FACILITY:-onprem}
       ONLY_MIGRATION: "true"
@@ -225,11 +226,12 @@ services:
       TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
+    volumes:
+      - certs:/certs/${FACILITY:-onprem}:rw
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
+    restart: on-failure
 
   fetch-osie:
     image: bash:4.4
@@ -263,7 +265,6 @@ services:
   generate-registry-auth:
     image: httpd:2
     entrypoint: htpasswd
-    working_dir: /auth
     command:
       [
         "-Bbc",
@@ -271,6 +272,7 @@ services:
         "${TINKERBELL_REGISTRY_USERNAME:-admin}",
         "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}",
       ]
+    working_dir: /auth
     volumes:
       - auth:/auth:rw
 
@@ -303,12 +305,6 @@ services:
   ##### Debugging/interactive commands #####
   tink-cli:
     image: ${TINK_CLI_IMAGE}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
     environment:
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
@@ -317,6 +313,12 @@ services:
         condition: service_healthy
       tink-server:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
 
 volumes:
   auth:
