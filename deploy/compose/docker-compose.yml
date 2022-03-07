@@ -1,242 +1,5 @@
 services:
-  # TLS cert for tink-server and docker registry
-  tls-gen:
-    image: cfssl/cfssl
-    entrypoint: /code/tls/generate.sh
-    command: ["$TINKERBELL_HOST_IP"]
-    environment:
-      FACILITY: ${FACILITY:-onprem}
-    volumes:
-      - ./:/code
-      - certs:/certs/${FACILITY:-onprem}:rw
-
-  # User creds for the registry
-  registry-auth:
-    image: httpd:2
-    entrypoint: htpasswd
-    working_dir: /auth
-    command:
-      [
-        "-Bbc",
-        ".htpasswd",
-        "${TINKERBELL_REGISTRY_USERNAME:-admin}",
-        "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}",
-      ]
-    volumes:
-      - auth:/auth:rw
-
-  # OSIE work
-  osie-work:
-    image: bash:4.4
-    entrypoint: /scripts/lastmile.sh
-    command:
-      [
-        "${OSIE_DOWNLOAD_URLS}",
-        "/source",
-        "/source",
-        "/destination",
-        "${TINKERBELL_USE_HOOK:-true}",
-      ]
-    volumes:
-      - ./osie:/scripts
-      - ./state/webroot/misc/osie/current:/source
-      - ./state/webroot/workflow:/destination
-
-  # Uploads images in /registry/registry_images.txt to the local registry
-  images-to-local-registry:
-    image: quay.io/containers/skopeo:v1.4.1
-    entrypoint: /registry/upload.sh
-    command:
-      [
-        "${TINKERBELL_REGISTRY_USERNAME:-admin}",
-        "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}",
-        "${TINKERBELL_HOST_IP}",
-        "/registry/registry_images.txt",
-      ]
-    volumes:
-      - ./registry:/registry
-    depends_on:
-      registry:
-        condition: service_healthy
-
-  # Create hardware, template, and workflow records in tink-server
-  create-tink-records:
-    image: ${TINK_CLI_IMAGE}
-    entrypoint: /manifests/exec_in_bash.sh
-    command:
-      [
-        "$TINKERBELL_HARDWARE_MANIFEST",
-        "$TINKERBELL_TEMPLATE_MANIFEST",
-        "/manifests/workflow",
-        "$TINKERBELL_HOST_IP",
-        "$TINKERBELL_CLIENT_IP",
-        "$TINKERBELL_CLIENT_MAC",
-      ]
-    environment:
-      GLUE_SCRIPT_NAME: "/manifests/apply_manifests.sh"
-      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-      TINKERBELL_CERT_URL: http://tink-server:42114/cert
-    volumes:
-      - ./manifests:/manifests
-    depends_on:
-      tink-server:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-
-  # Setup ubuntu image
-  ubuntu-image-setup:
-    image: ubuntu
-    entrypoint: /scripts/setup_ubuntu.sh
-    command:
-      [
-        "https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img",
-        "focal-server-cloudimg-amd64.img",
-        "/destination/focal-server-cloudimg-amd64.raw",
-      ]
-    volumes:
-      - ./ubuntu:/scripts
-      - ./state/webroot:/destination
-
-  tink-server:
-    image: ${TINK_SERVER_IMAGE}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
-    environment:
-      FACILITY: ${FACILITY:-onprem}
-      PACKET_ENV: ${PACKET_ENV:-testing}
-      PACKET_VERSION: ${PACKET_VERSION:-ignored}
-      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
-      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
-      PGDATABASE: tinkerbell
-      PGHOST: db
-      PGPASSWORD: tinkerbell
-      PGPORT: 5432
-      PGSSLMODE: disable
-      PGUSER: tinkerbell
-      TINKERBELL_GRPC_AUTHORITY: :42113
-      TINKERBELL_HTTP_AUTHORITY: :42114
-      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
-      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
-    depends_on:
-      tink-server-migration:
-        condition: service_started
-      db:
-        condition: service_healthy
-      tls-gen:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- 127.0.0.1:42114/cert"] # port needs to match TINKERBELL_HTTP_AUTHORITY
-      interval: 5s
-      timeout: 2s
-      retries: 30
-    volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
-    ports:
-      - 42113:42113/tcp
-      - 42114:42114/tcp
-
-  tink-server-migration:
-    image: ${TINK_SERVER_IMAGE}
-    restart: on-failure
-    environment:
-      ONLY_MIGRATION: "true"
-      FACILITY: ${FACILITY:-onprem}
-      PGDATABASE: tinkerbell
-      PGHOST: db
-      PGPASSWORD: tinkerbell
-      PGPORT: 5432
-      PGSSLMODE: disable
-      PGUSER: tinkerbell
-      TINKERBELL_GRPC_AUTHORITY: :42113
-      TINKERBELL_HTTP_AUTHORITY: :42114
-      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
-      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
-
-  db:
-    image: postgres:14-alpine
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: tinkerbell
-      POSTGRES_PASSWORD: tinkerbell
-      POSTGRES_USER: tinkerbell
-    volumes:
-      - postgres_data:/var/lib/postgresql/data:rw
-    ports:
-      - 5432:5432
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tinkerbell"]
-      interval: 1s
-      timeout: 1s
-      retries: 30
-
-  tink-cli:
-    image: ${TINK_CLI_IMAGE}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
-    environment:
-      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-      TINKERBELL_CERT_URL: http://tink-server:42114/cert
-    depends_on:
-      tink-server:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-
-  registry:
-    image: registry:2.7.1
-    init: true
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "512M"
-    restart: unless-stopped
-    network_mode: host
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget --no-check-certificate https://$TINKERBELL_HOST_IP -O -",
-        ]
-      interval: 5s
-      timeout: 1s
-      retries: 5
-    environment:
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
-      REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
-      REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
-    volumes:
-      - certs:/certs/${FACILITY:-onprem}:ro
-      - auth:/auth:rw
-      - registry_data:/var/lib/registry:rw
-    depends_on:
-      tls-gen:
-        condition: service_completed_successfully
-      registry-auth:
-        condition: service_completed_successfully
-
+  ##### Actual services first #####
   boots:
     image: ${BOOTS_SERVER_IMAGE}
     deploy:
@@ -274,25 +37,27 @@ services:
       tink-server:
         condition: service_healthy
 
-  osie-bootloader:
-    image: nginx:alpine
+  db:
+    image: postgres:14-alpine
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: "512M"
     restart: unless-stopped
-    tty: true
-    user: root
-    ports:
-      - 8080:80/tcp
+    environment:
+      POSTGRES_DB: tinkerbell
+      POSTGRES_PASSWORD: tinkerbell
+      POSTGRES_USER: tinkerbell
     volumes:
-      - ./state/webroot:/usr/share/nginx/html/
-    depends_on:
-      osie-work:
-        condition: service_completed_successfully
-      ubuntu-image-setup:
-        condition: service_completed_successfully
+      - postgres_data:/var/lib/postgresql/data:rw
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tinkerbell"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
 
   hegel:
     image: ${HEGEL_SERVER_IMAGE}
@@ -320,6 +85,239 @@ services:
     ports:
       - 50060:50060/tcp
       - 50061:50061/tcp
+
+  registry:
+    image: registry:2.7.1
+    init: true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
+    network_mode: host
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-check-certificate https://$TINKERBELL_HOST_IP -O -",
+        ]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
+      REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
+      REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
+    volumes:
+      - certs:/certs/${FACILITY:-onprem}:ro
+      - auth:/auth:rw
+      - registry_data:/var/lib/registry:rw
+    depends_on:
+      generate-tls-certs:
+        condition: service_completed_successfully
+      generate-registry-auth:
+        condition: service_completed_successfully
+
+  tink-server:
+    image: ${TINK_SERVER_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
+    environment:
+      FACILITY: ${FACILITY:-onprem}
+      PACKET_ENV: ${PACKET_ENV:-testing}
+      PACKET_VERSION: ${PACKET_VERSION:-ignored}
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
+      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
+      PGDATABASE: tinkerbell
+      PGHOST: db
+      PGPASSWORD: tinkerbell
+      PGPORT: 5432
+      PGSSLMODE: disable
+      PGUSER: tinkerbell
+      TINKERBELL_GRPC_AUTHORITY: :42113
+      TINKERBELL_HTTP_AUTHORITY: :42114
+      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
+      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
+    depends_on:
+      db:
+        condition: service_healthy
+      generate-tls-certs:
+        condition: service_completed_successfully
+      db-migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 127.0.0.1:42114/cert"] # port needs to match TINKERBELL_HTTP_AUTHORITY
+      interval: 5s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - certs:/certs/${FACILITY:-onprem}:rw
+    ports:
+      - 42113:42113/tcp
+      - 42114:42114/tcp
+
+  web-assets-server:
+    image: nginx:alpine
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
+    tty: true
+    user: root
+    ports:
+      - 8080:80/tcp
+    volumes:
+      - .//state/webroot:/usr/share/nginx/html/
+    depends_on:
+      fetch-and-convert-ubuntu-img:
+        condition: service_completed_successfully
+      fetch-osie:
+        condition: service_completed_successfully
+
+  ##### One-off setup processes #####
+  create-tink-records:
+    image: ${TINK_CLI_IMAGE}
+    entrypoint: /manifests/exec_in_bash.sh
+    command:
+      [
+        "$TINKERBELL_HARDWARE_MANIFEST",
+        "$TINKERBELL_TEMPLATE_MANIFEST",
+        "/manifests/workflow",
+        "$TINKERBELL_HOST_IP",
+        "$TINKERBELL_CLIENT_IP",
+        "$TINKERBELL_CLIENT_MAC",
+      ]
+    environment:
+      GLUE_SCRIPT_NAME: "/manifests/apply_manifests.sh"
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_CERT_URL: http://tink-server:42114/cert
+    volumes:
+      - .//manifests:/manifests
+    depends_on:
+      db:
+        condition: service_healthy
+      tink-server:
+        condition: service_healthy
+
+  db-migrations:
+    image: ${TINK_SERVER_IMAGE}
+    restart: on-failure
+    environment:
+      ONLY_MIGRATION: "true"
+      FACILITY: ${FACILITY:-onprem}
+      PGDATABASE: tinkerbell
+      PGHOST: db
+      PGPASSWORD: tinkerbell
+      PGPORT: 5432
+      PGSSLMODE: disable
+      PGUSER: tinkerbell
+      TINKERBELL_GRPC_AUTHORITY: :42113
+      TINKERBELL_HTTP_AUTHORITY: :42114
+      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
+      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - certs:/certs/${FACILITY:-onprem}:rw
+
+  fetch-osie:
+    image: bash:4.4
+    entrypoint: /scripts/lastmile.sh
+    command:
+      [
+        "${OSIE_DOWNLOAD_URLS}",
+        "/source",
+        "/source",
+        "/destination",
+        "${TINKERBELL_USE_HOOK:-true}",
+      ]
+    volumes:
+      - .//osie:/scripts
+      - .//state/webroot/misc/osie/current:/source
+      - .//state/webroot/workflow:/destination
+
+  fetch-and-convert-ubuntu-img:
+    image: ubuntu
+    entrypoint: /scripts/setup_ubuntu.sh
+    command:
+      [
+        "https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img",
+        "focal-server-cloudimg-amd64.img",
+        "/destination/focal-server-cloudimg-amd64.raw",
+      ]
+    volumes:
+      - .//ubuntu:/scripts
+      - .//state/webroot:/destination
+
+  generate-registry-auth:
+    image: httpd:2
+    entrypoint: htpasswd
+    working_dir: /auth
+    command:
+      [
+        "-Bbc",
+        ".htpasswd",
+        "${TINKERBELL_REGISTRY_USERNAME:-admin}",
+        "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}",
+      ]
+    volumes:
+      - auth:/auth:rw
+
+  generate-tls-certs:
+    image: cfssl/cfssl
+    entrypoint: /code/tls/generate.sh
+    command: ["$TINKERBELL_HOST_IP"]
+    environment:
+      FACILITY: ${FACILITY:-onprem}
+    volumes:
+      - ./:/code
+      - certs:/certs/${FACILITY:-onprem}:rw
+
+  sync-images-to-local-registry:
+    image: quay.io/containers/skopeo:v1.4.1
+    entrypoint: /registry/upload.sh
+    command:
+      [
+        "${TINKERBELL_REGISTRY_USERNAME:-admin}",
+        "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}",
+        "${TINKERBELL_HOST_IP}",
+        "/registry/registry_images.txt",
+      ]
+    volumes:
+      - .//registry:/registry
+    depends_on:
+      registry:
+        condition: service_healthy
+
+  ##### Debugging/interactive commands #####
+  tink-cli:
+    image: ${TINK_CLI_IMAGE}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "512M"
+    restart: unless-stopped
+    environment:
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_CERT_URL: http://tink-server:42114/cert
+    depends_on:
+      db:
+        condition: service_healthy
+      tink-server:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   certs:
