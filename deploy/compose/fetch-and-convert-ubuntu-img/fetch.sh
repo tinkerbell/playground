@@ -1,48 +1,21 @@
 #!/usr/bin/env bash
-# This script is designed to download a cloud image file (.img) and then convert it to a .raw file.
-# This is purpose built for the Ubuntu Cloud image https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img
-# so that the .raw file can be used in the Tinkerbell action "image2disk": https://artifacthub.io/packages/tbaction/tinkerbell-community/image2disk
+# This script is designed to download a cloud image file (.img) and then convert it to a .raw.gz file.
+# This is purpose built so non-raw cloud image files can be used with the "image2disk" action.
+# See https://artifacthub.io/packages/tbaction/tinkerbell-community/image2disk.
 
-set -xo pipefail
+set -euxo pipefail
 
-install_deps() {
-	apt -y update
-	DEBIAN_FRONTEND=noninteractive apt -y install qemu-utils wget gzip
-}
+image_url=$1
+file=$2/${image_url##*/}
+file=${file%.*}.raw.gz
 
-download_image() {
-	local url="$1"
-	wget "${url}"
-}
+if ! which pigz qemu-img &>/dev/null; then
+	apk add --update pigz qemu-img
+fi
 
-img_to_raw() {
-	local img_file="$1"
-	local raw_file="$2"
-	qemu-img convert "${img_file}" -O raw "${raw_file}"
-}
-
-compress_raw() {
-	local raw_file="$1"
-	gzip "${raw_file}"
-}
-
-cleanup() {
-	local img_file="$1"
-	rm -rf "${img_file}"
-}
-
-main() {
-	local image_url="$1"
-	local img_file="$2"
-	local raw_file="$3"
-
-	if [ ! -f "${raw_file}.gz" ]; then
-		install_deps
-		download_image "${image_url}"
-		img_to_raw "${img_file}" "${raw_file}"
-		compress_raw "${raw_file}"
-		cleanup "${img_file}"
-	fi
-}
-
-main "$1" "$2" "$3"
+if ! [[ -f $file ]]; then
+	wget "$image_url" -O image.img
+	qemu-img convert -O raw image.img image.raw
+	pigz <image.raw >"$file"
+	rm -f image.img image.raw
+fi

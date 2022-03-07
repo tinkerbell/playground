@@ -238,9 +238,9 @@ services:
       - ./state/webroot/misc/osie/current:/workdir
 
   fetch-and-convert-ubuntu-img:
-    image: ubuntu
+    image: bash:4.4
     entrypoint: /app/fetch.sh
-    command: https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img focal-server-cloudimg-amd64.img /destination/focal-server-cloudimg-amd64.raw
+    command: https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img /destination
     volumes:
       - ./fetch-and-convert-ubuntu-img/fetch.sh:/app/fetch.sh:ro
       - ./state/webroot:/destination
