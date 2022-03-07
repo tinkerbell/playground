@@ -13,24 +13,24 @@ services:
     environment:
       API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN:-ignored}
       API_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN:-ignored}
+      BOOTP_BIND: $TINKERBELL_HOST_IP:67
+      DATA_MODEL_VERSION: 1
+      DNS_SERVERS: 8.8.8.8
+      DOCKER_REGISTRY: $TINKERBELL_HOST_IP
       FACILITY_CODE: ${FACILITY:-onprem}
+      HTTP_BIND: $TINKERBELL_HOST_IP:80
+      MIRROR_HOST: ${TINKERBELL_HOST_IP:-127.0.0.1}:8080
       PACKET_ENV: ${PACKET_ENV:-testing}
       PACKET_VERSION: ${PACKET_VERSION:-ignored}
-      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
-      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
-      MIRROR_HOST: ${TINKERBELL_HOST_IP:-127.0.0.1}:8080
-      DNS_SERVERS: 8.8.8.8
       PUBLIC_IP: $TINKERBELL_HOST_IP
-      BOOTP_BIND: $TINKERBELL_HOST_IP:67
-      HTTP_BIND: $TINKERBELL_HOST_IP:80
+      REGISTRY_PASSWORD: ${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}
+      REGISTRY_USERNAME: ${TINKERBELL_REGISTRY_USERNAME:-admin}
+      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
       SYSLOG_BIND: $TINKERBELL_HOST_IP:514
       TFTP_BIND: $TINKERBELL_HOST_IP:69
-      DOCKER_REGISTRY: $TINKERBELL_HOST_IP
-      REGISTRY_USERNAME: ${TINKERBELL_REGISTRY_USERNAME:-admin}
-      REGISTRY_PASSWORD: ${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}
-      TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
       TINKERBELL_CERT_URL: http://$TINKERBELL_HOST_IP:42114/cert
-      DATA_MODEL_VERSION: 1
+      TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
     extra_hosts:
       - "tink-server:$TINKERBELL_HOST_IP"
     depends_on:
@@ -68,17 +68,17 @@ services:
           memory: "512M"
     restart: unless-stopped
     environment:
-      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
-      ROLLBAR_DISABLE: 1
-      PACKET_ENV: testing
-      PACKET_VERSION: ${PACKET_VERSION:-ignored}
+      CUSTOM_ENDPOINTS: '{"/metadata":""}'
+      DATA_MODEL_VERSION: 1
       GRPC_PORT: 42115
       HEGEL_FACILITY: ${FACILITY:-onprem}
       HEGEL_USE_TLS: 0
-      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      PACKET_ENV: testing
+      PACKET_VERSION: ${PACKET_VERSION:-ignored}
+      ROLLBAR_DISABLE: 1
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
-      DATA_MODEL_VERSION: 1
-      CUSTOM_ENDPOINTS: '{"/metadata":""}'
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
     depends_on:
       tink-server:
         condition: service_healthy
@@ -107,14 +107,14 @@ services:
       retries: 5
     environment:
       REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
       REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
       REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
-      REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:ro
       - auth:/auth:rw
+      - certs:/certs/${FACILITY:-onprem}:ro
       - registry_data:/var/lib/registry:rw
     depends_on:
       generate-tls-certs:
@@ -134,18 +134,18 @@ services:
       FACILITY: ${FACILITY:-onprem}
       PACKET_ENV: ${PACKET_ENV:-testing}
       PACKET_VERSION: ${PACKET_VERSION:-ignored}
-      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
-      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
       PGDATABASE: tinkerbell
       PGHOST: db
       PGPASSWORD: tinkerbell
       PGPORT: 5432
       PGSSLMODE: disable
       PGUSER: tinkerbell
+      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
+      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
+      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
-      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
-      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
     depends_on:
       db:
         condition: service_healthy
@@ -177,7 +177,7 @@ services:
     ports:
       - 8080:80/tcp
     volumes:
-      - .//state/webroot:/usr/share/nginx/html/
+      - ./state/webroot:/usr/share/nginx/html/
     depends_on:
       fetch-and-convert-ubuntu-img:
         condition: service_completed_successfully
@@ -199,10 +199,10 @@ services:
       ]
     environment:
       GLUE_SCRIPT_NAME: "/manifests/apply_manifests.sh"
-      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
     volumes:
-      - .//manifests:/manifests
+      - ./manifests:/manifests
     depends_on:
       db:
         condition: service_healthy
@@ -213,18 +213,18 @@ services:
     image: ${TINK_SERVER_IMAGE}
     restart: on-failure
     environment:
-      ONLY_MIGRATION: "true"
       FACILITY: ${FACILITY:-onprem}
+      ONLY_MIGRATION: "true"
       PGDATABASE: tinkerbell
       PGHOST: db
       PGPASSWORD: tinkerbell
       PGPORT: 5432
       PGSSLMODE: disable
       PGUSER: tinkerbell
+      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
+      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
-      TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
-      TINK_AUTH_PASSWORD: ${TINKERBELL_TINK_PASSWORD:-admin}
     depends_on:
       db:
         condition: service_healthy
@@ -243,9 +243,9 @@ services:
         "${TINKERBELL_USE_HOOK:-true}",
       ]
     volumes:
-      - .//osie:/scripts
-      - .//state/webroot/misc/osie/current:/source
-      - .//state/webroot/workflow:/destination
+      - ./osie:/scripts
+      - ./state/webroot/misc/osie/current:/source
+      - ./state/webroot/workflow:/destination
 
   fetch-and-convert-ubuntu-img:
     image: ubuntu
@@ -257,8 +257,8 @@ services:
         "/destination/focal-server-cloudimg-amd64.raw",
       ]
     volumes:
-      - .//ubuntu:/scripts
-      - .//state/webroot:/destination
+      - ./state/webroot:/destination
+      - ./ubuntu:/scripts
 
   generate-registry-auth:
     image: httpd:2
@@ -281,8 +281,8 @@ services:
     environment:
       FACILITY: ${FACILITY:-onprem}
     volumes:
-      - ./:/code
       - certs:/certs/${FACILITY:-onprem}:rw
+      - ./:/code
 
   sync-images-to-local-registry:
     image: quay.io/containers/skopeo:v1.4.1
@@ -295,7 +295,7 @@ services:
         "/registry/registry_images.txt",
       ]
     volumes:
-      - .//registry:/registry
+      - ./registry:/registry
     depends_on:
       registry:
         condition: service_healthy
@@ -310,8 +310,8 @@ services:
           memory: "512M"
     restart: unless-stopped
     environment:
-      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
     depends_on:
       db:
         condition: service_healthy
@@ -319,7 +319,7 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_data:
-  certs:
   auth:
+  certs:
+  postgres_data:
   registry_data:
