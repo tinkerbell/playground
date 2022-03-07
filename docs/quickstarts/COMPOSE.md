@@ -181,7 +181,7 @@ You will need to bring your own machines to provision.
    ```bash
    # watch the workflow events and status for workflow completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(cat create-tink-records/manifests/workflow/workflow_id.txt); docker-compose exec tink-cli watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+   wid=$(docker-compose exec tink-cli tink workflow get --no-headers | awk '/^\|/ {print $2}'); docker-compose exec tink-cli watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
    ```
 
    <details>

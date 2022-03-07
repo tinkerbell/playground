@@ -190,14 +190,17 @@ services:
   ##### One-off setup processes #####
   create-tink-records:
     image: ${TINK_CLI_IMAGE}
-    command: /app/exec_in_bash.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" /manifests/workflow "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
+    command: /app/create.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
     environment:
-      GLUE_SCRIPT_NAME: /app/create.sh
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
+      TINKERBELL_CLIENT_IP: $TINKERBELL_CLIENT_IP
+      TINKERBELL_CLIENT_MAC: $TINKERBELL_CLIENT_MAC
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_HARDWARE_MANIFEST: $TINKERBELL_HARDWARE_MANIFEST
+      TINKERBELL_HOST_IP: $TINKERBELL_HOST_IP
+      TINKERBELL_TEMPLATE_MANIFEST: $TINKERBELL_TEMPLATE_MANIFEST
     volumes:
-      - ./create-tink-records/exec_in_bash:/app/exec_in_bash.sh
-      - ./create-tink-records/create.sh:/app/create.sh
+      - ./create-tink-records/create.sh:/app/create.sh:ro
       - ./create-tink-records/manifests:/manifests
     depends_on:
       db:
