@@ -54,7 +54,7 @@ The sandbox architecture can be broken down into 3 distinct groups.
 
 2. Support Services
 
-   - [OSIE/Hook File Server](https://docs.tinkerbell.org/services/osie/)
+   - [Hook File Server](https://docs.tinkerbell.org/services/osie/)
      - Basic file server for kernel, initramfs, self signed TLS pem file, Ubuntu cloud image, OSIE scripts
    - [Container Registry](https://docs.tinkerbell.org/services/registry/)
      - Local/Internal container registry required for Tink Worker
@@ -79,9 +79,8 @@ The sandbox architecture can be broken down into 3 distinct groups.
        ```bash
        quay.io/tinkerbell/tink-worker:latest tink-worker:latest
        ```
-   - OSIE/Hook Setup
-     - This [script](../deploy/compose/fetch-osie/fetch.sh) handles downloading Hook (or OSIE), extracting it, and placing it in the path ([deploy/compose/state/misc/osie/current](../deploy/compose/state/misc/osie/current)) that the compose service `osie-bootloader` uses for serving files.
-       To use OSIE instead of Hook, update the `deploy/compose/.env` by setting `OSIE_DOWNLOAD_URL` to an OSIE download URL and by setting `TINKERBELL_USE_HOOK` to false.
+   - Hook Setup
+     - This [script](../deploy/compose/fetch-osie/fetch.sh) handles downloading Hook, extracting it, and placing it in the path ([deploy/compose/state/misc/osie/current](../deploy/compose/state/misc/osie/current)) that the compose service `osie-bootloader` uses for serving files.
        FYI, currently only an x86_64 Hook is published so only x86_64 machines can be provisioned with the sandbox using Hook.
    - Ubuntu Image Setup
      - This [script](../deploy/compose/fetch-and-convert-ubuntu-img/fetch.sh) handles downloading the Ubuntu focal cloud `.img` file and [converting it to a raw image](https://docs.tinkerbell.org/deploying-operating-systems/examples-ubuntu/).

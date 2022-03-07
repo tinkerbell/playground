@@ -232,11 +232,10 @@ services:
 
   fetch-osie:
     image: bash:4.4
-    command: /app/fetch.sh "${OSIE_DOWNLOAD_URLS}" /source /source /destination "${TINKERBELL_USE_HOOK:-true}"
+    command: /app/fetch.sh ${OSIE_DOWNLOAD_URLS} /workdir
     volumes:
-      - ./fetch-osie/:/app/:ro
-      - ./state/webroot/misc/osie/current:/source
-      - ./state/webroot/workflow:/destination
+      - ./fetch-osie/fetch.sh:/app/fetch.sh:ro
+      - ./state/webroot/misc/osie/current:/workdir
 
   fetch-and-convert-ubuntu-img:
     image: ubuntu
