@@ -190,13 +190,15 @@ services:
   ##### One-off setup processes #####
   create-tink-records:
     image: ${TINK_CLI_IMAGE}
-    command: /manifests/exec_in_bash.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" /manifests/workflow "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
+    command: /app/exec_in_bash.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" /manifests/workflow "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
     environment:
-      GLUE_SCRIPT_NAME: "/manifests/apply_manifests.sh"
+      GLUE_SCRIPT_NAME: /app/create.sh
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
     volumes:
-      - ./manifests:/manifests
+      - ./create-tink-records/exec_in_bash:/app/exec_in_bash.sh
+      - ./create-tink-records/create.sh:/app/create.sh
+      - ./create-tink-records/manifests:/manifests
     depends_on:
       db:
         condition: service_healthy
@@ -227,19 +229,19 @@ services:
 
   fetch-osie:
     image: bash:4.4
-    command: /scripts/lastmile.sh "${OSIE_DOWNLOAD_URLS}" /source /source /destination "${TINKERBELL_USE_HOOK:-true}"
+    command: /app/fetch.sh "${OSIE_DOWNLOAD_URLS}" /source /source /destination "${TINKERBELL_USE_HOOK:-true}"
     volumes:
-      - ./osie:/scripts
+      - ./fetch-osie/:/app/:ro
       - ./state/webroot/misc/osie/current:/source
       - ./state/webroot/workflow:/destination
 
   fetch-and-convert-ubuntu-img:
     image: ubuntu
-    entrypoint: /scripts/setup_ubuntu.sh
+    entrypoint: /app/fetch.sh
     command: https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img focal-server-cloudimg-amd64.img /destination/focal-server-cloudimg-amd64.raw
     volumes:
+      - ./fetch-and-convert-ubuntu-img/fetch.sh:/app/fetch.sh:ro
       - ./state/webroot:/destination
-      - ./ubuntu:/scripts
 
   generate-registry-auth:
     image: httpd:2
@@ -251,20 +253,21 @@ services:
 
   generate-tls-certs:
     image: cfssl/cfssl
-    entrypoint: /code/tls/generate.sh
+    entrypoint: /app/generate.sh
     command: "$TINKERBELL_HOST_IP"
     environment:
       FACILITY: ${FACILITY:-onprem}
     volumes:
       - certs:/certs/${FACILITY:-onprem}:rw
-      - ./:/code
+      - ./generate-tls-certs/:/app:ro
+      - ./state/webroot/workflow/:/workflow/
 
   sync-images-to-local-registry:
     image: quay.io/containers/skopeo:v1.4.1
     entrypoint: /bin/bash
-    command: /registry/upload.sh "${TINKERBELL_REGISTRY_USERNAME:-admin}" "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}" "${TINKERBELL_HOST_IP}" /registry/registry_images.txt
+    command: /app/upload.sh "${TINKERBELL_REGISTRY_USERNAME:-admin}" "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}" "${TINKERBELL_HOST_IP}" /app/registry_images.txt
     volumes:
-      - ./registry:/registry
+      - ./sync-images-to-local-registry:/app:ro
     depends_on:
       registry:
         condition: service_healthy

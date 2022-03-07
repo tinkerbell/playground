@@ -103,7 +103,7 @@ resource "null_resource" "setup" {
     inline = [
       "cd /root && tar zxvf /root/compose.tar.gz -C /root/sandbox",
       "cd /root/sandbox/compose && TINKERBELL_CLIENT_MAC=${metal_device.tink_worker.ports[1].mac} TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json docker-compose up -d",
-      "cd /root/sandbox/compose && bash tls/trust.sh ${metal_device.tink_provisioner.network[0].address}",
+      "cd /root/sandbox/compose && bash generate-tls-certs/trust.sh ${metal_device.tink_provisioner.network[0].address}",
     ]
   }
 }

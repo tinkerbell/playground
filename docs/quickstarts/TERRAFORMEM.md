@@ -52,7 +52,7 @@ This option will also show you how to create a machine to provision.
    ssh root@139.178.69.231
    # watch the workflow events and status for workflow completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(cat sandbox/compose/manifests/workflow/workflow_id.txt); docker exec -it compose_tink-cli_1 watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+   wid=$(cat sandbox/compose/create-tink-records/manifests/workflow/workflow_id.txt); docker exec -it compose_tink-cli_1 watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
    ```
 
    <details>

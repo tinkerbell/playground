@@ -81,7 +81,7 @@ Vagrant.configure("2") do |config|
       compose_version: "1.29.2",
       yml: "/vagrant/compose/docker-compose.yml",
       run: "always"
-    provisioner.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
+    provisioner.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/generate-tls-certs/trust.sh", args: [PROVISIONER_IP]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|

@@ -5,7 +5,7 @@
 # 2. /certs/${FACILITY:-onprem}/server-crt.pem (server TLS certificate)
 # 3. /certs/${FACILITY:-onprem}/server-key.pem (server TLS private key)
 # 4. /certs/${FACILITY:-onprem}/bundle.pem (server TLS certificate; backward compat)
-# 5. /code/state/webroot/workflow/ca.pem (CA TLS public certificate)
+# 5. /workflow/ca.pem (CA TLS public certificate)
 
 set -euxo pipefail
 
@@ -26,8 +26,8 @@ gen() {
 	local ca_crt_destination="$1"
 	local server_crt_destination="$2"
 	local server_key_destination="$3"
-	cfssl gencert -initca /code/tls/ca-csr.json | cfssljson -bare ca -
-	cfssl gencert -config /code/tls/ca-config.json -ca ca.pem -ca-key ca-key.pem -profile server /code/tls/csr.json | cfssljson -bare server
+	cfssl gencert -initca /app/ca-csr.json | cfssljson -bare ca -
+	cfssl gencert -config /app/ca-config.json -ca ca.pem -ca-key ca-key.pem -profile server /app/csr.json | cfssljson -bare server
 	mv ca.pem "${ca_crt_destination}"
 	mv server.pem "${server_crt_destination}"
 	mv server-key.pem "${server_key_destination}"
@@ -36,8 +36,8 @@ gen() {
 # main orchestrates the process
 main() {
 	local sans_ip="$1"
-	local csr_file="/code/tls/csr.json"
-	local ca_crt_workflow_file="/code/state/webroot/workflow/ca.pem"
+	local csr_file="/app/csr.json"
+	local ca_crt_workflow_file="/workflow/ca.pem"
 	local ca_crt_file="/certs/${FACILITY:-onprem}/ca-crt.pem"
 	local server_crt_file="/certs/${FACILITY:-onprem}/server-crt.pem"
 	local server_key_file="/certs/${FACILITY:-onprem}/server-key.pem"
