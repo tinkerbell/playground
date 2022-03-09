@@ -10,21 +10,21 @@ set -euxo pipefail
 # update_hw_ip_addr the hardware json with a specified IP address
 update_hw_ip_addr() {
 	local ip_address=$1
-	local hw_file=$2
+	local hardware_file=$2
 	local tmp
-	tmp=$(mktemp "${hw_file}.XXXXXXXX")
-	jq -S '.network.interfaces[0].dhcp.ip.address = "'"${ip_address}"'"' "${hw_file}" | tee "${tmp}"
-	mv "${tmp}" "${hw_file}"
+	tmp=$(mktemp "${hardware_file}.XXXXXXXX")
+	jq -S '.network.interfaces[0].dhcp.ip.address = "'"${ip_address}"'"' "${hardware_file}" | tee "${tmp}"
+	mv "${tmp}" "${hardware_file}"
 }
 
 # update_hw_mac_addr the hardware json with a specified MAC address
 update_hw_mac_addr() {
 	local mac_address=$1
-	local hw_file=$2
+	local hardware_file=$2
 	local tmp
-	tmp=$(mktemp "${hw_file}.XXXXXXXX")
-	jq -S '.network.interfaces[0].dhcp.mac = "'"${mac_address}"'"' "${hw_file}" | tee "${tmp}"
-	mv "${tmp}" "${hw_file}"
+	tmp=$(mktemp "${hardware_file}.XXXXXXXX")
+	jq -S '.network.interfaces[0].dhcp.mac = "'"${mac_address}"'"' "${hardware_file}" | tee "${tmp}"
+	mv "${tmp}" "${hardware_file}"
 }
 
 # hardware creates a hardware record in tink from the file_loc provided
@@ -69,17 +69,27 @@ workflow() {
 }
 
 # main runs the creation functions in order
-hw_file=$1
+hardware_file=$1
 template_file=$2
 ip_address=$3
 client_ip_address=$4
 client_mac_address=$5
 
-[[ -z ${hw_file} ]] && echo "hw_file arg is empty" >&2 && exit 1
+[[ -z ${hardware_file} ]] && echo "hardware_file arg is empty" >&2 && exit 1
 [[ -z ${template_file} ]] && echo "template_file arg is empty" >&2 && exit 1
 [[ -z ${ip_address} ]] && echo "ip_address arg is empty" >&2 && exit 1
 [[ -z ${client_ip_address} ]] && echo "client_ip_address arg is empty" >&2 && exit 1
 [[ -z ${client_mac_address} ]] && echo "client_mac_address arg is empty" >&2 && exit 1
+
+t=$(mktemp hardware-XXXXXXXX)
+cat "$hardware_file" >"$t"
+hardware_file=$t
+
+t=$(mktemp template-XXXXXXXX)
+cat "$template_file" >"$t"
+template_file=$t
+
+trap 'rm -f "$hardware_file" "$template_file"' EXIT
 
 client_mac_address=$(echo "$client_mac_address" | tr 'A-F' 'a-f')
 
@@ -87,9 +97,9 @@ if ! which jq &>/dev/null; then
 	apk add jq
 fi
 
-update_hw_ip_addr "${client_ip_address}" "${hw_file}"
-update_hw_mac_addr "${client_mac_address}" "${hw_file}"
-hardware "${hw_file}"
+update_hw_ip_addr "${client_ip_address}" "${hardware_file}"
+update_hw_mac_addr "${client_mac_address}" "${hardware_file}"
+hardware "${hardware_file}"
 update_template_img_ip "${ip_address}" "${template_file}"
 template "${template_file}"
 workflow "${client_mac_address}"

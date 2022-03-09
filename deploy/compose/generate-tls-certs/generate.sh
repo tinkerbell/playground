@@ -13,7 +13,7 @@ set -euxo pipefail
 update_csr() {
 	local sans_ip="$1"
 	local csr_file="$2"
-	sed -i "/\"hosts\".*/a \    \"${sans_ip}\"," "${csr_file}"
+	sed "/\"hosts\".*/a \    \"${sans_ip}\"," /app/csr.json >"${csr_file}"
 }
 
 # cleanup will remove unneeded files
@@ -36,7 +36,7 @@ gen() {
 # main orchestrates the process
 main() {
 	local sans_ip="$1"
-	local csr_file="/app/csr.json"
+	local csr_file="/certs/${FACILITY:-onprem}/csr.json"
 	local ca_crt_workflow_file="/workflow/ca.pem"
 	local ca_crt_file="/certs/${FACILITY:-onprem}/ca-crt.pem"
 	local server_crt_file="/certs/${FACILITY:-onprem}/server-crt.pem"
