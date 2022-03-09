@@ -4,43 +4,10 @@
 PROVISIONER_IP = "192.168.56.4"
 MACHINE1_IP = "192.168.56.43"
 
-$script = <<-SCRIPT
-ip addr add 192.168.56.4/24 dev eth1
-ip link set dev eth1 up
-SCRIPT
-
 unless Vagrant.has_plugin?("vagrant-docker-compose")
   system("vagrant plugin install vagrant-docker-compose")
   puts "Dependencies installed, please try the command again."
   exit
-end
-
-def provision_provisioner(config, provider_name)
-  if provider_name == "virtualbox"
-    manifest_suffix = ""
-  else
-    manifest_suffix = "-#{provider_name}"
-  end
-
-  config.vm.provision "shell", name: "Setup .env", inline: <<-SCRIPT.gsub(/^ {4}/, "")
-    set -x
-    read -r -d '' lines <<-'EOF'
-        TINKERBELL_HOST_IP=#{PROVISIONER_IP}
-        TINKERBELL_CLIENT_IP=#{MACHINE1_IP}
-        TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware#{manifest_suffix}.json
-        TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu#{manifest_suffix}.yaml
-    EOF
-    while read -r line; do
-        grep -q "$line" /vagrant/compose/.env && continue
-        echo "$line" >> /vagrant/compose/.env
-    done <<<"$lines"
-  SCRIPT
-
-  config.vm.provision :docker_compose,
-    compose_version: "1.29.2",
-    yml: "/vagrant/compose/docker-compose.yml",
-    run: "always"
-  config.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
 end
 
 Vagrant.configure("2") do |config|
@@ -51,8 +18,6 @@ Vagrant.configure("2") do |config|
   config.vm.define "provisioner" do |provisioner|
     provisioner.vm.box = "generic/ubuntu2004"
     provisioner.vm.synced_folder "../", "/vagrant"
-    provisioner.vm.provision :docker
-    provisioner.vm.provision "shell", inline: $script
     provisioner.vm.network "private_network", ip: PROVISIONER_IP,
                                               libvirt__network_name: "tink_network",
                                               libvirt__host_ip: "192.168.56.1",
@@ -64,15 +29,46 @@ Vagrant.configure("2") do |config|
       v.memory = 2048
       v.cpus = 2
       override.vm.synced_folder "../", "/vagrant"
-      provision_provisioner(override, "virtualbox")
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
       override.vm.synced_folder "../", "/vagrant", type: "rsync"
-      provision_provisioner(override, "libvirt")
     end
+
+    provisioner.vm.provision "shell", name: "Setup eth1", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      ip addr show dev eth1 | grep -q #{PROVISIONER_IP} && exit 0
+      ip addr add #{PROVISIONER_IP}/24 dev eth1
+      ip link set dev eth1 up
+    SCRIPT
+
+    provisioner.vm.provision "shell", name: "Setup provider specific overrides", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      manifest_suffix=""
+      if lsblk | grep -q vda; then
+        # assuming vda is only in libvirt, temporary
+        manifest_suffix=-libvirt    
+      fi
+      read -r -d '' lines <<-'EOF'
+      	TINKERBELL_HOST_IP=#{PROVISIONER_IP}
+      	TINKERBELL_CLIENT_IP=#{MACHINE1_IP}
+      	TINKERBELL_HARDWARE_MANIFEST="/manifests/hardware/hardware$manifest_suffix.json"
+      	TINKERBELL_TEMPLATE_MANIFEST="/manifests/template/ubuntu$manifest_suffix.yaml"
+      EOF
+      while read -r line; do
+      	grep -q "$line" /vagrant/compose/.env && continue
+      	echo "$line" >>/vagrant/compose/.env
+      done <<<"$lines"
+    SCRIPT
+
+    provisioner.vm.provision :docker
+    provisioner.vm.provision :docker_compose,
+      compose_version: "1.29.2",
+      yml: "/vagrant/compose/docker-compose.yml",
+      run: "always"
+    provisioner.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
