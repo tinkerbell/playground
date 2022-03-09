@@ -20,6 +20,7 @@ mkShell {
     terraform_0_14
     gpgme
     packer
+    rufo
     vagrant
   ];
 }
