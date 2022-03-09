@@ -16,8 +16,8 @@ unless Vagrant.has_plugin?("vagrant-docker-compose")
 end
 
 def provision_provisioner(config, provider_name)
-  if provider_name == 'virtualbox'
-    manifest_suffix = ''
+  if provider_name == "virtualbox"
+    manifest_suffix = ""
   else
     manifest_suffix = "-#{provider_name}"
   end
@@ -30,7 +30,7 @@ def provision_provisioner(config, provider_name)
       "TINKERBELL_CLIENT_IP": MACHINE1_IP,
       "REPO_TOP_LEVEL": "/vagrant/compose",
       "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware#{manifest_suffix}.json",
-      "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu#{manifest_suffix}.yaml"
+      "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu#{manifest_suffix}.yaml",
     }
   config.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
 end
@@ -42,60 +42,59 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "provisioner" do |provisioner|
     provisioner.vm.box = "generic/ubuntu2004"
-    provisioner.vm.synced_folder '../', '/vagrant'
+    provisioner.vm.synced_folder "../", "/vagrant"
     provisioner.vm.provision :docker
     provisioner.vm.provision "shell", inline: $script
     provisioner.vm.network "private_network", ip: PROVISIONER_IP,
-      libvirt__network_name: "tink_network",
-      libvirt__host_ip: '192.168.56.1',
-      libvirt__netmask: "255.255.255.0",
-      libvirt__dhcp_enabled: false,
-      auto_config: false
+                                              libvirt__network_name: "tink_network",
+                                              libvirt__host_ip: "192.168.56.1",
+                                              libvirt__netmask: "255.255.255.0",
+                                              libvirt__dhcp_enabled: false,
+                                              auto_config: false
 
     provisioner.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
-      override.vm.synced_folder '../', '/vagrant'
-      provision_provisioner(override, 'virtualbox')
+      override.vm.synced_folder "../", "/vagrant"
+      provision_provisioner(override, "virtualbox")
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
-      override.vm.synced_folder '../', '/vagrant', type: 'rsync'
-      provision_provisioner(override, 'libvirt')
+      override.vm.synced_folder "../", "/vagrant", type: "rsync"
+      provision_provisioner(override, "libvirt")
     end
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
-
     machine1.ssh.insert_key = false
     machine1.vm.boot_timeout = 10
-    machine1.vm.synced_folder '.', '/vagrant', disabled: true
+    machine1.vm.synced_folder ".", "/vagrant", disabled: true
     machine1.vm.network :private_network, ip: MACHINE1_IP,
-          mac: "0800279EF53A",
-          adapter: 1,
-          libvirt__network_name: "tink_network",
-          libvirt__dhcp_enabled: false,
-          libvirt__forward_mode: 'nat'
+                                          mac: "0800279EF53A",
+                                          adapter: 1,
+                                          libvirt__network_name: "tink_network",
+                                          libvirt__dhcp_enabled: false,
+                                          libvirt__forward_mode: "nat"
 
     machine1.vm.provider "libvirt" do |v|
-      v.storage :file, :size => '20G'
+      v.storage :file, :size => "20G"
       v.memory = 4096
       v.cpus = 2
-      v.boot 'hd'
-      v.boot 'network'
-      v.graphics_ip = '0.0.0.0'
-      v.machine_arch = 'x86_64'
+      v.boot "hd"
+      v.boot "network"
+      v.graphics_ip = "0.0.0.0"
+      v.machine_arch = "x86_64"
     end
 
     machine1.vm.provider "virtualbox" do |v, override|
-      override.vm.box = 'jtyr/pxe'
+      override.vm.box = "jtyr/pxe"
       v.memory = 2048
       v.cpus = 2
       v.gui = true
-      v.customize ['modifyvm', :id, '--nic1', 'hostonly', '--nic2', 'nat', '--boot1', 'disk', '--boot2', 'net']
-      v.customize ['setextradata', :id, 'GUI/ScaleFactor', '3.0']
+      v.customize ["modifyvm", :id, "--nic1", "hostonly", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+      v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
     end
   end
