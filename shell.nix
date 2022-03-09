@@ -11,6 +11,7 @@ with pkgs;
 
 mkShell {
   buildInputs = [
+    docker-compose
     go
     nodePackages.prettier
     jq
