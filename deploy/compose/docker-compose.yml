@@ -44,7 +44,7 @@ services:
       POSTGRES_PASSWORD: tinkerbell
       POSTGRES_USER: tinkerbell
     volumes:
-      - postgres_data:/var/lib/postgresql/data:rw
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - 5432:5432
     deploy:
@@ -100,9 +100,9 @@ services:
     init: true
     network_mode: host
     volumes:
-      - auth:/auth:rw
+      - auth:/auth:ro
       - certs:/certs/${FACILITY:-onprem}:ro
-      - registry_data:/var/lib/registry:rw
+      - registry_data:/var/lib/registry
     depends_on:
       generate-tls-certs:
         condition: service_completed_successfully
@@ -141,7 +141,7 @@ services:
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
+      - certs:/certs/${FACILITY:-onprem}:ro
     ports:
       - 42113:42113/tcp
       - 42114:42114/tcp
@@ -174,7 +174,7 @@ services:
     ports:
       - 8080:80/tcp
     volumes:
-      - ./state/webroot:/usr/share/nginx/html/
+      - ./state/webroot/:/usr/share/nginx/html/:ro
     depends_on:
       fetch-and-convert-ubuntu-img:
         condition: service_completed_successfully
@@ -201,7 +201,7 @@ services:
       TINKERBELL_TEMPLATE_MANIFEST: $TINKERBELL_TEMPLATE_MANIFEST
     volumes:
       - ./create-tink-records/create.sh:/app/create.sh:ro
-      - ./create-tink-records/manifests:/manifests
+      - ./create-tink-records/manifests:/manifests:ro
     depends_on:
       db:
         condition: service_healthy
@@ -224,7 +224,7 @@ services:
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
+      - certs:/certs/${FACILITY:-onprem}:ro
     depends_on:
       db:
         condition: service_healthy
@@ -251,7 +251,7 @@ services:
     command: -Bbc .htpasswd "${TINKERBELL_REGISTRY_USERNAME:-admin}" "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}"
     working_dir: /auth
     volumes:
-      - auth:/auth:rw
+      - auth:/auth
 
   generate-tls-certs:
     image: cfssl/cfssl
@@ -260,7 +260,7 @@ services:
     environment:
       FACILITY: ${FACILITY:-onprem}
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:rw
+      - certs:/certs/${FACILITY:-onprem}
       - ./generate-tls-certs/:/app:ro
       - ./state/webroot/workflow/:/workflow/
 
