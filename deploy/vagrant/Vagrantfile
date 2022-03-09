@@ -21,16 +21,25 @@ def provision_provisioner(config, provider_name)
   else
     manifest_suffix = "-#{provider_name}"
   end
+
+  config.vm.provision "shell", name: "Setup .env", inline: <<-SCRIPT.gsub(/^ {4}/, "")
+    set -x
+    read -r -d '' lines <<-'EOF'
+        TINKERBELL_HOST_IP=#{PROVISIONER_IP}
+        TINKERBELL_CLIENT_IP=#{MACHINE1_IP}
+        TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware#{manifest_suffix}.json
+        TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu#{manifest_suffix}.yaml
+    EOF
+    while read -r line; do
+        grep -q "$line" /vagrant/compose/.env && continue
+        echo "$line" >> /vagrant/compose/.env
+    done <<<"$lines"
+  SCRIPT
+
   config.vm.provision :docker_compose,
     compose_version: "1.29.2",
     yml: "/vagrant/compose/docker-compose.yml",
-    run: "always",
-    env: {
-      "TINKERBELL_HOST_IP": PROVISIONER_IP,
-      "TINKERBELL_CLIENT_IP": MACHINE1_IP,
-      "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware#{manifest_suffix}.json",
-      "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu#{manifest_suffix}.yaml",
-    }
+    run: "always"
   config.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
 end
 
