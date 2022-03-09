@@ -7,7 +7,7 @@ services:
     environment:
       FACILITY: ${FACILITY:-onprem}
     volumes:
-      - ${REPO_TOP_LEVEL:-.}:/code
+      - ./:/code
       - certs:/certs/${FACILITY:-onprem}:rw
 
   # User creds for the registry
@@ -38,9 +38,9 @@ services:
         "${TINKERBELL_USE_HOOK:-true}",
       ]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/osie:/scripts
-      - ${REPO_TOP_LEVEL:-.}/state/webroot/misc/osie/current:/source
-      - ${REPO_TOP_LEVEL:-.}/state/webroot/workflow:/destination
+      - ./osie:/scripts
+      - ./state/webroot/misc/osie/current:/source
+      - ./state/webroot/workflow:/destination
 
   # Uploads images in /registry/registry_images.txt to the local registry
   images-to-local-registry:
@@ -54,7 +54,7 @@ services:
         "/registry/registry_images.txt",
       ]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/registry:/registry
+      - ./registry:/registry
     depends_on:
       registry:
         condition: service_healthy
@@ -77,7 +77,7 @@ services:
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/manifests:/manifests
+      - ./manifests:/manifests
     depends_on:
       tink-server:
         condition: service_healthy
@@ -95,8 +95,8 @@ services:
         "/destination/focal-server-cloudimg-amd64.raw",
       ]
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/ubuntu:/scripts
-      - ${REPO_TOP_LEVEL:-.}/state/webroot:/destination
+      - ./ubuntu:/scripts
+      - ./state/webroot:/destination
 
   tink-server:
     image: ${TINK_SERVER_IMAGE}
@@ -287,7 +287,7 @@ services:
     ports:
       - 8080:80/tcp
     volumes:
-      - ${REPO_TOP_LEVEL:-.}/state/webroot:/usr/share/nginx/html/
+      - ./state/webroot:/usr/share/nginx/html/
     depends_on:
       osie-work:
         condition: service_completed_successfully

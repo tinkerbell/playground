@@ -28,7 +28,6 @@ def provision_provisioner(config, provider_name)
     env: {
       "TINKERBELL_HOST_IP": PROVISIONER_IP,
       "TINKERBELL_CLIENT_IP": MACHINE1_IP,
-      "REPO_TOP_LEVEL": "/vagrant/compose",
       "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware#{manifest_suffix}.json",
       "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu#{manifest_suffix}.yaml",
     }
