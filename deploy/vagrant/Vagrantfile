@@ -37,6 +37,19 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder "../compose/", "/vagrant/compose/", type: "rsync"
     end
 
+    provisioner.vm.provision "shell", name: "Setup interactive goodies", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      grep -q 'cd /vagrant/compose' ~vagrant/.bashrc || echo 'cd /vagrant/compose' >>~vagrant/.bashrc
+      read -r -d '' aliases <<-'EOF'
+        dc=docker-compose
+      EOF
+      while read -r alias; do
+        grep -q "$alias" ~vagrant/.bash_aliases || echo alias "$alias" >>~vagrant/.bash_aliases
+      done <<<"$aliases"
+    SCRIPT
+
+    provisioner.vm.provision "file", source: "tink", destination: "~/.local/bin/tink"
+
     provisioner.vm.provision "shell", name: "Setup eth1", inline: <<-SCRIPT.gsub(/^ {6}/, "")
       set -x
       ip addr show dev eth1 | grep -q #{PROVISIONER_IP} && exit 0
