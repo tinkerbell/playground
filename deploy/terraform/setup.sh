@@ -126,6 +126,25 @@ setup_compose_env_overrides() {
 	done
 }
 
+create_tink_helper_script() {
+	cat >/usr/local/bin/tink <<-'EOF'
+		#!/usr/bin/env bash
+
+		exec docker-compose -f /root/sandbox/compose/docker-compose.yml exec tink-cli tink "$@"
+	EOF
+	chmod +x /usr/local/bin/tink
+}
+
+tweak_bash_interactive_settings() {
+	grep -q 'cd /root/sandbox/compose' ~root/.bashrc || echo 'cd /root/sandbox/compose' >>~root/.bashrc
+	readarray -t aliases <<-EOF
+		dc=docker-compose
+	EOF
+	for alias in "${aliases[@]}"; do
+		grep -q "$alias" ~root/.bash_aliases || echo "alias $alias" >>~root/.bash_aliases
+	done
+}
+
 main() {
 	worker_mac=$1
 	layer2_ip=192.168.56.4
@@ -143,6 +162,9 @@ main() {
 	extract_compose_files
 	setup_compose_env_overrides "$worker_mac"
 	docker-compose -f /root/sandbox/compose/docker-compose.yml up -d
+
+	create_tink_helper_script
+	tweak_bash_interactive_settings
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
