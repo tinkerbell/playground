@@ -16,6 +16,15 @@ tasks:
           DEST_DISK: /dev/vda
           IMG_URL: "http://192.168.56.4:8080/focal-server-cloudimg-amd64.raw.gz"
           COMPRESSED: true
+      - name: "grow-partition"
+        image: cexec:v1.0.0
+        timeout: 90
+        environment:
+          BLOCK_DEVICE: /dev/sda1
+          FS_TYPE: ext4
+          CHROOT: y
+          DEFAULT_INTERPRETER: "/bin/sh -c"
+          CMD_LINE: "growpart /dev/sda 1 && resize2fs /dev/sda1"
       - name: "install-openssl"
         image: cexec:v1.0.0
         timeout: 90
