@@ -61,15 +61,13 @@ tasks:
           DEST_PATH: /etc/netplan/config.yaml
           CONTENTS: |
             network:
-                version: 2
-                renderer: networkd
-                ethernets:
-                    enp0s3:
-                        dhcp4: true
-                    enp0s8:
-                        dhcp4: true
-                    ens33:
-                        dhcp4: true
+              version: 2
+              renderer: networkd
+              ethernets:
+                id0:
+                  match:
+                    name: en*
+                  dhcp4: true
           UID: 0
           GID: 0
           MODE: 0644
