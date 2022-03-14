@@ -59,16 +59,12 @@ Vagrant.configure("2") do |config|
 
     provisioner.vm.provision "shell", name: "Setup provider specific overrides", inline: <<-SCRIPT.gsub(/^ {6}/, "")
       set -x
-      manifest_suffix=""
       if lsblk | grep -q vda; then
-        # assuming vda is only in libvirt, temporary
-        manifest_suffix=-libvirt    
+        sed -i 's|sda|vda|g' /vagrant/compose/create-tink-records/manifests/template/ubuntu.yaml
       fi
       read -r -d '' lines <<-'EOF'
       	TINKERBELL_HOST_IP=#{PROVISIONER_IP}
       	TINKERBELL_CLIENT_IP=#{MACHINE1_IP}
-      	TINKERBELL_HARDWARE_MANIFEST="/manifests/hardware/hardware$manifest_suffix.json"
-      	TINKERBELL_TEMPLATE_MANIFEST="/manifests/template/ubuntu$manifest_suffix.yaml"
       EOF
       while read -r line; do
       	grep -q "$line" /vagrant/compose/.env && continue
