@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euxo pipefail
-
 install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
@@ -63,16 +61,20 @@ make_host_gw_server() {
 }
 
 main() {
-	#local provisioner_ip="$1"
-
 	install_docker
 	install_docker_compose
 	restart_docker_service
-	mkdir -p /root/sandbox/compose
+
 	local layer2_interface
 	layer2_interface="$(get_second_interface_from_bond0)"
 	setup_layer2_network "${layer2_interface}" #"${provisioner_ip}"
 	make_host_gw_server "${layer2_interface}" "bond0"
+
+	mkdir -p /root/sandbox/compose
 }
 
-main #"$1"
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+	set -euxo pipefail
+
+	main "$@"
+fi
