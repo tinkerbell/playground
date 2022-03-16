@@ -14,14 +14,14 @@ install_docker_compose() {
 	chmod +x /usr/local/bin/docker-compose
 }
 
-update_apt() (
+update_apt() {
 	$APT update
 	DEBIAN_FRONTEND=noninteractive $APT --yes --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
-)
+}
 
-restart_docker_service() (
+restart_docker_service() {
 	service docker restart
-)
+}
 
 # get_second_interface_from_bond0 returns the second interface of the bond0 interface
 get_second_interface_from_bond0() {
@@ -50,7 +50,7 @@ make_host_gw_server() {
 	iptables -A FORWARD -i "${incoming_interface}" -o "${outgoing_interface}" -j ACCEPT
 }
 
-main() (
+main() {
 	#local provisioner_ip="$1"
 
 	install_docker
@@ -61,6 +61,6 @@ main() (
 	layer2_interface="$(get_second_interface_from_bond0)"
 	setup_layer2_network "${layer2_interface}" #"${provisioner_ip}"
 	make_host_gw_server "${layer2_interface}" "bond0"
-)
+}
 
 main #"$1"
