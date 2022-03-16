@@ -12,6 +12,10 @@ install_docker_compose() {
 	pip install docker-compose
 }
 
+install_iptables_persistent() {
+	apt-get install --no-install-recommends iptables-persistent
+}
+
 apt-get() {
 	DEBIAN_FRONTEND=noninteractive command apt-get \
 		--allow-change-held-packages \
@@ -88,16 +92,27 @@ setup_layer2_network() {
 
 # make_host_gw_server makes the host a gateway server
 make_host_gw_server() {
-	local incoming_interface="$1"
-	local outgoing_interface="$2"
+	local incoming_interface=$1
+	local outgoing_interface=$2
+
+	# drop all rules, especially interested in droppin docker's we don't want to persist docker's rules
+	# docker will re-create them when starting back up
+	systemctl stop docker
+	netfilter-persistent flush
+
 	iptables -t nat -A POSTROUTING -o "${outgoing_interface}" -j MASQUERADE
 	iptables -A FORWARD -i "${outgoing_interface}" -o "${incoming_interface}" -m state --state RELATED,ESTABLISHED -j ACCEPT
 	iptables -A FORWARD -i "${incoming_interface}" -o "${outgoing_interface}" -j ACCEPT
+
+	netfilter-persistent save
+	systemctl start docker
 }
 
 main() {
+	update_apt
 	install_docker
 	install_docker_compose
+	install_iptables_persistent
 
 	local layer2_ip=192.168.56.4
 	local layer2_interface
