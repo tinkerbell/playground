@@ -20,7 +20,7 @@ provider "metal" {
   auth_token = var.metal_api_token
 }
 
-# Create a new VLAN in datacenter "ewr1"
+# Create a new VLAN in datacenter
 resource "metal_vlan" "provisioning_vlan" {
   description = "provisioning_vlan"
   metro       = var.metro
