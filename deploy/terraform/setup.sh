@@ -29,10 +29,6 @@ update_apt() {
 	apt-get upgrade
 }
 
-restart_docker_service() {
-	service docker restart
-}
-
 # get_second_interface_from_bond0 returns the second interface of the bond0 interface
 get_second_interface_from_bond0() {
 	local return_value
@@ -63,7 +59,6 @@ make_host_gw_server() {
 main() {
 	install_docker
 	install_docker_compose
-	restart_docker_service
 
 	local layer2_interface
 	layer2_interface="$(get_second_interface_from_bond0)"
