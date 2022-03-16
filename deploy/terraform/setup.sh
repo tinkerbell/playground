@@ -4,7 +4,7 @@ set -euxo pipefail
 
 install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+	add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	update_apt
 	apt-get install --no-install-recommends containerd.io docker-ce docker-ce-cli
 }
