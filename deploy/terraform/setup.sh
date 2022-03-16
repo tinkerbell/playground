@@ -31,9 +31,19 @@ update_apt() {
 
 # get_second_interface_from_bond0 returns the second interface of the bond0 interface
 get_second_interface_from_bond0() {
-	local return_value
-	return_value=$(cut -d' ' -f2 /sys/class/net/bond0/bonding/slaves | xargs)
-	echo "${return_value}"
+	local addr=$1
+
+	# if the ip is in a file in interfaces.d then lets assume this is a re-run and we can just
+	# return the basename of the file (which should be named same as the interface)
+	f=$(grep -lr "${addr}" /etc/network/interfaces.d)
+	[[ -n ${f:-} ]] && basename "$f" && return
+
+	# sometimes the interfaces aren't sorted as expected in the /slaves file
+	#
+	# seeing as how this function is named *second* I figured its best to be
+	# precise (via head -n2) when choosing the iface instead of choosing the last
+	# iface and hoping there are only 2
+	tr ' ' '\n' </sys/class/net/bond0/bonding/slaves | sort | head -n2 | tail -n1
 }
 
 # setup_layer2_network removes the second interface from bond0 and uses it for the layer2 network
