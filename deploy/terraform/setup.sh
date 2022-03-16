@@ -6,7 +6,7 @@ install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	update_apt
-	DEBIAN_FRONTEND=noninteractive apt install -y apt-transport-https ca-certificates curl gnupg-agent gnupg2 software-properties-common docker-ce docker-ce-cli containerd.io
+	apt-get install apt-transport-https ca-certificates curl gnupg-agent gnupg2 software-properties-common docker-ce docker-ce-cli containerd.io
 }
 
 install_docker_compose() {
@@ -14,9 +14,21 @@ install_docker_compose() {
 	chmod +x /usr/local/bin/docker-compose
 }
 
+apt-get() {
+	DEBIAN_FRONTEND=noninteractive command apt-get \
+		--allow-change-held-packages \
+		--allow-downgrades \
+		--allow-remove-essential \
+		--allow-unauthenticated \
+		--option Dpkg::Options::=--force-confdef \
+		--option Dpkg::Options::=--force-confold \
+		--yes \
+		"$@"
+}
+
 update_apt() {
-	$APT update
-	DEBIAN_FRONTEND=noninteractive $APT --yes --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
+	apt-get update
+	apt-get upgrade
 }
 
 restart_docker_service() {
