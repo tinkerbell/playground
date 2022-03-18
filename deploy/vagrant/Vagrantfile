@@ -4,35 +4,10 @@
 PROVISIONER_IP = "192.168.56.4"
 MACHINE1_IP = "192.168.56.43"
 
-$script = <<-SCRIPT
-ip addr add 192.168.56.4/24 dev eth1
-ip link set dev eth1 up
-SCRIPT
-
 unless Vagrant.has_plugin?("vagrant-docker-compose")
   system("vagrant plugin install vagrant-docker-compose")
   puts "Dependencies installed, please try the command again."
   exit
-end
-
-def provision_provisioner(config, provider_name)
-  if provider_name == 'virtualbox'
-    manifest_suffix = ''
-  else
-    manifest_suffix = "-#{provider_name}"
-  end
-  config.vm.provision :docker_compose,
-    compose_version: "1.29.2",
-    yml: "/vagrant/compose/docker-compose.yml",
-    run: "always",
-    env: {
-      "TINKERBELL_HOST_IP": PROVISIONER_IP,
-      "TINKERBELL_CLIENT_IP": MACHINE1_IP,
-      "REPO_TOP_LEVEL": "/vagrant/compose",
-      "TINKERBELL_HARDWARE_MANIFEST": "/manifests/hardware/hardware#{manifest_suffix}.json",
-      "TINKERBELL_TEMPLATE_MANIFEST": "/manifests/template/ubuntu#{manifest_suffix}.yaml"
-    }
-  config.vm.provision "shell", name: "Trust the Tinkerbell CA", path: "../compose/tls/trust.sh", args: [PROVISIONER_IP]
 end
 
 Vagrant.configure("2") do |config|
@@ -42,60 +17,96 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "provisioner" do |provisioner|
     provisioner.vm.box = "generic/ubuntu2004"
-    provisioner.vm.synced_folder '../', '/vagrant'
-    provisioner.vm.provision :docker
-    provisioner.vm.provision "shell", inline: $script
+    provisioner.vm.synced_folder "../compose/", "/vagrant/compose/"
     provisioner.vm.network "private_network", ip: PROVISIONER_IP,
-      libvirt__network_name: "tink_network",
-      libvirt__host_ip: '192.168.56.1',
-      libvirt__netmask: "255.255.255.0",
-      libvirt__dhcp_enabled: false,
-      auto_config: false
+                                              libvirt__network_name: "tink_network",
+                                              libvirt__host_ip: "192.168.56.1",
+                                              libvirt__netmask: "255.255.255.0",
+                                              libvirt__dhcp_enabled: false,
+                                              auto_config: false
 
     provisioner.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
-      override.vm.synced_folder '../', '/vagrant'
-      provision_provisioner(override, 'virtualbox')
+      override.vm.synced_folder "../compose/", "/vagrant/compose/"
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
-      override.vm.synced_folder '../', '/vagrant', type: 'rsync'
-      provision_provisioner(override, 'libvirt')
+      override.vm.synced_folder "../compose/", "/vagrant/compose/", type: "rsync"
     end
+
+    provisioner.vm.provision "shell", name: "Setup interactive goodies", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      grep -q 'cd /vagrant/compose' ~vagrant/.bashrc || echo 'cd /vagrant/compose' >>~vagrant/.bashrc
+      read -r -d '' aliases <<-'EOF'
+        dc=docker-compose
+      EOF
+      while read -r alias; do
+        grep -q "$alias" ~vagrant/.bash_aliases || echo alias "$alias" >>~vagrant/.bash_aliases
+      done <<<"$aliases"
+    SCRIPT
+
+    provisioner.vm.provision "file", source: "tink", destination: "~/.local/bin/tink"
+
+    provisioner.vm.provision "shell", name: "Setup eth1", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      ip addr show dev eth1 | grep -q #{PROVISIONER_IP} && exit 0
+      ip addr add #{PROVISIONER_IP}/24 dev eth1
+      ip link set dev eth1 up
+    SCRIPT
+
+    provisioner.vm.provision "shell", name: "Setup provider specific overrides", inline: <<-SCRIPT.gsub(/^ {6}/, "")
+      set -x
+      if lsblk | grep -q vda; then
+        sed -i 's|sda|vda|g' /vagrant/compose/create-tink-records/manifests/template/ubuntu.yaml
+      fi
+      read -r -d '' lines <<-'EOF'
+      	TINKERBELL_HOST_IP=#{PROVISIONER_IP}
+      	TINKERBELL_CLIENT_IP=#{MACHINE1_IP}
+      EOF
+      while read -r line; do
+      	grep -q "$line" /vagrant/compose/.env && continue
+      	echo "$line" >>/vagrant/compose/.env
+      done <<<"$lines"
+    SCRIPT
+
+    provisioner.vm.provision :docker
+    provisioner.vm.provision :docker_compose,
+      compose_version: "1.29.2",
+      yml: "/vagrant/compose/docker-compose.yml",
+      run: "always"
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
-
     machine1.ssh.insert_key = false
     machine1.vm.boot_timeout = 10
-    machine1.vm.synced_folder '.', '/vagrant', disabled: true
+    machine1.vm.synced_folder ".", "/vagrant", disabled: true
     machine1.vm.network :private_network, ip: MACHINE1_IP,
-          mac: "0800279EF53A",
-          adapter: 1,
-          libvirt__network_name: "tink_network",
-          libvirt__dhcp_enabled: false,
-          libvirt__forward_mode: 'nat'
+                                          mac: "0800279EF53A",
+                                          adapter: 1,
+                                          libvirt__network_name: "tink_network",
+                                          libvirt__dhcp_enabled: false,
+                                          libvirt__forward_mode: "nat"
 
     machine1.vm.provider "libvirt" do |v|
-      v.storage :file, :size => '20G'
+      v.storage :file, :size => "20G"
       v.memory = 4096
       v.cpus = 2
-      v.boot 'hd'
-      v.boot 'network'
-      v.graphics_ip = '0.0.0.0'
-      v.machine_arch = 'x86_64'
+      v.boot "hd"
+      v.boot "network"
+      v.graphics_ip = "0.0.0.0"
+      v.machine_arch = "x86_64"
     end
 
     machine1.vm.provider "virtualbox" do |v, override|
-      override.vm.box = 'jtyr/pxe'
+      override.vm.box = "jtyr/pxe"
       v.memory = 2048
       v.cpus = 2
       v.gui = true
-      v.customize ['modifyvm', :id, '--nic1', 'hostonly', '--nic2', 'nat', '--boot1', 'disk', '--boot2', 'net']
-      v.customize ['setextradata', :id, 'GUI/ScaleFactor', '3.0']
+      v.customize ["modifyvm", :id, "--nic1", "hostonly", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+      v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
     end
   end

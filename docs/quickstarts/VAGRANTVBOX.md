@@ -219,7 +219,7 @@ This option will also show you how to create a machine to provision.
    vagrant ssh provisioner
    # watch the workflow events and status for workflow completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(cat /vagrant/compose/manifests/workflow/workflow_id.txt); docker exec -it compose_tink-cli_1 watch "tink workflow events ${wid}; tink workflow state ${wid}"
+   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
    ```
 
    <details>
