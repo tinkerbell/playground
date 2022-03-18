@@ -40,15 +40,15 @@ setup_compose_env_overrides() {
 	local host_addr=$1
 	local worker_addr=$2
 	if lsblk | grep -q vda; then
-		sed -i 's|sda|vda|g' /vagrant/compose/create-tink-records/manifests/template/ubuntu.yaml
+		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
 	fi
 	readarray -t lines <<-EOF
 		TINKERBELL_HOST_IP="$host_addr"
 		TINKERBELL_CLIENT_IP="$worker_addr"
 	EOF
 	for line in "${lines[@]}"; do
-		grep -q "$line" /vagrant/compose/.env && continue
-		echo "$line" >>/vagrant/compose/.env
+		grep -q "$line" /sandbox/compose/.env && continue
+		echo "$line" >>/sandbox/compose/.env
 	done
 }
 
@@ -57,13 +57,13 @@ create_tink_helper_script() {
 	cat >~vagrant/.local/bin/tink <<-'EOF'
 		#!/usr/bin/env bash
 
-		exec docker-compose -f /vagrant/compose/docker-compose.yml exec tink-cli tink "$@"
+		exec docker-compose -f /sandbox/compose/docker-compose.yml exec tink-cli tink "$@"
 	EOF
 	chmod +x ~vagrant/.local/bin/tink
 }
 
 tweak_bash_interactive_settings() {
-	grep -q 'cd /vagrant/compose' ~vagrant/.bashrc || echo 'cd /vagrant/compose' >>~vagrant/.bashrc
+	grep -q 'cd /sandbox/compose' ~vagrant/.bashrc || echo 'cd /sandbox/compose' >>~vagrant/.bashrc
 	readarray -t aliases <<-EOF
 		dc=docker-compose
 	EOF
@@ -83,7 +83,7 @@ main() {
 	setup_layer2_network "$host_addr"
 
 	setup_compose_env_overrides "$host_addr" "$worker_addr"
-	docker-compose -f /vagrant/compose/docker-compose.yml up -d
+	docker-compose -f /sandbox/compose/docker-compose.yml up -d
 
 	create_tink_helper_script
 	tweak_bash_interactive_settings
