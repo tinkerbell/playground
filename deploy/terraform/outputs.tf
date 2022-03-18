@@ -2,8 +2,16 @@ output "provisioner_ip" {
   value = metal_device.tink_provisioner.network[0].address
 }
 
+output "provisioner_id" {
+  value = metal_device.tink_provisioner.id
+}
+
 output "provisioner_ssh" {
   value = format("%s.packethost.net", split("-", metal_device.tink_provisioner.id)[0])
+}
+
+output "worker_id" {
+  value = metal_device.tink_worker.id
 }
 
 output "worker_macs" {
