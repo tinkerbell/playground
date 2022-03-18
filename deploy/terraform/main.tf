@@ -96,13 +96,10 @@ data "cloudinit_config" "setup" {
   base64_encode = false # not supported on Equinix Metal
 
   part {
-    content_type = "text/x-shellscript"
-    content      = file("${path.module}/setup.sh")
-  }
-  part {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/cloud-config.cfg", {
       COMPOSE_ZIP = local.compose_zip
+      SETUPSH     = filebase64("${path.module}/setup.sh")
       WORKER_MAC  = local.worker_macs[0]
     })
   }

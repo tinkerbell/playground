@@ -108,19 +108,41 @@ make_host_gw_server() {
 	systemctl start docker
 }
 
+extract_compose_files() {
+	mkdir -p /root/sandbox
+	unzip /root/compose.zip -d /root/sandbox/compose
+}
+
+setup_compose_env_overrides() {
+	local worker_mac=$1
+	readarray -t lines <<-EOF
+		TINKERBELL_CLIENT_MAC=$worker_mac
+		TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml
+		TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json
+	EOF
+	for line in "${lines[@]}"; do
+		grep -q "$line" /root/sandbox/compose/.env && continue
+		echo "$line" >>/root/sandbox/compose/.env
+	done
+}
+
 main() {
+	worker_mac=$1
+	layer2_ip=192.168.56.4
+
 	update_apt
 	install_docker
 	install_docker_compose
 	install_iptables_persistent
 
-	local layer2_ip=192.168.56.4
 	local layer2_interface
 	layer2_interface=$(get_second_interface_from_bond0 ${layer2_ip})
 	setup_layer2_network "${layer2_interface}" ${layer2_ip}
 	make_host_gw_server "${layer2_interface}" bond0
 
-	mkdir -p /root/sandbox/compose
+	extract_compose_files
+	setup_compose_env_overrides "$worker_mac"
+	docker-compose -f /root/sandbox/compose/docker-compose.yml up -d
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
