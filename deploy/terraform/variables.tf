@@ -9,7 +9,7 @@ variable "project_id" {
 }
 
 variable "metro" {
-  description = "Equinix Metal metr to provision in"
+  description = "Equinix Metal metro to provision in"
   type        = string
   default     = "sv"
 }
