@@ -1,9 +1,9 @@
-# Configure the Packet Provider.
+# Configure the Equinix Metal Provider.
 terraform {
   required_providers {
     metal = {
       source  = "equinix/metal"
-      version = "3.1.0"
+      version = "3.2.0"
     }
     null = {
       source  = "hashicorp/null"
@@ -23,7 +23,7 @@ provider "metal" {
 # Create a new VLAN in datacenter "ewr1"
 resource "metal_vlan" "provisioning_vlan" {
   description = "provisioning_vlan"
-  facility    = var.facility
+  metro       = var.metro
   project_id  = var.project_id
 }
 
@@ -31,7 +31,7 @@ resource "metal_vlan" "provisioning_vlan" {
 resource "metal_device" "tink_worker" {
   hostname         = "tink-worker"
   plan             = var.device_type
-  facilities       = [var.facility]
+  metro            = var.metro
   operating_system = "custom_ipxe"
   ipxe_script_url  = "https://boot.netboot.xyz"
   always_pxe       = "true"
@@ -39,70 +39,70 @@ resource "metal_device" "tink_worker" {
   project_id       = var.project_id
 }
 
-resource "metal_device_network_type" "tink_worker_network_type" {
-  device_id = metal_device.tink_worker.id
-  type      = "layer2-individual"
+resource "metal_port" "tink_worker_bond0" {
+  port_id = [for p in metal_device.tink_worker.ports : p.id if p.name == "bond0"][0]
+  layer2  = true
+  bonded  = false
+  #  vlan_ids = [metal_vlan.provisioning_vlan.id] 
+  # Can't do this: │ Error: vlan assignment batch could not be created: POST https://api.equinix.com/metal/v1/ports/b0bdf6d8-589e-4988-9000-9f49c97a54e1/vlan-assignments/batches: 422 Can't assign VLANs to port b0bdf6d8-589e-4988-9000-9f49c97a54e1, the port is configured for Layer 3 mode., Port b0bdf6d8-589e-4988-9000-9f49c97a54e1 cannot be assigned to VLANs., Bond disabled 
 }
 
 # Attach VLAN to worker
-resource "metal_port_vlan_attachment" "worker" {
-  depends_on = [metal_device_network_type.tink_worker_network_type]
-
-  device_id = metal_device.tink_worker.id
-  port_name = "eth0"
-  vlan_vnid = metal_vlan.provisioning_vlan.vxlan
+resource "metal_port" "tink_worker_eth0" {
+  depends_on = [metal_port.tink_worker_bond0]
+  port_id    = [for p in metal_device.tink_worker.ports : p.id if p.name == "eth0"][0]
+  #layer2     = true 
+  # TODO(displague) the terraform provider is not permitting this, perhaps a bug in the provider validation
+  # layer2 flag can be set only for bond ports
+  bonded   = false
+  vlan_ids = [metal_vlan.provisioning_vlan.id]
+  // vxlan_ids = [1000]
 }
-
 
 # Create a device and add it to tf_project_1
 resource "metal_device" "tink_provisioner" {
   hostname         = "tink-provisioner"
   plan             = var.device_type
-  facilities       = [var.facility]
+  metro            = var.metro
   operating_system = "ubuntu_20_04"
   billing_cycle    = "hourly"
   project_id       = var.project_id
-  user_data        = file("setup.sh")
+  user_data        = data.cloudinit_config.setup.rendered
 }
 
-resource "metal_device_network_type" "tink_provisioner_network_type" {
-  device_id = metal_device.tink_provisioner.id
-  type      = "hybrid"
+# Provisioners eth1 (unbonded) is attached to the provisioning VLAN
+resource "metal_port" "eth1" {
+  port_id  = [for p in metal_device.tink_provisioner.ports : p.id if p.name == "eth1"][0]
+  bonded   = false
+  vlan_ids = [metal_vlan.provisioning_vlan.id]
 }
 
-# Attach VLAN to provisioner
-resource "metal_port_vlan_attachment" "provisioner" {
-  depends_on = [metal_device_network_type.tink_provisioner_network_type]
-  device_id  = metal_device.tink_provisioner.id
-  port_name  = "eth1"
-  vlan_vnid  = metal_vlan.provisioning_vlan.vxlan
+data "archive_file" "compose" {
+  type        = "zip"
+  source_dir  = "${path.module}/../compose"
+  output_path = "${path.module}/compose.zip"
 }
 
+locals {
+  compose_zip = data.archive_file.compose.output_size > 0 ? filebase64("${path.module}/compose.zip") : ""
+}
 
+data "cloudinit_config" "setup" {
+  depends_on = [
+    data.archive_file.compose,
+  ]
+  gzip          = false # not supported on Equinix Metal
+  base64_encode = false # not supported on Equinix Metal
 
-resource "null_resource" "setup" {
-  connection {
-    type        = "ssh"
-    user        = "root"
-    host        = metal_device.tink_provisioner.network[0].address
-    agent       = var.use_ssh_agent
-    private_key = var.use_ssh_agent ? null : file(var.ssh_private_key)
+  part {
+    content_type = "text/x-shellscript"
+    content      = file("${path.module}/setup.sh")
   }
-
-  # need to tar the compose directory because the 'provisioner "file"' does not preserve file permissions
-  provisioner "local-exec" {
-    command = "cd ../ && tar zcvf compose.tar.gz compose"
-  }
-
-  provisioner "file" {
-    source      = "../compose.tar.gz"
-    destination = "/root/compose.tar.gz"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "cd /root && tar zxvf /root/compose.tar.gz -C /root/sandbox",
-      "cd /root/sandbox/compose && TINKERBELL_CLIENT_MAC=${metal_device.tink_worker.ports[1].mac} TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json docker-compose up -d",
-    ]
+  part {
+    content_type = "text/cloud-config"
+    content = templatefile("${path.module}/cloud-config.cfg", {
+      COMPOSE_ZIP = local.compose_zip
+      WORKER_MAC  = metal_device.tink_worker.ports[1].mac
+    })
   }
 }

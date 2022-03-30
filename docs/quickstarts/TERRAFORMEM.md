@@ -42,7 +42,7 @@ This option will also show you how to create a machine to provision.
    Or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
    ```bash
-   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[1].values.id')
+   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[3].values.id')
    ```
 
 5. Watch the provision complete
@@ -94,7 +94,7 @@ This option will also show you how to create a machine to provision.
    Now reboot the `tink-worker` via the [Equinix Metal Web UI](https://console.equinix.com), or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
    ```bash
-   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[1].values.id')
+   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[3].values.id')
    ```
 
 7. Login to the machine

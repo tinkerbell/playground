@@ -1,3 +1,12 @@
+# Local .terraform directories
+**/.terraform/*
+.terraform*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+!.terraform.lock.hcl
 envrc
 out
 !deploy/.env
@@ -9,3 +18,4 @@ deploy/compose/state/webroot/workflow/*
 deploy/compose/state/webroot/*.gz
 workflow_id.txt
 compose.tar.gz
+compose.zip
