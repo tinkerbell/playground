@@ -19,5 +19,5 @@ output "worker_macs" {
 }
 
 output "worker_sos" {
-  value = formatlist("%s@sos.%s.platformequinix.com", metal_device.tink_worker[*].id, metal_device.tink_worker.deployed_facility)
+  value = format("%s@sos.%s.platformequinix.com", metal_device.tink_worker.id, metal_device.tink_worker.deployed_facility)
 }
