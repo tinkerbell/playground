@@ -1,5 +1,9 @@
 {
   "CN": "Tinkerbell CA",
+  "ca": {
+    "backdate": "48h",
+    "expiry": "8760h"
+  },
   "key": {
     "algo": "ecdsa",
     "size": 256
