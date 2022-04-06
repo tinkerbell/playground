@@ -26,8 +26,9 @@ gen() {
 	local ca_crt_destination="$1"
 	local server_crt_destination="$2"
 	local server_key_destination="$3"
+	local csr_file="$4"
 	cfssl gencert -initca /app/ca-csr.json | cfssljson -bare ca -
-	cfssl gencert -config /app/ca-config.json -ca ca.pem -ca-key ca-key.pem -profile server /app/csr.json | cfssljson -bare server
+	cfssl gencert -config /app/ca-config.json -ca ca.pem -ca-key ca-key.pem -profile server "${csr_file}" | cfssljson -bare server
 	mv ca.pem "${ca_crt_destination}"
 	mv server.pem "${server_crt_destination}"
 	mv server-key.pem "${server_key_destination}"
@@ -52,7 +53,7 @@ main() {
 		echo "IP ${sans_ip} already in ${csr_file}"
 	fi
 	if [ ! -f "${ca_crt_file}" ] && [ ! -f "${server_crt_file}" ] && [ ! -f "${server_key_file}" ]; then
-		gen "${ca_crt_file}" "${server_crt_file}" "${server_key_file}"
+		gen "${ca_crt_file}" "${server_crt_file}" "${server_key_file}" "${csr_file}"
 		cp "${server_crt_file}" "${bundle_crt_file}"
 	else
 		echo "Files [${ca_crt_file}, ${server_crt_file}, ${server_key_file}] already exist"
