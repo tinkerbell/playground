@@ -1,4 +1,4 @@
-quay.io/detiber/tink-worker:latest tink-worker:latest
+quay.io/tinkerbell/tink-worker:sha-08a2e129 tink-worker:latest
 quay.io/tinkerbell-actions/image2disk:v1.0.0 image2disk:v1.0.0
 quay.io/tinkerbell-actions/cexec:v1.0.0 cexec:v1.0.0
 quay.io/tinkerbell-actions/writefile:v1.0.0 writefile:v1.0.0
