@@ -42,17 +42,18 @@ This option will also show you how to create a machine to provision.
    Or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
    ```bash
-   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[3].values.id')
+   metal device reboot -i $(terraform output -raw worker_id)
    ```
 
 5. Watch the provision complete
 
    ```bash
    # log in to the provisioner
-   ssh root@139.178.69.231
+   ssh root@$(terraform output -raw provisioner_ssh)
+
    # watch the workflow events and status for workflow completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(docker exec -it compose_tink-cli_1 tink workflow get --no-headers | awk '/^\|/ {print $2}'); docker exec -it compose_tink-cli_1 watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
    ```
 
    <details>
@@ -94,7 +95,7 @@ This option will also show you how to create a machine to provision.
    Now reboot the `tink-worker` via the [Equinix Metal Web UI](https://console.equinix.com), or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
    ```bash
-   metal device reboot -i $(terraform show -json | jq -r '.values.root_module.resources[3].values.id')
+   metal device reboot -i $(terraform output -raw worker_id)
    ```
 
 7. Login to the machine

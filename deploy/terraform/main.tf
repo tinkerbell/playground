@@ -20,7 +20,7 @@ provider "metal" {
   auth_token = var.metal_api_token
 }
 
-# Create a new VLAN in datacenter "ewr1"
+# Create a new VLAN in datacenter
 resource "metal_vlan" "provisioning_vlan" {
   description = "provisioning_vlan"
   metro       = var.metro
@@ -85,6 +85,7 @@ data "archive_file" "compose" {
 
 locals {
   compose_zip = data.archive_file.compose.output_size > 0 ? filebase64("${path.module}/compose.zip") : ""
+  worker_macs = flatten([for wp in metal_device.tink_worker[*].ports[*] : [for p in wp : p.mac if p.name == "eth0"]])
 }
 
 data "cloudinit_config" "setup" {
@@ -95,14 +96,11 @@ data "cloudinit_config" "setup" {
   base64_encode = false # not supported on Equinix Metal
 
   part {
-    content_type = "text/x-shellscript"
-    content      = file("${path.module}/setup.sh")
-  }
-  part {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/cloud-config.cfg", {
       COMPOSE_ZIP = local.compose_zip
-      WORKER_MAC  = metal_device.tink_worker.ports[1].mac
+      SETUPSH     = filebase64("${path.module}/setup.sh")
+      WORKER_MAC  = local.worker_macs[0]
     })
   }
 }
