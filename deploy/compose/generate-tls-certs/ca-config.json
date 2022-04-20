@@ -5,6 +5,7 @@
     },
     "profiles": {
       "server": {
+        "backdate": "48h",
         "expiry": "8760h",
         "usages": [
           "signing",
