@@ -4,6 +4,7 @@
 !deploy/compose/state/webroot/workflow/.keep
 !deploy/.env
 !.gitignore
+!.github/
 
 # Local .terraform directories
 .terraform*
