@@ -39,12 +39,14 @@ setup_layer2_network() {
 setup_compose_env_overrides() {
 	local host_ip=$1
 	local worker_ip=$2
+	local worker_mac=$3
 	if lsblk | grep -q vda; then
 		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
 	fi
 	readarray -t lines <<-EOF
 		TINKERBELL_HOST_IP="$host_ip"
 		TINKERBELL_CLIENT_IP="$worker_ip"
+		TINKERBELL_CLIENT_MAC="$worker_mac"
 	EOF
 	for line in "${lines[@]}"; do
 		grep -q "$line" /sandbox/compose/.env && continue
@@ -75,6 +77,7 @@ tweak_bash_interactive_settings() {
 main() {
 	local host_ip=$1
 	local worker_ip=$2
+	local worker_mac=$3
 
 	update_apt
 	install_docker
@@ -82,7 +85,7 @@ main() {
 
 	setup_layer2_network "$host_ip"
 
-	setup_compose_env_overrides "$host_ip" "$worker_ip"
+	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac"
 	docker-compose -f /sandbox/compose/docker-compose.yml up -d
 
 	create_tink_helper_script

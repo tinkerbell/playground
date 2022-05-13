@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder "../compose/", "/sandbox/compose/", type: "rsync"
     end
 
-    provisioner.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP]
+    provisioner.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, "08:00:27:9e:f5:3a"]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
