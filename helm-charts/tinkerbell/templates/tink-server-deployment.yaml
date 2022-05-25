@@ -1,0 +1,42 @@
+{{- if .Values.tinkServer.deploy }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.tinkServer.name }}
+  name: {{ .Values.tinkServer.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.tinkServer.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.tinkServer.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.tinkServer.name }}
+    spec:
+      containers:
+        - args:
+            - --backend=kubernetes
+            {{- range .Values.tinkServer.args }}
+            - {{ . }}
+            {{- end }}
+          image: {{ .Values.tinkServer.image }}
+          imagePullPolicy: {{ .Values.tinkServer.imagePullPolicy }}
+          name: server
+          {{- if .Values.tinkServer.port.hostPortEnabled }}
+          ports:
+            - containerPort: {{ .Values.tinkServer.port.hostPort }}
+              hostPort: {{ .Values.tinkServer.port.hostPort }}
+              name: grpc
+          {{- end }}
+          resources:
+            limits:
+              cpu: {{ .Values.tinkServer.resources.limits.cpu }}
+              memory: {{ .Values.tinkServer.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.tinkServer.resources.requests.cpu }}
+              memory: {{ .Values.tinkServer.resources.requests.memory }}
+      serviceAccountName: {{ .Values.tinkServer.name }}
+{{- end }}

@@ -1,0 +1,44 @@
+{{- if .Values.boots.deploy }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.boots.name }}
+  name:  {{ .Values.boots.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.boots.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.boots.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.boots.name }}
+    spec:
+      containers:
+        - image: {{ .Values.boots.image }}
+          imagePullPolicy: {{ .Values.boots.imagePullPolicy }}
+          {{- if .Values.boots.args }}
+          args: 
+          {{- range .Values.boots.args }}
+            - {{ . }}
+          {{- end }}
+          {{- end }}
+          env:
+            - name: "DATA_MODEL_VERSION"
+              value: "kubernetes"
+            {{- range $i, $env := .Values.boots.env }}
+            - name: {{ $env.name | quote }}
+              value: {{ $env.value | quote }}
+            {{- end }}
+          name: {{ .Values.boots.name }}
+          resources:
+            limits:
+              cpu: {{ .Values.boots.resources.limits.cpu }}
+              memory: {{ .Values.boots.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.boots.resources.requests.cpu }}
+              memory: {{ .Values.boots.resources.requests.memory }}
+      serviceAccountName: {{ .Values.boots.name }}
+{{- end }}
