@@ -1,7 +1,7 @@
 services:
   ##### Actual services first #####
   boots:
-    image: ${BOOTS_SERVER_IMAGE}
+    image: ${BOOTS_IMAGE}
     command: -log-level DEBUG
     network_mode: host
     environment:
@@ -56,7 +56,7 @@ services:
     restart: unless-stopped
 
   hegel:
-    image: ${HEGEL_SERVER_IMAGE}
+    image: ${HEGEL_IMAGE}
     environment:
       CUSTOM_ENDPOINTS: '{"/metadata":""}'
       DATA_MODEL_VERSION: 1
