@@ -2,7 +2,7 @@ services:
   ##### Actual services first #####
   boots:
     image: ${BOOTS_SERVER_IMAGE}
-    command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
+    command: -dhcp-addr 0.0.0.0:67 -tftp-addr "$TINKERBELL_HOST_IP:69" -http-addr "$TINKERBELL_HOST_IP:80" -log-level DEBUG
     network_mode: host
     environment:
       API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN:-ignored}
@@ -26,7 +26,7 @@ services:
       TINKERBELL_CERT_URL: http://$TINKERBELL_HOST_IP:42114/cert
       TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
     extra_hosts:
-      - "tink-server:$TINKERBELL_HOST_IP"
+      - tink-server:$TINKERBELL_HOST_IP
     depends_on:
       tink-server:
         condition: service_healthy
@@ -34,7 +34,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     restart: unless-stopped
 
   db:
@@ -51,7 +51,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     healthcheck:
       test:
         - CMD-SHELL
@@ -85,7 +85,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     restart: unless-stopped
 
   registry:
@@ -112,11 +112,11 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     healthcheck:
       test:
         - CMD-SHELL
-        - wget --no-check-certificate https://$TINKERBELL_HOST_IP -O - >/dev/null
+        - wget --no-check-certificate "https://$TINKERBELL_HOST_IP" -O - >/dev/null
       interval: 5s
       timeout: 1s
       retries: 5
@@ -156,7 +156,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     healthcheck:
       # port needs to match TINKERBELL_HTTP_AUTHORITY
       test:
@@ -184,7 +184,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     restart: unless-stopped
 
   ##### One-off setup processes #####
@@ -232,7 +232,7 @@ services:
 
   fetch-osie:
     image: bash:4.4
-    command: /app/fetch.sh ${OSIE_DOWNLOAD_URLS} /workdir
+    command: /app/fetch.sh "${OSIE_DOWNLOAD_URLS}" /workdir
     volumes:
       - ./fetch-osie/fetch.sh:/app/fetch.sh:ro
       - ./state/webroot/misc/osie/current:/workdir
@@ -256,7 +256,7 @@ services:
   generate-tls-certs:
     image: cfssl/cfssl
     entrypoint: /app/generate.sh
-    command: "$TINKERBELL_HOST_IP"
+    command: '"$TINKERBELL_HOST_IP"'
     environment:
       FACILITY: ${FACILITY:-onprem}
     volumes:
@@ -289,7 +289,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: 512M
     restart: unless-stopped
 
 volumes:
