@@ -2,7 +2,7 @@
 
 # This script is used to push (hardware) and create (template, workflow) Tink Server data/objects
 # This script assumes that the `tink` binary is in the PATH and
-# TINKERBELL_CERT_URL and TINKERBELL_GRPC_AUTHORITY environment variables are set
+# TINKERBELL_GRPC_AUTHORITY and TINKERBELL_TLS environment variables are set as necessary
 # See https://docs.tinkerbell.org/services/tink-cli/ for more details
 
 set -euxo pipefail

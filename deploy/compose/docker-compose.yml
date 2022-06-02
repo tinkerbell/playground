@@ -13,7 +13,7 @@ services:
       DOCKER_REGISTRY: $TINKERBELL_HOST_IP
       FACILITY_CODE: ${FACILITY:-onprem}
       HTTP_BIND: $TINKERBELL_HOST_IP:80
-      MIRROR_HOST: ${TINKERBELL_HOST_IP:-127.0.0.1}:8080
+      MIRROR_BASE_URL: http://$TINKERBELL_HOST_IP:8080
       PACKET_ENV: ${PACKET_ENV:-testing}
       PACKET_VERSION: ${PACKET_VERSION:-ignored}
       PUBLIC_IP: $TINKERBELL_HOST_IP
@@ -25,6 +25,7 @@ services:
       TFTP_BIND: $TINKERBELL_HOST_IP:69
       TINKERBELL_CERT_URL: http://$TINKERBELL_HOST_IP:42114/cert
       TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     extra_hosts:
       - tink-server:$TINKERBELL_HOST_IP
     depends_on:
@@ -75,6 +76,7 @@ services:
       ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     ports:
       - 50060:50060/tcp
       - 50061:50061/tcp
@@ -140,6 +142,7 @@ services:
       TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     volumes:
       - certs:/certs/${FACILITY:-onprem}:ro
     ports:
@@ -199,6 +202,7 @@ services:
       TINKERBELL_HARDWARE_MANIFEST: $TINKERBELL_HARDWARE_MANIFEST
       TINKERBELL_HOST_IP: $TINKERBELL_HOST_IP
       TINKERBELL_TEMPLATE_MANIFEST: $TINKERBELL_TEMPLATE_MANIFEST
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     volumes:
       - ./create-tink-records/create.sh:/app/create.sh:ro
       - ./create-tink-records/manifests:/manifests:ro
@@ -223,6 +227,7 @@ services:
       TINK_AUTH_USERNAME: ${TINKERBELL_TINK_USERNAME:-admin}
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     volumes:
       - certs:/certs/${FACILITY:-onprem}:ro
     depends_on:
@@ -280,6 +285,7 @@ services:
     environment:
       TINKERBELL_CERT_URL: http://tink-server:42114/cert
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
     depends_on:
       db:
         condition: service_healthy
