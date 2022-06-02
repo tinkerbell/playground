@@ -2,12 +2,12 @@ services:
   ##### Actual services first #####
   boots:
     image: ${BOOTS_SERVER_IMAGE}
-    command: -dhcp-addr 0.0.0.0:67 -tftp-addr "$TINKERBELL_HOST_IP:69" -http-addr "$TINKERBELL_HOST_IP:80" -log-level DEBUG
+    command: -log-level DEBUG
     network_mode: host
     environment:
       API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN:-ignored}
       API_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN:-ignored}
-      BOOTP_BIND: $TINKERBELL_HOST_IP:67
+      BOOTP_BIND: 0.0.0.0:67
       DATA_MODEL_VERSION: 1
       DNS_SERVERS: 8.8.8.8
       DOCKER_REGISTRY: $TINKERBELL_HOST_IP
