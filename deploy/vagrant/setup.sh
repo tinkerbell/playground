@@ -96,4 +96,5 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
 	set -euxo pipefail
 
 	main "$@"
+	echo "all done!"
 fi
