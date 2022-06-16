@@ -245,7 +245,7 @@ services:
   sync-images-to-local-registry:
     image: quay.io/containers/skopeo:v1.4.1
     entrypoint: /bin/bash
-    command: /app/upload.sh "$TINKERBELL_REGISTRY_USERNAME" "$TINKERBELL_REGISTRY_PASSWORD" "$TINKERBELL_HOST_IP" /app/registry_images.txt
+    command: /app/upload.sh "$TINKERBELL_REGISTRY_USERNAME" "$TINKERBELL_REGISTRY_PASSWORD" "$TINKERBELL_HOST_IP" "$TINK_WORKER_IMAGE" /app/registry_images.txt
     volumes:
       - ./sync-images-to-local-registry:/app:ro
     depends_on:
