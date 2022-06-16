@@ -9,16 +9,16 @@ services:
       DATA_MODEL_VERSION: 1
       DNS_SERVERS: 8.8.8.8
       DOCKER_REGISTRY: $TINKERBELL_HOST_IP
-      FACILITY_CODE: ${FACILITY:-onprem}
+      FACILITY_CODE: $FACILITY
       HTTP_BIND: $TINKERBELL_HOST_IP:80
       MIRROR_BASE_URL: http://$TINKERBELL_HOST_IP:8080
       PUBLIC_IP: $TINKERBELL_HOST_IP
-      REGISTRY_PASSWORD: ${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}
-      REGISTRY_USERNAME: ${TINKERBELL_REGISTRY_USERNAME:-admin}
+      REGISTRY_PASSWORD: $TINKERBELL_REGISTRY_PASSWORD
+      REGISTRY_USERNAME: $TINKERBELL_REGISTRY_USERNAME
       SYSLOG_BIND: $TINKERBELL_HOST_IP:514
       TFTP_BIND: $TINKERBELL_HOST_IP:69
       TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     extra_hosts:
       - tink-server:$TINKERBELL_HOST_IP
     depends_on:
@@ -61,10 +61,10 @@ services:
       CUSTOM_ENDPOINTS: '{"/metadata":""}'
       DATA_MODEL_VERSION: 1
       GRPC_PORT: 42115
-      HEGEL_FACILITY: ${FACILITY:-onprem}
+      HEGEL_FACILITY: $FACILITY
       HEGEL_USE_TLS: 0
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     ports:
       - 50060:50060/tcp
       - 50061:50061/tcp
@@ -85,13 +85,13 @@ services:
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
       REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/${FACILITY:-onprem}/server-crt.pem
-      REGISTRY_HTTP_TLS_KEY: /certs/${FACILITY:-onprem}/server-key.pem
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/$FACILITY/server-crt.pem
+      REGISTRY_HTTP_TLS_KEY: /certs/$FACILITY/server-key.pem
     init: true
     network_mode: host
     volumes:
       - auth:/auth:ro
-      - certs:/certs/${FACILITY:-onprem}:ro
+      - certs:/certs/$FACILITY:ro
       - registry_data:/var/lib/registry
     depends_on:
       generate-tls-certs:
@@ -115,7 +115,7 @@ services:
   tink-server:
     image: ${TINK_SERVER_IMAGE}
     environment:
-      FACILITY: ${FACILITY:-onprem}
+      FACILITY: $FACILITY
       PGDATABASE: tinkerbell
       PGHOST: db
       PGPASSWORD: tinkerbell
@@ -124,9 +124,9 @@ services:
       PGUSER: tinkerbell
       TINKERBELL_GRPC_AUTHORITY: :42113
       TINKERBELL_HTTP_AUTHORITY: :42114
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:ro
+      - certs:/certs/$FACILITY:ro
     ports:
       - 42113:42113/tcp
       - 42114:42114/tcp
@@ -177,13 +177,8 @@ services:
     image: ${TINK_CLI_IMAGE}
     command: /app/create.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
     environment:
-      TINKERBELL_CLIENT_IP: $TINKERBELL_CLIENT_IP
-      TINKERBELL_CLIENT_MAC: $TINKERBELL_CLIENT_MAC
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-      TINKERBELL_HARDWARE_MANIFEST: $TINKERBELL_HARDWARE_MANIFEST
-      TINKERBELL_HOST_IP: $TINKERBELL_HOST_IP
-      TINKERBELL_TEMPLATE_MANIFEST: $TINKERBELL_TEMPLATE_MANIFEST
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     volumes:
       - ./create-tink-records/create.sh:/app/create.sh:ro
       - ./create-tink-records/manifests:/manifests:ro
@@ -196,7 +191,7 @@ services:
   db-migrations:
     image: ${TINK_SERVER_IMAGE}
     environment:
-      FACILITY: ${FACILITY:-onprem}
+      FACILITY: $FACILITY
       ONLY_MIGRATION: "true"
       PGDATABASE: tinkerbell
       PGHOST: db
@@ -204,11 +199,9 @@ services:
       PGPORT: 5432
       PGSSLMODE: disable
       PGUSER: tinkerbell
-      TINKERBELL_GRPC_AUTHORITY: :42113
-      TINKERBELL_HTTP_AUTHORITY: :42114
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     volumes:
-      - certs:/certs/${FACILITY:-onprem}:ro
+      - certs:/certs/$FACILITY:ro
     depends_on:
       db:
         condition: service_healthy
@@ -232,7 +225,7 @@ services:
   generate-registry-auth:
     image: httpd:2
     entrypoint: htpasswd
-    command: -Bbc .htpasswd "${TINKERBELL_REGISTRY_USERNAME:-admin}" "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}"
+    command: -Bbc .htpasswd "${TINKERBELL_REGISTRY_USERNAME}" "${TINKERBELL_REGISTRY_PASSWORD}"
     working_dir: /auth
     volumes:
       - auth:/auth
@@ -240,18 +233,19 @@ services:
   generate-tls-certs:
     image: cfssl/cfssl
     entrypoint: /app/generate.sh
-    command: '"$TINKERBELL_HOST_IP"'
+    command: "$TINKERBELL_HOST_IP"
     environment:
-      FACILITY: ${FACILITY:-onprem}
+      FACILITY: $FACILITY
+      TINKERBELL_HOST_IP: $TINKERBELL_HOST_IP
     volumes:
-      - certs:/certs/${FACILITY:-onprem}
+      - certs:/certs/$FACILITY
       - ./generate-tls-certs/:/app:ro
       - ./state/webroot/workflow/:/workflow/
 
   sync-images-to-local-registry:
     image: quay.io/containers/skopeo:v1.4.1
     entrypoint: /bin/bash
-    command: /app/upload.sh "${TINKERBELL_REGISTRY_USERNAME:-admin}" "${TINKERBELL_REGISTRY_PASSWORD:-Admin1234}" "${TINKERBELL_HOST_IP}" /app/registry_images.txt
+    command: /app/upload.sh "${TINKERBELL_REGISTRY_USERNAME}" "${TINKERBELL_REGISTRY_PASSWORD}" "${TINKERBELL_HOST_IP}" /app/registry_images.txt
     volumes:
       - ./sync-images-to-local-registry:/app:ro
     depends_on:
@@ -263,7 +257,7 @@ services:
     image: ${TINK_CLI_IMAGE}
     environment:
       TINKERBELL_GRPC_AUTHORITY: tink-server:42113
-      TINKERBELL_TLS: ${TINKERBELL_TLS:-false}
+      TINKERBELL_TLS: $TINKERBELL_TLS
     depends_on:
       db:
         condition: service_healthy
