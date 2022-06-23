@@ -8,9 +8,10 @@ set -euo pipefail
 user=$1
 pass=$2
 url=$3
-images=$4
+tink_image=$4
+images=$5
 
-mapfile -t lines <"$images"
+mapfile -t lines < <(sed 's|@TINK_WORKER_IMAGE@|'"$tink_image"'|' "$images")
 printf "syncing:\n" >&2
 printf "%s\n" "${lines[@]}" | sed 's| | → |' >&2
 for l in "${lines[@]}"; do
