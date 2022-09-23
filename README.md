@@ -20,9 +20,9 @@ Tinkerbell.org has a [list of guides](https://docs.tinkerbell.org/deploying-oper
 You can also create your own.
 The following docs will help you get started.
 
-1. [Create Hardware Data](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workers-hardware-data)
-2. [Create a Template](https://docs.tinkerbell.org/setup/local-vagrant/#creating-a-template)
-3. [Create a Workflow](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workflow)
+1. [Create Hardware Data](https://docs.tinkerbell.org/hardware-data/)
+2. [Create a Template](https://docs.tinkerbell.org/templates/)
+3. [Create a Workflow](https://docs.tinkerbell.org/workflows/working-with-workflows/)
 
 ### In the Sandbox
 
