@@ -161,6 +161,8 @@ services:
     volumes:
       - ./state/webroot/:/usr/share/nginx/html/:ro
     depends_on:
+      fetch-and-convert-debian-img:
+        condition: service_completed_successfully
       fetch-and-convert-ubuntu-img:
         condition: service_completed_successfully
       fetch-osie:
@@ -213,6 +215,14 @@ services:
     volumes:
       - ./fetch-osie/fetch.sh:/app/fetch.sh:ro
       - ./state/webroot/misc/osie/current:/workdir
+
+  fetch-and-convert-debian-img:
+    image: bash:4.4
+    entrypoint: /app/fetch.sh
+    command: https://cloud.debian.org/images/cloud/bookworm/daily/latest/debian-12-generic-amd64-daily.qcow2 /destination
+    volumes:
+      - ./fetch-and-convert-ubuntu-img/fetch.sh:/app/fetch.sh:ro
+      - ./state/webroot:/destination
 
   fetch-and-convert-ubuntu-img:
     image: bash:4.4

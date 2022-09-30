@@ -40,6 +40,8 @@ setup_compose_env_overrides() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
+	local hardware_manifest=$4
+	local template_manifest=$5
 	if lsblk | grep -q vda; then
 		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
 	fi
@@ -47,6 +49,8 @@ setup_compose_env_overrides() {
 		TINKERBELL_HOST_IP="$host_ip"
 		TINKERBELL_CLIENT_IP="$worker_ip"
 		TINKERBELL_CLIENT_MAC="$worker_mac"
+		TINKERBELL_HARDWARE_MANIFEST="$hardware_manifest"
+		TINKERBELL_TEMPLATE_MANIFEST="$template_manifest"
 	EOF
 	for line in "${lines[@]}"; do
 		grep -q "$line" /sandbox/compose/.env && continue
