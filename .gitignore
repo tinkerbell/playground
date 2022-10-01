@@ -3,6 +3,7 @@
 !deploy/compose/state/webroot/misc/osie/current/.keep
 !deploy/compose/state/webroot/workflow/.keep
 !deploy/.env
+!deploy/compose/kubernetes/.env
 !.gitignore
 !.github/
 
