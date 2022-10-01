@@ -1,0 +1,10 @@
+apiVersion: "tinkerbell.org/v1alpha1"
+kind: Workflow
+metadata:
+  name: sandbox-workflow
+  namespace: default
+spec:
+  templateRef: ubuntu-focal
+  hardwareRef: machine1
+  hardwareMap:
+    device_1: $TINKERBELL_CLIENT_MAC
