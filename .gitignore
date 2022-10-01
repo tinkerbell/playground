@@ -19,6 +19,9 @@ compose.zip
 deploy/compose/state/webroot/*.gz
 deploy/compose/state/webroot/misc/osie/current/*
 deploy/compose/state/webroot/workflow/*
+deploy/compose/kubernetes/manifests/manifests.yaml
+deploy/compose/kubernetes/state/*
+!deploy/compose/kubernetes/state/.keep
 envrc
 out
 workflow_id.txt

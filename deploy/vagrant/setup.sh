@@ -13,6 +13,12 @@ install_docker_compose() {
 	pip install docker-compose
 }
 
+install_kubectl() {
+	curl -LO https://dl.k8s.io/v1.25.2/bin/linux/amd64/kubectl
+	chmod +x ./kubectl
+	mv ./kubectl /usr/local/bin/kubectl
+}
+
 apt-get() {
 	DEBIAN_FRONTEND=noninteractive command apt-get \
 		--allow-change-held-packages \
@@ -78,15 +84,21 @@ main() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
+	local backend_kube=$4
 
 	update_apt
 	install_docker
 	install_docker_compose
+	install_kubectl
 
 	setup_layer2_network "$host_ip"
 
 	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac"
-	docker-compose -f /sandbox/compose/docker-compose.yml up -d
+	if [ -z "${backend_kube}" ]; then
+	  docker-compose -f /sandbox/compose/docker-compose.yml up -d
+	else
+	  docker-compose -f /sandbox/compose/kubernetes/docker-compose.yml up -d
+	fi
 
 	create_tink_helper_script
 	tweak_bash_interactive_settings
