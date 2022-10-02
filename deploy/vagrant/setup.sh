@@ -46,17 +46,18 @@ setup_compose_env_overrides() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
-	if lsblk | grep -q vda; then
-		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
-	fi
+	local disk_device=$4
+	local compose_dir=$5
+
 	readarray -t lines <<-EOF
 		TINKERBELL_HOST_IP="$host_ip"
 		TINKERBELL_CLIENT_IP="$worker_ip"
 		TINKERBELL_CLIENT_MAC="$worker_mac"
+		DISK_DEVICE="$disk_device"
 	EOF
 	for line in "${lines[@]}"; do
-		grep -q "$line" /sandbox/compose/.env && continue
-		echo "$line" >>/sandbox/compose/.env
+		grep -q "$line" ${compose_dir}/.env && continue
+		echo "$line" >>${compose_dir}/.env
 	done
 }
 
@@ -72,6 +73,7 @@ create_tink_helper_script() {
 
 tweak_bash_interactive_settings() {
 	grep -q 'cd /sandbox/compose' ~vagrant/.bashrc || echo 'cd /sandbox/compose' >>~vagrant/.bashrc
+	echo 'export KUBECONFIG=/sandbox/compose/kubernetes/state/kube/kubeconfig.yaml' >>~vagrant/.bashrc
 	readarray -t aliases <<-EOF
 		dc=docker-compose
 	EOF
@@ -84,7 +86,8 @@ main() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
-	local backend_kube=$4
+	local disk_device=$4
+	local compose_dir=$5
 
 	update_apt
 	install_docker
@@ -93,12 +96,8 @@ main() {
 
 	setup_layer2_network "$host_ip"
 
-	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac"
-	if [ -z "${backend_kube}" ]; then
-	  docker-compose -f /sandbox/compose/docker-compose.yml up -d
-	else
-	  docker-compose -f /sandbox/compose/kubernetes/docker-compose.yml up -d
-	fi
+	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$disk_device" "$compose_dir"
+	docker-compose -f ${compose_dir}/docker-compose.yml up -d
 
 	create_tink_helper_script
 	tweak_bash_interactive_settings

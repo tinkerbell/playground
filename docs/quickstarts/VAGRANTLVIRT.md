@@ -7,6 +7,7 @@ This option will also show you how to create a machine to provision.
 
 - [Vagrant](https://www.vagrantup.com/downloads) is installed
 - [Libvirt](https://ubuntu.com/server/docs/virtualization-libvirt) is installed
+- Vagrant Libvirt plugin is installed: `vagrant plugin install vagrant-libvirt`
 
 ## Steps
 
@@ -21,9 +22,11 @@ This option will also show you how to create a machine to provision.
 
    ```bash
    cd deploy/vagrant
-   vagrant up
+   # Pick one `vagrant up` command
+   BACKEND_KUBE=true vagrant up # this deploys the Tinkerbell stack using the Kubernetes backend
+   vagrant up # this deploys the Tinkerbell stack using the postgres backend
    # This process will take about 5-10 minutes depending on your internet connection.
-   # OSIE is about 2GB in size and the Ubuntu Focal image is about 500MB
+   # Hook is about 400MB in size and the Ubuntu Focal image is about 500MB
    ```
 
    <details>
@@ -226,6 +229,9 @@ This option will also show you how to create a machine to provision.
 
 4. Watch the provision complete
 
+   <details>
+   <summary>Postgres backend</summary>
+
    ```bash
    # log in to the provisioner
    vagrant ssh provisioner
@@ -266,6 +272,30 @@ This option will also show you how to create a machine to provision.
    +----------------------+--------------------------------------+
    ```
 
+   </details>
+   </details>
+
+   <details>
+   <summary>Kubernetes backend</summary>
+
+   ```bash
+   # log in to the provisioner
+   vagrant ssh provisioner
+
+   kubectl get workflow sandbox-workflow--watch
+   ```
+
+   <details>
+   <summary>expected output</summary>
+
+   ```bash
+   NAME               TEMPLATE       STATE
+   sandbox-workflow   ubuntu-focal   STATE_PENDING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_SUCCESS
+   ```
+
+   </details>
    </details>
 
 5. Reboot the machine

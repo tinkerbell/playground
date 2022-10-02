@@ -4,6 +4,8 @@ metadata:
   name: machine1
   namespace: default
 spec:
+  disks:
+    - device: $DISK_DEVICE
   metadata:
     facility:
       facility_code: sandbox

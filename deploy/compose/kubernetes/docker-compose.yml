@@ -211,7 +211,3 @@ services:
 
 volumes:
   k3s-server: {}
-
-
-# export $(grep -v '^#' .env | xargs -d '\n')
-# for i in manifests/{hardware.yaml,template.yaml,workflow.yaml}; do envsubst < $i; echo -e '---'; done > manifests/manifests.yaml
