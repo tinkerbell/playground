@@ -20,7 +20,7 @@ services:
       BOOTS_KUBECONFIG: /output/kubeconfig.yaml
       BOOTS_EXTRA_KERNEL_ARGS: "tink_worker_image=$TINK_WORKER_IMAGE"
     depends_on:
-      crd-apply:
+      tink-crds-apply:
         condition: service_completed_successfully
     volumes:
       - ./state/kube:/output
@@ -76,7 +76,7 @@ services:
       HEGEL_KUBERNETES: "https://k3s:6443"
       HEGEL_DATA_MODEL: kubernetes
     depends_on:
-      crd-apply:
+      tink-crds-apply:
         condition: service_completed_successfully
     volumes:
       - ./state/kube:/output
@@ -98,7 +98,7 @@ services:
     volumes:
       - ./state/kube:/output
     depends_on:
-      crd-apply:
+      tink-crds-apply:
         condition: service_completed_successfully
     restart: always
 
@@ -116,7 +116,7 @@ services:
       - 42113:42113/tcp
       - 42114:42114/tcp
     depends_on:
-      crd-apply:
+      tink-crds-apply:
         condition: service_completed_successfully
     deploy:
       resources:
@@ -154,9 +154,9 @@ services:
     restart: unless-stopped
 
   ## "init" containers; they run until they accomplish their purpose and then exit
-  crd-apply:
+  tink-crds-apply:
     image: bitnami/kubectl:1.24.6
-    command: -s "https://k3s:6443" apply -k 'github.com/tinkerbell/tink/config/crd?ref=v0.7.0'
+    command: -s "https://k3s:6443" apply -k 'github.com/tinkerbell/tink/config/crd?ref=${TINK_VERSION}'
     environment:
       KUBECONFIG: /output/kubeconfig.yaml
       KUBERNETES_SERVICE_HOST: k3s
@@ -185,7 +185,7 @@ services:
       KUBECONFIG: /output/kubeconfig.yaml
       KUBERNETES_SERVICE_HOST: k3s
     depends_on:
-      crd-apply:
+      tink-crds-apply:
         condition: service_completed_successfully
       manifest-update:
         condition: service_completed_successfully
