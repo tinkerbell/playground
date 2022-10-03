@@ -1,9 +1,9 @@
 # hidden files/dirs
 .*
-!deploy/compose/state/webroot/misc/osie/current/.keep
-!deploy/compose/state/webroot/workflow/.keep
+!deploy/compose/postgres/state/webroot/misc/osie/current/.keep
+!deploy/compose/postgres/state/webroot/workflow/.keep
 !deploy/.env
-!deploy/compose/kubernetes/.env
+!deploy/compose/.env
 !.gitignore
 !.github/
 
@@ -17,12 +17,12 @@
 
 compose.tar.gz
 compose.zip
-deploy/compose/state/webroot/*.gz
-deploy/compose/state/webroot/misc/osie/current/*
-deploy/compose/state/webroot/workflow/*
-deploy/compose/kubernetes/manifests/manifests.yaml
-deploy/compose/kubernetes/state/*
-!deploy/compose/kubernetes/state/.keep
+deploy/compose/postgres/state/webroot/*.gz
+deploy/compose/postgres/state/webroot/misc/osie/current/*
+deploy/compose/postgres/state/webroot/workflow/*
+deploy/compose/manifests/manifests.yaml
+deploy/compose/state/*
+!deploy/compose/state/.keep
 envrc
 out
 workflow_id.txt

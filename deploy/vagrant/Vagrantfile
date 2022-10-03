@@ -5,7 +5,7 @@ LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
-BACKEND_KUBE = ENV["BACKEND_KUBE"] || ""
+BACKEND_POSTGRES = ENV["BACKEND_POSTGRES"] || ""
 COMPOSE_DIR = "/sandbox/compose"
 
 Vagrant.configure("2") do |config|
@@ -35,8 +35,8 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder "../compose/", "/sandbox/compose/", type: "rsync"
     end
 
-    if BACKEND_KUBE != ""
-      COMPOSE_DIR = "/sandbox/compose/kubernetes"
+    if BACKEND_POSTGRES != ""
+      COMPOSE_DIR = "/sandbox/compose/postgres"
     end
     provisioner.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, COMPOSE_DIR]
   end

@@ -52,7 +52,9 @@ setup_compose_env_overrides() {
 	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
 		disk_device="/dev/vda"
-		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
+		if [[ $compose_dir == *"postgres"* ]]; then
+			sed -i 's|sda|vda|g' "$compose_dir"/create-tink-records/manifests/template/ubuntu.yaml
+		fi
 	fi
 
 	readarray -t lines <<-EOF
@@ -62,24 +64,28 @@ setup_compose_env_overrides() {
 		DISK_DEVICE="$disk_device"
 	EOF
 	for line in "${lines[@]}"; do
-		grep -q "$line" "${compose_dir}"/.env && continue
-		echo "$line" >>"${compose_dir}"/.env
+		grep -q "$line" "$compose_dir"/.env && continue
+		echo "$line" >>"$compose_dir"/.env
 	done
 }
 
 create_tink_helper_script() {
+	local compose_dir=$1
+
 	mkdir -p ~vagrant/.local/bin
-	cat >~vagrant/.local/bin/tink <<-'EOF'
+	cat >~vagrant/.local/bin/tink <<-____HERE
 		#!/usr/bin/env bash
 
-		exec docker-compose -f /sandbox/compose/docker-compose.yml exec tink-cli tink "$@"
-	EOF
+		exec docker-compose -f $compose_dir/docker-compose.yml exec tink-cli tink "\$@"
+	____HERE
 	chmod +x ~vagrant/.local/bin/tink
 }
 
 tweak_bash_interactive_settings() {
+	local compose_dir=$1
+
 	grep -q 'cd /sandbox/compose' ~vagrant/.bashrc || echo 'cd /sandbox/compose' >>~vagrant/.bashrc
-	echo 'export KUBECONFIG=/sandbox/compose/kubernetes/state/kube/kubeconfig.yaml' >>~vagrant/.bashrc
+	echo 'export KUBECONFIG='"$compose_dir"'/state/kube/kubeconfig.yaml' >>~vagrant/.bashrc
 	readarray -t aliases <<-EOF
 		dc=docker-compose
 	EOF
@@ -102,10 +108,10 @@ main() {
 	setup_layer2_network "$host_ip"
 
 	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"
-	docker-compose -f "${compose_dir}"/docker-compose.yml up -d
+	docker-compose -f "$compose_dir"/docker-compose.yml up -d
 
-	create_tink_helper_script
-	tweak_bash_interactive_settings
+	create_tink_helper_script "$compose_dir"
+	tweak_bash_interactive_settings "$compose_dir"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
