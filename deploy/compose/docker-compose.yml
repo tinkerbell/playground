@@ -133,6 +133,17 @@ services:
       retries: 30
     restart: always
 
+  rufio:
+    image: $RUFIO_IMAGE
+    command:
+      ["--kubeconfig=/output/kubeconfig.yaml", "--kubernetes=https://k3s:6443"]
+    volumes:
+      - ./state/kube:/output
+    depends_on:
+      rufio-crds-apply:
+        condition: service_completed_successfully
+    restart: always
+
   web-assets-server:
     image: nginx:alpine
     tty: true
@@ -157,6 +168,19 @@ services:
   tink-crds-apply:
     image: bitnami/kubectl:1.24.6
     command: -s "https://k3s:6443" apply -k 'github.com/tinkerbell/tink/config/crd?ref=${TINK_VERSION}'
+    environment:
+      KUBECONFIG: /output/kubeconfig.yaml
+      KUBERNETES_SERVICE_HOST: k3s
+    depends_on:
+      k3s:
+        condition: service_healthy
+    volumes:
+      - ./state/kube:/output
+    restart: on-failure
+
+  rufio-crds-apply:
+    image: bitnami/kubectl:1.24.6
+    command: -s "https://k3s:6443" apply -k 'github.com/tinkerbell/rufio/config/crd?ref=${RUFIO_VERSION}'
     environment:
       KUBECONFIG: /output/kubeconfig.yaml
       KUBERNETES_SERVICE_HOST: k3s
