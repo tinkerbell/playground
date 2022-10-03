@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   ##### Actual services first #####
   boots:
@@ -39,8 +39,8 @@ services:
       K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
       K3S_KUBECONFIG_MODE: 666
     tmpfs:
-    - /run
-    - /var/run
+      - /run
+      - /var/run
     ulimits:
       nproc: 65535
       nofile:
@@ -51,9 +51,9 @@ services:
       - k3s-server:/var/lib/rancher/k3s
       - ./state/kube:/output
     ports:
-      - 6443:6443  # Kubernetes API Server
-      - 8888:80    # Ingress controller port 80
-      - 8443:443   # Ingress controller port 443
+      - 6443:6443 # Kubernetes API Server
+      - 8888:80 # Ingress controller port 80
+      - 8443:443 # Ingress controller port 443
     healthcheck:
       test:
         - CMD-SHELL
@@ -153,7 +153,7 @@ services:
           memory: 512M
     restart: unless-stopped
 
-## "init" containers; they run until they accomplish their purpose and then exit
+  ## "init" containers; they run until they accomplish their purpose and then exit
   crd-apply:
     image: bitnami/kubectl:1.24.6
     command: -s "https://k3s:6443" apply -k 'github.com/tinkerbell/tink/config/crd?ref=v0.7.0'

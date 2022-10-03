@@ -49,7 +49,7 @@ setup_compose_env_overrides() {
 	local compose_dir=$4
 	local disk_device
 
-    disk_device="/dev/sda"
+	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
 		disk_device="/dev/vda"
 		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
@@ -62,8 +62,8 @@ setup_compose_env_overrides() {
 		DISK_DEVICE="$disk_device"
 	EOF
 	for line in "${lines[@]}"; do
-		grep -q "$line" ${compose_dir}/.env && continue
-		echo "$line" >>${compose_dir}/.env
+		grep -q "$line" "${compose_dir}"/.env && continue
+		echo "$line" >>"${compose_dir}"/.env
 	done
 }
 
@@ -102,7 +102,7 @@ main() {
 	setup_layer2_network "$host_ip"
 
 	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"
-	docker-compose -f ${compose_dir}/docker-compose.yml up -d
+	docker-compose -f "${compose_dir}"/docker-compose.yml up -d
 
 	create_tink_helper_script
 	tweak_bash_interactive_settings
