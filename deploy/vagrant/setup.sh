@@ -46,8 +46,14 @@ setup_compose_env_overrides() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
-	local disk_device=$4
-	local compose_dir=$5
+	local compose_dir=$4
+	local disk_device
+
+	if lsblk | grep -q vda; then
+		disk_device="/dev/vda"
+	else
+		disk_device="/dev/sda"
+	fi
 
 	readarray -t lines <<-EOF
 		TINKERBELL_HOST_IP="$host_ip"
@@ -86,8 +92,7 @@ main() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
-	local disk_device=$4
-	local compose_dir=$5
+	local compose_dir=$4
 
 	update_apt
 	install_docker
@@ -96,7 +101,7 @@ main() {
 
 	setup_layer2_network "$host_ip"
 
-	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$disk_device" "$compose_dir"
+	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"
 	docker-compose -f ${compose_dir}/docker-compose.yml up -d
 
 	create_tink_helper_script
