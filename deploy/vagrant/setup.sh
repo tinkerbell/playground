@@ -49,10 +49,10 @@ setup_compose_env_overrides() {
 	local compose_dir=$4
 	local disk_device
 
+    disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
 		disk_device="/dev/vda"
-	else
-		disk_device="/dev/sda"
+		sed -i 's|sda|vda|g' /sandbox/compose/create-tink-records/manifests/template/ubuntu.yaml
 	fi
 
 	readarray -t lines <<-EOF
