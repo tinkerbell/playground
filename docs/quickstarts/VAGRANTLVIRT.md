@@ -282,7 +282,7 @@ This option will also show you how to create a machine to provision.
    # log in to the provisioner
    vagrant ssh provisioner
 
-   kubectl get workflow sandbox-workflow--watch
+   kubectl get workflow sandbox-workflow --watch
    ```
 
    <details>
@@ -291,6 +291,18 @@ This option will also show you how to create a machine to provision.
    ```bash
    NAME               TEMPLATE       STATE
    sandbox-workflow   ubuntu-focal   STATE_PENDING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
    sandbox-workflow   ubuntu-focal   STATE_RUNNING
    sandbox-workflow   ubuntu-focal   STATE_SUCCESS
    ```
