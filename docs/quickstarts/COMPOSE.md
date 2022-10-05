@@ -7,7 +7,7 @@ You will need to bring your own machines to provision.
 
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) is installed
 - [Docker](https://docs.docker.com/get-docker/) is installed (version >= 19.03)
-- [Docker Compose](https://docs.docker.com/compose/install/) is installed (version >= 1.29.0)
+- [Docker Compose](https://docs.docker.com/compose/install/) is installed (version >= 2.10.2)
 
 ## Steps
 
@@ -40,7 +40,7 @@ You will need to bring your own machines to provision.
 
    ```bash
    cd deploy/compose
-   docker-compose up -d
+   docker compose up -d
    # This process will take about 5-10 minutes depending on your internet connection.
    # Hook (OSIE) is about 400MB in size and the Ubuntu Focal image is about 500MB
    ```
@@ -49,48 +49,22 @@ You will need to bring your own machines to provision.
    <summary>expected output</summary>
 
    ```bash
-   Creating network "compose_default" with the default driver
-   Creating volume "compose_k3s-server" with default driver
-   Pulling tink-server (quay.io/tinkerbell/tink:v0.7.0)...
-   v0.7.0: Pulling from tinkerbell/tink
-   9621f1afde84: Already exists
-   45d75a7e2c40: Pull complete
-   c3d0a7e0154d: Pull complete
-   Digest: sha256:b4ee7cf6da1e7dc5a5107e51e725b4fa7e46aac65cbe42cfe22139b07d6363b3
-   Status: Downloaded newer image for quay.io/tinkerbell/tink:v0.7.0
-   Pulling tink-controller (quay.io/tinkerbell/tink-controller:sha-eeb2a454)...
-   sha-eeb2a454: Pulling from tinkerbell/tink-controller
-   9621f1afde84: Already exists
-   d532ffcfa954: Pull complete
-   c56b0a87f19d: Pull complete
-   Digest: sha256:3cd56aaaf02fcbfcada752013db85f23816300b52527df0fb8f5481252bbc925
-   Status: Downloaded newer image for quay.io/tinkerbell/tink-controller:sha-eeb2a454
-   Pulling hegel (quay.io/tinkerbell/hegel:v0.7.0)...
-   v0.7.0: Pulling from tinkerbell/hegel
-   5d20c808ce19: Pull complete
-   0c56430d993f: Pull complete
-   f6b392cbe540: Pull complete
-   14a8d8138b1d: Pull complete
-   Digest: sha256:6cae60bc29eaee5b213b258894f50caebd8c229a2bafa666e88772da4e4f8ded
-   Status: Downloaded newer image for quay.io/tinkerbell/hegel:v0.7.0
-   Pulling boots (quay.io/tinkerbell/boots:v0.7.0)...
-   v0.7.0: Pulling from tinkerbell/boots
-   6097bfa160c1: Pull complete
-   0f3cf798c031: Pull complete
-   bcecd77be5a5: Pull complete
-   Digest: sha256:4ac5c895d9ec455872352daffb659a359df8caa89616d62c66442e36b5cef6ac
-   Status: Downloaded newer image for quay.io/tinkerbell/boots:v0.7.0
-   Creating compose_fetch-osie_1                   ... done
-   Creating compose_k3s_1                          ... done
-   Creating compose_manifest-update_1              ... done
-   Creating compose_fetch-and-convert-ubuntu-img_1 ... done
-   Creating compose_web-assets-server_1            ... done
-   Creating compose_tink-crds-apply_1              ... done
-   Creating compose_tink-server_1                  ... done
-   Creating compose_tink-controller_1              ... done
-   Creating compose_manifest-apply_1               ... done
-   Creating compose_boots_1                        ... done
-   Creating compose_hegel_1                        ... done
+   [+] Running 15/15
+   ⠿ Network compose_default                              Created             0.0s
+   ⠿ Volume "compose_k3s-server"                          Created             0.0s
+   ⠿ Container compose-fetch-and-convert-ubuntu-img-1     Exited              2.9s
+   ⠿ Container compose-fetch-osie-1                       Exited              1.7s
+   ⠿ Container compose-manifest-update-1                  Started             1.2s
+   ⠿ Container compose-k3s-1                              Healthy            99.7s
+   ⠿ Container compose-web-assets-server-1                Started             3.1s
+   ⠿ Container compose-tink-crds-apply-1                  Exited            128.0s
+   ⠿ Container compose-rufio-crds-apply-1                 Exited            127.5s
+   ⠿ Container compose-tink-controller-1                  Started           128.5s
+   ⠿ Container compose-boots-1                            Started           128.0s
+   ⠿ Container compose-tink-server-1                      Started           128.8s
+   ⠿ Container compose-hegel-1                            Started           128.9s
+   ⠿ Container compose-manifest-apply-1                   Started           128.9s
+   ⠿ Container compose-rufio-1                            Started           127.7s
    ```
 
    </details>
