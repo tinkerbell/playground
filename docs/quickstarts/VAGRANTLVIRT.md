@@ -21,7 +21,7 @@ This option will also show you how to create a machine to provision.
 2. Start the provisioner
 
    ```bash
-   cd deploy/vagrant
+   cd deploy/infrastructure/vagrant
    vagrant up
    # This process will take about 5-10 minutes depending on your internet connection.
    # Hook is about 400MB in size and the Ubuntu Focal image is about 500MB

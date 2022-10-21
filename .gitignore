@@ -1,9 +1,9 @@
 # hidden files/dirs
 .*
-!deploy/compose/postgres/state/webroot/misc/osie/current/.keep
-!deploy/compose/postgres/state/webroot/workflow/.keep
-!deploy/.env
-!deploy/compose/.env
+!deploy/stack/compose/postgres/state/webroot/misc/osie/current/.keep
+!deploy/stack/compose/postgres/state/webroot/workflow/.keep
+!deploy/stack/.env
+!deploy/stack/compose/.env
 !.gitignore
 !.github/
 
@@ -17,12 +17,12 @@
 
 compose.tar.gz
 compose.zip
-deploy/compose/postgres/state/webroot/*.gz
-deploy/compose/postgres/state/webroot/misc/osie/current/*
-deploy/compose/postgres/state/webroot/workflow/*
-deploy/compose/manifests/manifests.yaml
-deploy/compose/state/*
-!deploy/compose/state/.keep
+deploy/stack/compose/postgres/state/webroot/*.gz
+deploy/stack/compose/postgres/state/webroot/misc/osie/current/*
+deploy/stack/compose/postgres/state/webroot/workflow/*
+deploy/stack/compose/manifests/manifests.yaml
+deploy/stack/compose/state/*
+!deploy/stack/compose/state/.keep
 envrc
 out
 workflow_id.txt

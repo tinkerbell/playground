@@ -2,7 +2,6 @@ apiVersion: "tinkerbell.org/v1alpha1"
 kind: Hardware
 metadata:
   name: machine1
-  namespace: default
 spec:
   disks:
     - device: $DISK_DEVICE
@@ -22,7 +21,7 @@ spec:
         hostname: machine1
         ip:
           address: $TINKERBELL_CLIENT_IP
-          # gateway: 192.168.2.1
+          gateway: $TINKERBELL_CLIENT_GW
           netmask: 255.255.255.0
         lease_time: 86400
         mac: $TINKERBELL_CLIENT_MAC

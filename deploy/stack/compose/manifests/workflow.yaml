@@ -2,7 +2,6 @@ apiVersion: "tinkerbell.org/v1alpha1"
 kind: Workflow
 metadata:
   name: sandbox-workflow
-  namespace: default
 spec:
   templateRef: ubuntu-focal
   hardwareRef: machine1

@@ -1,12 +1,19 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
+open('.env', 'r').readlines.each {
+  |l| kv = l.split('=')
+  if kv[1] != nil
+    ENV[kv[0]] = kv[1].strip
+  end
+}
 LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
 BACKEND_POSTGRES = ENV["BACKEND_POSTGRES"] || ""
-COMPOSE_DIR = "/sandbox/compose"
+USE_HELM = ENV["USE_HELM"] || ""
+STACK_DIR = "../../stack/compose/"
+DEST_DIR = "/sandbox/stack/compose"
 
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
@@ -14,31 +21,34 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "provisioner" do |provisioner|
+    if USE_HELM == "true"
+      STACK_DIR = "../stack/helm/"
+      DEST_DIR = "/sandbox/stack/helm"
+    end
     provisioner.vm.box = "generic/ubuntu2204"
-    provisioner.vm.synced_folder "../compose/", "/sandbox/compose/"
-    provisioner.vm.network "private_network", ip: PROVISIONER_IP,
+    provisioner.vm.synced_folder STACK_DIR, DEST_DIR
+    provisioner.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
                                               libvirt__network_name: "tink_network",
                                               libvirt__host_ip: LIBVIRT_HOST_IP,
                                               libvirt__netmask: "255.255.255.0",
-                                              libvirt__dhcp_enabled: false,
-                                              auto_config: false
+                                              libvirt__dhcp_enabled: false
 
     provisioner.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
-      override.vm.synced_folder "../compose/", "/sandbox/compose/"
+      override.vm.synced_folder STACK_DIR, DEST_DIR
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
-      override.vm.synced_folder "../compose/", "/sandbox/compose/", type: "rsync"
+      override.vm.synced_folder STACK_DIR, DEST_DIR, type: "rsync"
     end
 
-    if BACKEND_POSTGRES != ""
-      COMPOSE_DIR = "/sandbox/compose/postgres"
+    if BACKEND_POSTGRES == "true"
+      DEST_DIR = "/sandbox/stack/compose/postgres"
     end
-    provisioner.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, COMPOSE_DIR]
+    provisioner.vm.provision :shell, path: STACK_DIR+"/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
@@ -46,7 +56,7 @@ Vagrant.configure("2") do |config|
     machine1.vm.boot_timeout = 10
     machine1.vm.synced_folder ".", "/vagrant", disabled: true
     machine1.vm.network :private_network, ip: MACHINE1_IP,
-                                          mac: MACHINE1_MAC.gsub(/[:-]/, ""),
+                                          mac: MACHINE1_MAC.gsub(/[:-]/, "").strip,
                                           adapter: 1,
                                           libvirt__network_name: "tink_network",
                                           libvirt__dhcp_enabled: false,
