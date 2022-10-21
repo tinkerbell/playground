@@ -45,7 +45,7 @@ install_k3d() {
 start_k3d() {
 	k3d cluster create --network host --no-lb --k3s-arg "--disable=traefik,servicelb" --k3s-arg "--kube-apiserver-arg=feature-gates=MixedProtocolLBService=true" --host-pid-mode
 	mkdir -p ~/.kube/
-    k3d kubeconfig get -a > ~/.kube/config
+	k3d kubeconfig get -a >~/.kube/config
 	until kubectl wait --for=condition=Ready nodes --all --timeout=600s; do sleep 1; done
 }
 
@@ -59,7 +59,7 @@ kubectl_for_vagrant_user() {
 helm_customize_values() {
 	local loadbalancer_ip=$1
 
-	helm inspect values oci://ghcr.io/tinkerbell/charts/stack --version 0.1.1 > /tmp/stack-values.yaml
+	helm inspect values oci://ghcr.io/tinkerbell/charts/stack --version 0.1.1 >/tmp/stack-values.yaml
 	sed -i "s/192.168.2.111/${loadbalancer_ip}/g" /tmp/stack-values.yaml
 }
 
@@ -77,10 +77,13 @@ apply_manifests() {
 	local host_ip=$4
 	local namespace=$5
 
-    export TINKERBELL_CLIENT_IP="$worker_ip"
-    export TINKERBELL_CLIENT_MAC="$worker_mac"
-    export TINKERBELL_HOST_IP="$host_ip"
-	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do envsubst < $i; echo -e '---'; done > /tmp/manifests.yaml
+	export TINKERBELL_CLIENT_IP="$worker_ip"
+	export TINKERBELL_CLIENT_MAC="$worker_mac"
+	export TINKERBELL_HOST_IP="$host_ip"
+	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
+		envsubst <"$i"
+		echo -e '---'
+	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
 }
 
@@ -92,7 +95,7 @@ run_helm() {
 	local namespace="tink-system"
 	local loadbalancer_ip="192.168.56.5"
 
-    install_k3d
+	install_k3d
 	start_k3d
 	install_helm
 	helm_customize_values "$loadbalancer_ip"

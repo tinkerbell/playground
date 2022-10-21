@@ -59,7 +59,6 @@ setup_compose_env_overrides() {
 		DISK_DEVICE="$disk_device"
 	EOF
 	for line in "${lines[@]}"; do
-	    echo "$line"
 		grep -q "$line" "$compose_dir"/.env && continue
 		echo "$line" >>"$compose_dir"/.env
 	done

@@ -1,7 +1,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-open('.env', 'r').readlines.each {
-  |l| kv = l.split('=')
+open(".env", "r").readlines.each {
+  |l|
+  kv = l.split("=")
   if kv[1] != nil
     ENV[kv[0]] = kv[1].strip
   end
@@ -48,7 +49,7 @@ Vagrant.configure("2") do |config|
     if BACKEND_POSTGRES == "true"
       DEST_DIR = "/sandbox/stack/compose/postgres"
     end
-    provisioner.vm.provision :shell, path: STACK_DIR+"/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR]
+    provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
