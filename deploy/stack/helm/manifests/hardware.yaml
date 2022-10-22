@@ -1,0 +1,34 @@
+apiVersion: "tinkerbell.org/v1alpha1"
+kind: Hardware
+metadata:
+  name: machine1
+spec:
+  disks:
+    - device: $DISK_DEVICE
+  metadata:
+    facility:
+      facility_code: sandbox
+    instance:
+      hostname: "machine1"
+      id: "$TINKERBELL_CLIENT_MAC"
+      operating_system:
+        distro: "ubuntu"
+        os_slug: "ubuntu_20_04"
+        version: "20.04"
+  interfaces:
+    - dhcp:
+        arch: x86_64
+        hostname: machine1
+        ip:
+          address: $TINKERBELL_CLIENT_IP
+          gateway: $TINKERBELL_CLIENT_GW
+          netmask: 255.255.255.0
+        lease_time: 86400
+        mac: $TINKERBELL_CLIENT_MAC
+        name_servers:
+          - 1.1.1.1
+          - 8.8.8.8
+        uefi: false
+      netboot:
+        allowPXE: true
+        allowWorkflow: true

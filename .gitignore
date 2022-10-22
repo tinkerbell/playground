@@ -2,7 +2,7 @@
 .*
 !deploy/stack/compose/postgres/state/webroot/misc/osie/current/.keep
 !deploy/stack/compose/postgres/state/webroot/workflow/.keep
-!deploy/stack/.env
+!deploy/infrastructure/vagrant/.env
 !deploy/stack/compose/.env
 !.gitignore
 !.github/

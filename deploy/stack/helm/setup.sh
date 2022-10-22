@@ -4,7 +4,7 @@ install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	update_apt
-	apt-get install --no-install-recommends containerd.io docker-ce docker-ce-cli docker-compose-plugin
+	apt-get install --no-install-recommends containerd.io docker-ce docker-ce-cli
 	gpasswd -a vagrant docker
 }
 
@@ -77,14 +77,21 @@ apply_manifests() {
 	local host_ip=$4
 	local namespace=$5
 
+	disk_device="/dev/sda"
+	if lsblk | grep -q vda; then
+		disk_device="/dev/vda"
+	fi
+	export DISK_DEVICE="$disk_device"
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
+
 	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
 		envsubst <"$i"
 		echo -e '---'
 	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
+	kubectl apply -n "$namespace" -f "$manifests_dir"/ubuntu-download.yaml
 }
 
 run_helm() {
@@ -101,7 +108,7 @@ run_helm() {
 	helm_customize_values "$loadbalancer_ip"
 	# do we need to wait til cluster is ready? TBD
 	helm_install_tink_stack "$namespace"
-	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip", "$namespace"
+	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
 	kubectl_for_vagrant_user
 }
 
@@ -109,13 +116,13 @@ main() {
 	local host_ip=$1
 	local worker_ip=$2
 	local worker_mac=$3
-	local compose_dir=$4
+	local manifests_dir=$4
 
 	update_apt
 	install_docker
 	install_kubectl
 
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"/manifests
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

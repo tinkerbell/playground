@@ -1,5 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+
 open(".env", "r").readlines.each {
   |l|
   kv = l.split("=")
@@ -7,14 +8,18 @@ open(".env", "r").readlines.each {
     ENV[kv[0]] = kv[1].strip
   end
 }
+
 LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
-BACKEND_POSTGRES = ENV["BACKEND_POSTGRES"] || ""
+USE_POSTGRES = ENV["USE_POSTGRES"] || ""
 USE_HELM = ENV["USE_HELM"] || ""
-STACK_DIR = "../../stack/compose/"
-DEST_DIR = "/sandbox/stack/compose"
+STACK_OPT = "compose/"
+STACK_BASE_DIR = "../../stack/"
+STACK_DIR = STACK_BASE_DIR + STACK_OPT
+DEST_DIR_BASE = "/sandbox/stack/"
+DEST_DIR = DEST_DIR_BASE + STACK_OPT
 
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
@@ -23,11 +28,11 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "provisioner" do |provisioner|
     if USE_HELM == "true"
-      STACK_DIR = "../stack/helm/"
-      DEST_DIR = "/sandbox/stack/helm"
+      STACK_DIR = STACK_BASE_DIR + "helm/"
+      DEST_DIR = DEST_DIR_BASE + "helm/"
     end
     provisioner.vm.box = "generic/ubuntu2204"
-    provisioner.vm.synced_folder STACK_DIR, DEST_DIR
+    provisioner.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE
     provisioner.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
                                               libvirt__network_name: "tink_network",
                                               libvirt__host_ip: LIBVIRT_HOST_IP,
@@ -37,17 +42,17 @@ Vagrant.configure("2") do |config|
     provisioner.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
-      override.vm.synced_folder STACK_DIR, DEST_DIR
+      override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE
     end
 
     provisioner.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
-      override.vm.synced_folder STACK_DIR, DEST_DIR, type: "rsync"
+      override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE, type: "rsync"
     end
 
-    if BACKEND_POSTGRES == "true"
-      DEST_DIR = "/sandbox/stack/compose/postgres"
+    if USE_POSTGRES == "true"
+      DEST_DIR = DEST_DIR_BASE + "postgres/"
     end
     provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR]
   end
