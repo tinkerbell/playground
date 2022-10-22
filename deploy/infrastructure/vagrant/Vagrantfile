@@ -11,6 +11,7 @@ open(".env", "r").readlines.each {
 
 LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
+LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.4"
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
 USE_POSTGRES = ENV["USE_POSTGRES"] || ""
@@ -54,7 +55,7 @@ Vagrant.configure("2") do |config|
     if USE_POSTGRES == "true"
       DEST_DIR = DEST_DIR_BASE + "postgres/"
     end
-    provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR]
+    provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR, LOADBALANCER_IP]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|

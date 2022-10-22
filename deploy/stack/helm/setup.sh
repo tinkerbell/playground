@@ -99,8 +99,8 @@ run_helm() {
 	local worker_ip=$2
 	local worker_mac=$3
 	local manifests_dir=$4
+	local loadbalancer_ip=$5
 	local namespace="tink-system"
-	local loadbalancer_ip="192.168.56.5"
 
 	install_k3d
 	start_k3d
@@ -117,12 +117,13 @@ main() {
 	local worker_ip=$2
 	local worker_mac=$3
 	local manifests_dir=$4
+	local loadbalancer_ip=$5
 
 	update_apt
 	install_docker
 	install_kubectl
 
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests "$loadbalancer_ip"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
