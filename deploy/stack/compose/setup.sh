@@ -102,7 +102,7 @@ main() {
 	# setup_layer2_network "$host_ip"
 
 	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"
-	docker compose -f "$compose_dir"/docker-compose.yml up -d
+	docker compose --env-file "$compose_dir"/.env -f "$compose_dir"/docker-compose.yml up -d
 
 	create_tink_helper_script "$compose_dir"
 	tweak_bash_interactive_settings "$compose_dir"

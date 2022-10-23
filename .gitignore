@@ -4,6 +4,7 @@
 !deploy/stack/compose/postgres/state/webroot/workflow/.keep
 !deploy/infrastructure/vagrant/.env
 !deploy/stack/compose/.env
+!deploy/stack/compose/postgres/.env
 !.gitignore
 !.github/
 
