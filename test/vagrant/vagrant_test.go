@@ -27,7 +27,7 @@ func TestVagrantSetupGuide(t *testing.T) {
 	machine, err := vagrant.Up(ctx,
 		vagrant.WithLogger(t.Logf),
 		vagrant.WithMachineName("provisioner"),
-		vagrant.WithWorkdir("../../deploy/vagrant"),
+		vagrant.WithWorkdir("../../deploy/infrastructure/vagrant"),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestVagrantSetupGuide(t *testing.T) {
 	worker, err := vagrant.Up(ctx,
 		vagrant.WithLogger(t.Logf),
 		vagrant.WithMachineName("worker"),
-		vagrant.WithWorkdir("../../deploy/vagrant"),
+		vagrant.WithWorkdir("../../deploy/infrastructure/vagrant"),
 		vagrant.RunAsync(),
 	)
 	if err != nil {

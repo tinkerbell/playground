@@ -22,11 +22,11 @@ if ! make lint; then
 	failed=1
 fi
 
-if ! terraform fmt -write -recursive deploy/terraform/; then
+if ! terraform fmt -write -recursive deploy/infrastructure/terraform/; then
 	failed=1
 fi
 
-if ! rufo deploy/vagrant/Vagrantfile; then
+if ! rufo deploy/infrastructure/vagrant/Vagrantfile; then
 	failed=1
 fi
 

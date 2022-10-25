@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: download-image
+data:
+  entrypoint.sh: |-
+    #!/usr/bin/env bash
+    # This script is designed to download a cloud image file (.img) and then convert it to a .raw.gz file.
+    # This is purpose built so non-raw cloud image files can be used with the "image2disk" action.
+    # See https://artifacthub.io/packages/tbaction/tinkerbell-community/image2disk.
+    set -euxo pipefail
+    if ! which pigz qemu-img &>/dev/null; then
+    	apk add --update pigz qemu-img
+    fi
+    image_url=$1
+    file=$2/${image_url##*/}
+    file=${file%.*}.raw.gz
+    if [[ ! -f "$file" ]]; then
+    	wget "$image_url" -O image.img
+    	qemu-img convert -O raw image.img image.raw
+    	pigz <image.raw >"$file"
+    	rm -f image.img image.raw
+    fi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-ubuntu-focal
+spec:
+  template:
+    spec:
+      containers:
+        - name: download-ubuntu-focal
+          image: bash:5.2.2
+          command: ["/script/entrypoint.sh"]
+          args:
+            [
+              "https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img",
+              "/output",
+            ]
+          volumeMounts:
+            - mountPath: /output
+              name: hook-artifacts
+            - mountPath: /script
+              name: configmap-volume
+      restartPolicy: OnFailure
+      volumes:
+        - name: hook-artifacts
+          hostPath:
+            path: /opt/hook
+            type: DirectoryOrCreate
+        - name: configmap-volume
+          configMap:
+            defaultMode: 0700
+            name: download-image

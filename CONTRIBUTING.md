@@ -43,3 +43,10 @@ We'll try to add comments as soon as possible, though.
 Bugs are problems in code, in the functionality of an application or in its UI design; you can submit them through [Issues](https://github.com/tinkerbell/sandbox/issues).
 
 ## Code Style Guides
+
+## Implementation Details
+
+The Sandbox is organized into two high level components: `infrastructure` and `stack`.
+
+- The `infrastructure` component is responsible for provisioning the infrastructure required to run the Tinkerbell stack. `Vagrant` and `Terraform` are the supported infrastructure tools.
+- The `stack` component is responsible for provisioning the Tinkerbell stack itself. `Docker Compose` and `Helm` are the supported stack tools.

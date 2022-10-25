@@ -79,7 +79,7 @@ create_tink_helper_script() {
 tweak_bash_interactive_settings() {
 	local compose_dir=$1
 
-	grep -q 'cd /sandbox/compose' ~vagrant/.bashrc || echo 'cd /sandbox/compose' >>~vagrant/.bashrc
+	grep -q "cd $compose_dir" ~vagrant/.bashrc || echo "cd $compose_dir" >>~vagrant/.bashrc
 	echo 'export KUBECONFIG='"$compose_dir"'/state/kube/kubeconfig.yaml' >>~vagrant/.bashrc
 	readarray -t aliases <<-EOF
 		dc="docker compose"
@@ -99,10 +99,10 @@ main() {
 	install_docker
 	install_kubectl
 
-	setup_layer2_network "$host_ip"
+	# setup_layer2_network "$host_ip"
 
 	setup_compose_env_overrides "$host_ip" "$worker_ip" "$worker_mac" "$compose_dir"
-	docker compose -f "$compose_dir"/docker-compose.yml up -d
+	docker compose --env-file "$compose_dir"/.env -f "$compose_dir"/docker-compose.yml up -d
 
 	create_tink_helper_script "$compose_dir"
 	tweak_bash_interactive_settings "$compose_dir"

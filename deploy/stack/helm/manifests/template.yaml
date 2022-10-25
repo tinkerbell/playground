@@ -1,0 +1,89 @@
+apiVersion: "tinkerbell.org/v1alpha1"
+kind: Template
+metadata:
+  name: ubuntu-focal
+spec:
+  data: |
+    version: "0.1"
+    name: ubuntu_Focal
+    global_timeout: 1800
+    tasks:
+      - name: "os-installation"
+        worker: "{{.device_1}}"
+        volumes:
+          - /dev:/dev
+          - /dev/console:/dev/console
+          - /lib/firmware:/lib/firmware:ro
+        actions:
+          - name: "stream-ubuntu-image"
+            image: quay.io/tinkerbell-actions/image2disk:v1.0.0
+            timeout: 600
+            environment:
+              DEST_DISK: {{ index .Hardware.Disks 0 }}
+              IMG_URL: "http://$TINKERBELL_HOST_IP:8080/focal-server-cloudimg-amd64.raw.gz"
+              COMPRESSED: true
+          - name: "grow-partition"
+            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"
+          - name: "install-openssl"
+            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "apt -y update && apt -y install openssl"
+          - name: "create-user"
+            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "useradd -p $(openssl passwd -1 tink) -s /bin/bash -d /home/tink/ -m -G sudo tink"
+          - name: "enable-ssh"
+            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
+          - name: "disable-apparmor"
+            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "systemctl disable apparmor; systemctl disable snapd"
+          - name: "write-netplan"
+            image: quay.io/tinkerbell-actions/writefile:v1.0.0
+            timeout: 90
+            environment:
+              DEST_DISK: {{ index .Hardware.Disks 0 }}1
+              FS_TYPE: ext4
+              DEST_PATH: /etc/netplan/config.yaml
+              CONTENTS: |
+                network:
+                  version: 2
+                  renderer: networkd
+                  ethernets:
+                    id0:
+                      match:
+                        name: en*
+                      dhcp4: true
+              UID: 0
+              GID: 0
+              MODE: 0644
+              DIRMODE: 0755

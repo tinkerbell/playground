@@ -34,12 +34,12 @@ You will need to bring your own machines to provision.
    export TINKERBELL_CLIENT_MAC=08:00:27:9E:F5:3A
    ```
 
-   > Modify the [hardware.yaml](../../deploy/compose/manifests/hardware.yaml), as needed, for your machine.
+   > Modify the [hardware.yaml](../../deploy/stack/compose/manifests/hardware.yaml), as needed, for your machine.
 
 4. Start the provisioner
 
    ```bash
-   cd deploy/compose
+   cd deploy/stack/compose
    docker compose up -d
    # This process will take about 5-10 minutes depending on your internet connection.
    # Hook (OSIE) is about 400MB in size and the Ubuntu Focal image is about 500MB

@@ -2,7 +2,6 @@ apiVersion: "tinkerbell.org/v1alpha1"
 kind: Template
 metadata:
   name: ubuntu-focal
-  namespace: default
 spec:
   data: |
     version: "0.1"

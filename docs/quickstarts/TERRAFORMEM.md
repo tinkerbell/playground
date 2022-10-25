@@ -19,7 +19,7 @@ This option will also show you how to create a machine to provision.
 2. Set your Equinix Metal project id and access token
 
    ```bash
-   cd deploy/terraform
+   cd deploy/infrastructure/terraform
    cat << EOF > terraform.tfvars
    metal_api_token = "awegaga4gs4g"
    project_id = "235-23452-245-345"
