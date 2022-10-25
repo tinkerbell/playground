@@ -31,10 +31,10 @@ This option will also show you how to create a machine to provision.
 
    ```bash
    Bringing machine 'provisioner' up with 'virtualbox' provider...
-   ==> provisioner: Importing base box 'generic/ubuntu2004'...
+   ==> provisioner: Importing base box 'generic/ubuntu2204'...
    ==> provisioner: Matching MAC address for NAT networking...
-   ==> provisioner: Checking if box 'generic/ubuntu2004' version '3.2.24' is up to date...
-   ==> provisioner: Setting the name of the VM: vagrant_provisioner_1626366679197_92753
+   ==> provisioner: Checking if box 'generic/ubuntu2204' version '4.1.14' is up to date...
+   ==> provisioner: Setting the name of the VM: vagrant_provisioner_1664925397569_14454
    ==> provisioner: Clearing any previously set network interfaces...
    ==> provisioner: Preparing network interfaces based on configuration...
        provisioner: Adapter 1: nat
@@ -56,104 +56,251 @@ This option will also show you how to create a machine to provision.
        provisioner: Key inserted! Disconnecting and reconnecting using new SSH key...
    ==> provisioner: Machine booted and ready!
    ==> provisioner: Checking for guest additions in VM...
-   ==> provisioner: Configuring and enabling network interfaces...
    ==> provisioner: Mounting shared folders...
-       provisioner: /vagrant => /Users/jacobweinstock/tmp/sandbox/deploy
-   ==> provisioner: Running provisioner: docker...
-       provisioner: Installing Docker onto machine...
-   ==> provisioner: Running provisioner: docker_compose...
-       provisioner: Checking for Docker Compose installation...
-       provisioner: Getting machine and kernel name from guest machine...
-       provisioner: Downloading Docker Compose 1.29.1 for Linux x86_64
-       provisioner: Downloaded Docker Compose 1.29.1 has SHA256 signature 8097769d32e34314125847333593c8edb0dfc4a5b350e4839bef8c2fe8d09de7
-       provisioner: Uploading Docker Compose 1.29.1 to guest machine...
-       provisioner: Installing Docker Compose 1.29.1 in guest machine...
-       provisioner: Symlinking Docker Compose 1.29.1 in guest machine...
-       provisioner: Running docker-compose up...
-   ==> provisioner: Creating network "vagrant_default" with the default driver
-   ==> provisioner: Creating volume "vagrant_postgres_data" with default driver
-   ==> provisioner: Creating volume "vagrant_certs" with default driver
-   ==> provisioner: Creating volume "vagrant_auth" with default driver
-   ==> provisioner: Pulling tls-gen (cfssl/cfssl:)...
-       provisioner: latest: Pulling from cfssl/cfssl
-       provisioner: Digest: sha256:c21e852f3904e2ba77960e9cba23c69d9231467795a8a160ce1d848e621381ea
-       provisioner: Status: Downloaded newer image for cfssl/cfssl:latest
-   ==> provisioner: Pulling registry-auth (httpd:2)...
-       provisioner: 2: Pulling from library/httpd
-       provisioner: Digest: sha256:1fd07d599a519b594b756d2e4e43a72edf7e30542ce646f5eb3328cf3b12341a
-       provisioner: Status: Downloaded newer image for httpd:2
-   ==> provisioner: Pulling osie-work (alpine:)...
-       provisioner: latest: Pulling from library/alpine
-       provisioner: Digest: sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0
-       provisioner: Status: Downloaded newer image for alpine:latest
-   ==> provisioner: Pulling ubuntu-image-setup (ubuntu:)...
-       provisioner: latest: Pulling from library/ubuntu
-       provisioner: Digest: sha256:b3e2e47d016c08b3396b5ebe06ab0b711c34e7f37b98c9d37abe794b71cea0a2
-       provisioner: Status: Downloaded newer image for ubuntu:latest
-   ==> provisioner: Pulling db (postgres:10-alpine)...
-       provisioner: 10-alpine: Pulling from library/postgres
-       provisioner: Digest: sha256:0eef1c94e0c4b0c4b84437785d0c5926f62b7f537627d97cf9ebcd7b205bc9aa
-       provisioner: Status: Downloaded newer image for postgres:10-alpine
-   ==> provisioner: Pulling tink-server-migration (quay.io/tinkerbell/tink:sha-8ea8a0e5)...
-       provisioner: sha-8ea8a0e5: Pulling from tinkerbell/tink
-       provisioner: Digest: sha256:84fc83f8562901d0b27e7ebb453a7f27e5797d17fb0b6899f92002df840fbf21
-       provisioner: Status: Downloaded newer image for quay.io/tinkerbell/tink:sha-8ea8a0e5
-   ==> provisioner: Pulling create-tink-records (quay.io/tinkerbell/tink-cli:sha-8ea8a0e5)...
-       provisioner: sha-8ea8a0e5: Pulling from tinkerbell/tink-cli
-       provisioner: Digest: sha256:0fc5441e9ef6e94eff7bf1ae9cf9a15a98581c742890d2d7130fd9542b12802d
-       provisioner: Status: Downloaded newer image for quay.io/tinkerbell/tink-cli:sha-8ea8a0e5
-   ==> provisioner: Pulling registry (registry:2.7.1)...
-       provisioner: 2.7.1: Pulling from library/registry
-       provisioner: Digest: sha256:aba2bfe9f0cff1ac0618ec4a54bfefb2e685bbac67c8ebaf3b6405929b3e616f
-       provisioner: Status: Downloaded newer image for registry:2.7.1
-   ==> provisioner: Pulling images-to-local-registry (quay.io/containers/skopeo:latest)...
-       provisioner: latest: Pulling from containers/skopeo
-       provisioner: Digest: sha256:f7bfc49ffc4331ce7ab6ff51b0883bc39115cd1028fe1606a6fc9d4351df3673
-       provisioner: Status: Downloaded newer image for quay.io/containers/skopeo:latest
-   ==> provisioner: Pulling boots (quay.io/tinkerbell/boots:sha-cb0290f8)...
-       provisioner: sha-cb0290f8: Pulling from tinkerbell/boots
-       provisioner: Digest: sha256:8e106bf73122d08ce9ef75f5cae4be77ecff38c2b55cb44541caabf94d325de9
-       provisioner: Status: Downloaded newer image for quay.io/tinkerbell/boots:sha-cb0290f8
-   ==> provisioner: Pulling osie-bootloader (nginx:alpine)...
-       provisioner: alpine: Pulling from library/nginx
-       provisioner: Digest: sha256:91528597e842ab1b3b25567191fa7d4e211cb3cc332071fa031cfed2b5892f9e
-       provisioner: Status: Downloaded newer image for nginx:alpine
-   ==> provisioner: Pulling hegel (quay.io/tinkerbell/hegel:sha-9f5da0a8)...
-       provisioner: sha-9f5da0a8: Pulling from tinkerbell/hegel
-       provisioner: Digest: sha256:9d3c6d5e4bc957cedafbeec22da4f59d94c78b65d84adbd0c8f947c51cf3668b
-       provisioner: Status: Downloaded newer image for quay.io/tinkerbell/hegel:sha-9f5da0a8
-   ==> provisioner: Creating vagrant_db_1 ...
-   ==> provisioner: Creating vagrant_osie-bootloader_1 ...
-   ==> provisioner: Creating vagrant_ubuntu-image-setup_1 ...
-   ==> provisioner: Creating vagrant_tls-gen_1            ...
-   ==> provisioner: Creating vagrant_registry-auth_1      ...
-   ==> provisioner: Creating vagrant_osie-work_1          ...
-   ==> provisioner: Creating vagrant_tls-gen_1            ... done
-   ==> provisioner: Creating vagrant_ubuntu-image-setup_1 ... done
-   ==> provisioner: Creating vagrant_osie-bootloader_1    ... done
-   ==> provisioner: Creating vagrant_registry-auth_1      ... done
-   ==> provisioner: Creating vagrant_db_1                 ... done
-   ==> provisioner: Creating vagrant_osie-work_1          ... done
-   ==> provisioner: Creating vagrant_registry_1           ...
-   ==> provisioner: Creating vagrant_registry_1           ... done
-   ==> provisioner: Creating vagrant_tink-server-migration_1 ...
-   ==> provisioner: Creating vagrant_tink-server-migration_1 ... done
-   ==> provisioner: Creating vagrant_tink-server_1           ...
-   ==> provisioner: Creating vagrant_tink-server_1           ... done
-   ==> provisioner: Creating vagrant_images-to-local-registry_1 ...
-   ==> provisioner: Creating vagrant_images-to-local-registry_1 ... done
-   ==> provisioner: Creating vagrant_registry-ca-crt-download_1 ...
-   ==> provisioner: Creating vagrant_create-tink-records_1      ...
-   ==> provisioner: Creating vagrant_boots_1                    ...
-   ==> provisioner: Creating vagrant_tink-cli_1                 ...
-   ==> provisioner: Creating vagrant_hegel_1                    ...
-   ==> provisioner: Creating vagrant_boots_1                    ... done
-   ==> provisioner: Creating vagrant_create-tink-records_1      ... done
-   ==> provisioner: Creating vagrant_tink-cli_1                 ... done
-   ==> provisioner: Creating vagrant_registry-ca-crt-download_1 ... done
-   ==> provisioner: Creating vagrant_hegel_1                    ... done
-   ==> provisioner: Creating vagrant_wait-for-osie-and-ubuntu-downloads_1 ...
-   ==> provisioner: Creating vagrant_wait-for-osie-and-ubuntu-downloads_1 ... done
+       provisioner: /sandbox/compose => /private/tmp/sandbox/deploy/compose
+   ==> provisioner: Running provisioner: shell...
+       provisioner: Running: /var/folders/xt/8w5g0fv54tj4njvjhk_0_25r0000gr/T/vagrant-shell20221004-97370-3zoxlv.sh
+       provisioner: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/compose
+       provisioner: + local host_ip=192.168.56.4
+       provisioner: + local worker_ip=192.168.56.43
+       provisioner: + local worker_mac=08:00:27:9e:f5:3a
+       provisioner: + local compose_dir=/sandbox/compose
+       provisioner: + update_apt
+       provisioner: + apt-get update
+       provisioner: + DEBIAN_FRONTEND=noninteractive
+       provisioner: + command apt-get --allow-change-held-packages --allow-downgrades --allow-remove-essential --allow-unauthenticated --option Dpkg::Options::=--force-confdef --option Dpkg::Options::=--force-confold --yes update
+       provisioner: Hit:1 https://mirrors.edge.kernel.org/ubuntu jammy InRelease
+       provisioner: Get:2 https://mirrors.edge.kernel.org/ubuntu jammy-updates InRelease [114 kB]
+       provisioner: Get:3 https://mirrors.edge.kernel.org/ubuntu jammy-backports InRelease [99.8 kB]
+       provisioner: Get:4 https://mirrors.edge.kernel.org/ubuntu jammy-security InRelease [110 kB]
+       provisioner: Get:5 https://mirrors.edge.kernel.org/ubuntu jammy-updates/main amd64 Packages [611 kB]
+       provisioner: Get:6 https://mirrors.edge.kernel.org/ubuntu jammy-updates/main Translation-en [144 kB]
+       provisioner: Get:7 https://mirrors.edge.kernel.org/ubuntu jammy-updates/main amd64 c-n-f Metadata [8,788 B]
+       provisioner: Get:8 https://mirrors.edge.kernel.org/ubuntu jammy-updates/restricted amd64 Packages [344 kB]
+       provisioner: Get:9 https://mirrors.edge.kernel.org/ubuntu jammy-updates/restricted Translation-en [53.5 kB]
+       provisioner: Get:10 https://mirrors.edge.kernel.org/ubuntu jammy-updates/universe amd64 Packages [425 kB]
+       provisioner: Get:11 https://mirrors.edge.kernel.org/ubuntu jammy-updates/universe Translation-en [108 kB]
+       provisioner: Get:12 https://mirrors.edge.kernel.org/ubuntu jammy-backports/universe amd64 Packages [6,752 B]
+       provisioner: Get:13 https://mirrors.edge.kernel.org/ubuntu jammy-backports/universe amd64 c-n-f Metadata [352 B]
+       provisioner: Get:14 https://mirrors.edge.kernel.org/ubuntu jammy-security/main amd64 Packages [352 kB]
+       provisioner: Get:15 https://mirrors.edge.kernel.org/ubuntu jammy-security/main Translation-en [81.8 kB]
+       provisioner: Get:16 https://mirrors.edge.kernel.org/ubuntu jammy-security/restricted amd64 Packages [308 kB]
+       provisioner: Get:17 https://mirrors.edge.kernel.org/ubuntu jammy-security/restricted Translation-en [47.8 kB]
+       provisioner: Get:18 https://mirrors.edge.kernel.org/ubuntu jammy-security/universe amd64 Packages [287 kB]
+       provisioner: Get:19 https://mirrors.edge.kernel.org/ubuntu jammy-security/universe Translation-en [63.2 kB]
+       provisioner: Fetched 3,164 kB in 6s (529 kB/s)
+       provisioner: Reading package lists...
+       provisioner: + install_docker
+       provisioner: + sudo apt-key add -
+       provisioner: + curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+       provisioner: Warning: apt-key is deprecated. Manage keyring files in trusted.gpg.d instead (see apt-key(8)).
+       provisioner: OK
+       provisioner: ++ lsb_release -cs
+       provisioner: + add-apt-repository 'deb https://download.docker.com/linux/ubuntu jammy stable'
+       provisioner: Hit:1 https://mirrors.edge.kernel.org/ubuntu jammy InRelease
+       provisioner: Hit:2 https://mirrors.edge.kernel.org/ubuntu jammy-updates InRelease
+       provisioner: Hit:3 https://mirrors.edge.kernel.org/ubuntu jammy-backports InRelease
+       provisioner: Get:4 https://download.docker.com/linux/ubuntu jammy InRelease [48.9 kB]
+       provisioner: Hit:5 https://mirrors.edge.kernel.org/ubuntu jammy-security InRelease
+       provisioner: Get:6 https://download.docker.com/linux/ubuntu jammy/stable amd64 Packages [7,065 B]
+       provisioner: Fetched 55.9 kB in 1s (89.9 kB/s)
+       provisioner: Reading package lists...
+       provisioner: W: https://download.docker.com/linux/ubuntu/dists/jammy/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+       provisioner: Repository: 'deb https://download.docker.com/linux/ubuntu jammy stable'
+       provisioner: Description:
+       provisioner: Archive for codename: jammy components: stable
+       provisioner: More info: https://download.docker.com/linux/ubuntu
+       provisioner: Adding repository.
+       provisioner: Adding deb entry to /etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_ubuntu-jammy.list
+       provisioner: Adding disabled deb-src entry to /etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_ubuntu-jammy.list
+       provisioner: + update_apt
+       provisioner: + apt-get update
+       provisioner: + DEBIAN_FRONTEND=noninteractive
+       provisioner: + command apt-get --allow-change-held-packages --allow-downgrades --allow-remove-essential --allow-unauthenticated --option Dpkg::Options::=--force-confdef --option Dpkg::Options::=--force-confold --yes update
+       provisioner: Hit:1 https://download.docker.com/linux/ubuntu jammy InRelease
+       provisioner: Hit:2 https://mirrors.edge.kernel.org/ubuntu jammy InRelease
+       provisioner: Hit:3 https://mirrors.edge.kernel.org/ubuntu jammy-updates InRelease
+       provisioner: Hit:4 https://mirrors.edge.kernel.org/ubuntu jammy-backports InRelease
+       provisioner: Hit:5 https://mirrors.edge.kernel.org/ubuntu jammy-security InRelease
+       provisioner: Reading package lists...
+       provisioner: W: https://download.docker.com/linux/ubuntu/dists/jammy/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+       provisioner: + apt-get install --no-install-recommends containerd.io docker-ce docker-ce-cli docker-compose-plugin
+       provisioner: + DEBIAN_FRONTEND=noninteractive
+       provisioner: + command apt-get --allow-change-held-packages --allow-downgrades --allow-remove-essential --allow-unauthenticated --option Dpkg::Options::=--force-confdef --option Dpkg::Options::=--force-confold --yes install --no-install-recommends containerd.io docker-ce docker-ce-cli docker-compose-plugin
+       provisioner: Reading package lists...
+       provisioner: Building dependency tree...
+       provisioner: Reading state information...
+       provisioner: Suggested packages:
+       provisioner:   aufs-tools cgroupfs-mount | cgroup-lite
+       provisioner: Recommended packages:
+       provisioner:   docker-ce-rootless-extras libltdl7 pigz docker-scan-plugin
+       provisioner: The following NEW packages will be installed:
+       provisioner:   containerd.io docker-ce docker-ce-cli docker-compose-plugin
+       provisioner: 0 upgraded, 4 newly installed, 0 to remove and 4 not upgraded.
+       provisioner: Need to get 96.7 MB of archives.
+       provisioner: After this operation, 390 MB of additional disk space will be used.
+       provisioner: Get:1 https://download.docker.com/linux/ubuntu jammy/stable amd64 containerd.io amd64 1.6.8-1 [28.1 MB]
+       provisioner: Get:2 https://download.docker.com/linux/ubuntu jammy/stable amd64 docker-ce-cli amd64 5:20.10.18~3-0~ubuntu-jammy [41.5 MB]
+       provisioner: Get:3 https://download.docker.com/linux/ubuntu jammy/stable amd64 docker-ce amd64 5:20.10.18~3-0~ubuntu-jammy [20.4 MB]
+       provisioner: Get:4 https://download.docker.com/linux/ubuntu jammy/stable amd64 docker-compose-plugin amd64 2.10.2~ubuntu-jammy [6,693 kB]
+       provisioner: Fetched 96.7 MB in 4s (25.0 MB/s)
+       provisioner: Selecting previously unselected package containerd.io.
+   (Reading database ... 75348 files and directories currently installed.)
+       provisioner: Preparing to unpack .../containerd.io_1.6.8-1_amd64.deb ...
+       provisioner: Unpacking containerd.io (1.6.8-1) ...
+       provisioner: Selecting previously unselected package docker-ce-cli.
+       provisioner: Preparing to unpack .../docker-ce-cli_5%3a20.10.18~3-0~ubuntu-jammy_amd64.deb ...
+       provisioner: Unpacking docker-ce-cli (5:20.10.18~3-0~ubuntu-jammy) ...
+       provisioner: Selecting previously unselected package docker-ce.
+       provisioner: Preparing to unpack .../docker-ce_5%3a20.10.18~3-0~ubuntu-jammy_amd64.deb ...
+       provisioner: Unpacking docker-ce (5:20.10.18~3-0~ubuntu-jammy) ...
+       provisioner: Selecting previously unselected package docker-compose-plugin.
+       provisioner: Preparing to unpack .../docker-compose-plugin_2.10.2~ubuntu-jammy_amd64.deb ...
+       provisioner: Unpacking docker-compose-plugin (2.10.2~ubuntu-jammy) ...
+       provisioner: Setting up containerd.io (1.6.8-1) ...
+       provisioner: Created symlink /etc/systemd/system/multi-user.target.wants/containerd.service → /lib/systemd/system/containerd.service.
+       provisioner: Setting up docker-compose-plugin (2.10.2~ubuntu-jammy) ...
+       provisioner: Setting up docker-ce-cli (5:20.10.18~3-0~ubuntu-jammy) ...
+       provisioner: Setting up docker-ce (5:20.10.18~3-0~ubuntu-jammy) ...
+       provisioner: Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /lib/systemd/system/docker.service.
+       provisioner: Created symlink /etc/systemd/system/sockets.target.wants/docker.socket → /lib/systemd/system/docker.socket.
+       provisioner: Processing triggers for man-db (2.10.2-1) ...
+       provisioner: NEEDRESTART-VER: 3.5
+       provisioner: NEEDRESTART-KCUR: 5.15.0-48-generic
+       provisioner: NEEDRESTART-KEXP: 5.15.0-48-generic
+       provisioner: NEEDRESTART-KSTA: 1
+       provisioner: + gpasswd -a vagrant docker
+       provisioner: Adding user vagrant to group docker
+       provisioner: + install_kubectl
+       provisioner: + curl -LO https://dl.k8s.io/v1.25.2/bin/linux/amd64/kubectl
+       provisioner:   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+       provisioner:                                  Dload  Upload   Total   Spent    Left  Speed
+   100   138  100   138    0     0    428      0 --:--:-- --:--:-- --:--:--   429
+   100 42.9M  100 42.9M    0     0  35.1M      0  0:00:01  0:00:01 --:--:-- 49.7M
+       provisioner: + chmod +x ./kubectl
+       provisioner: + mv ./kubectl /usr/local/bin/kubectl
+       provisioner: + setup_layer2_network 192.168.56.4
+       provisioner: + local host_ip=192.168.56.4
+       provisioner: + ip addr show dev eth1
+       provisioner: + grep -q 192.168.56.4
+       provisioner: + ip addr add 192.168.56.4/24 dev eth1
+       provisioner: + ip link set dev eth1 up
+       provisioner: + setup_compose_env_overrides 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/compose
+       provisioner: + local host_ip=192.168.56.4
+       provisioner: + local worker_ip=192.168.56.43
+       provisioner: + local worker_mac=08:00:27:9e:f5:3a
+       provisioner: + local compose_dir=/sandbox/compose
+       provisioner: + local disk_device
+       provisioner: + disk_device=/dev/sda
+       provisioner: + lsblk
+       provisioner: + grep -q vda
+       provisioner: + readarray -t lines
+       provisioner: + for line in "${lines[@]}"
+       provisioner: + grep -q 'TINKERBELL_HOST_IP="192.168.56.4"' /sandbox/compose/.env
+       provisioner: + continue
+       provisioner: + for line in "${lines[@]}"
+       provisioner: + grep -q 'TINKERBELL_CLIENT_IP="192.168.56.43"' /sandbox/compose/.env
+       provisioner: + continue
+       provisioner: + for line in "${lines[@]}"
+       provisioner: + grep -q 'TINKERBELL_CLIENT_MAC="08:00:27:9e:f5:3a"' /sandbox/compose/.env
+       provisioner: + continue
+       provisioner: + for line in "${lines[@]}"
+       provisioner: + grep -q 'DISK_DEVICE="/dev/sda"' /sandbox/compose/.env
+       provisioner: + continue
+       provisioner: + docker compose -f /sandbox/compose/docker-compose.yml up -d
+       provisioner: tink-controller Pulling
+       provisioner: boots Pulling
+       provisioner: tink-server Pulling
+       provisioner: web-assets-server Pulling
+       provisioner: fetch-osie Pulling
+       provisioner: manifest-update Pulling
+       provisioner: fetch-and-convert-ubuntu-img Pulling
+       provisioner: tink-crds-apply Pulling
+       provisioner: manifest-apply Pulling
+       provisioner: k3s Pulling
+       provisioner: hegel Pulling
+       provisioner: k3s Pulled
+       provisioner: Network compose_default  Creating
+       provisioner: Network compose_default  Created
+       provisioner: Volume "compose_k3s-server"  Creating
+       provisioner: Volume "compose_k3s-server"  Created
+       provisioner: Container compose-k3s-1  Creating
+       provisioner: Container compose-fetch-osie-1  Creating
+       provisioner: Container compose-manifest-update-1  Creating
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Creating
+       provisioner: Container compose-fetch-osie-1  Created
+       provisioner: Container compose-k3s-1  Created
+       provisioner: Container compose-tink-crds-apply-1  Creating
+       provisioner: Container compose-manifest-update-1  Created
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Created
+       provisioner: Container compose-web-assets-server-1  Creating
+       provisioner: Container compose-tink-crds-apply-1  Created
+       provisioner: Container compose-tink-server-1  Creating
+       provisioner: Container compose-manifest-apply-1  Creating
+       provisioner: Container compose-hegel-1  Creating
+       provisioner: Container compose-tink-controller-1  Creating
+       provisioner: Container compose-boots-1  Creating
+       provisioner: Container compose-boots-1  Created
+       provisioner: Container compose-tink-controller-1  Created
+       provisioner: Container compose-tink-server-1  Created
+       provisioner: Container compose-web-assets-server-1  Created
+       provisioner: Container compose-manifest-apply-1  Created
+       provisioner: Container compose-hegel-1  Created
+       provisioner: Container compose-manifest-update-1  Starting
+       provisioner: Container compose-fetch-osie-1  Starting
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Starting
+       provisioner: Container compose-k3s-1  Starting
+       provisioner: Container compose-manifest-update-1  Started
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Started
+       provisioner: Container compose-k3s-1  Started
+       provisioner: Container compose-k3s-1  Waiting
+       provisioner: Container compose-fetch-osie-1  Started
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Waiting
+       provisioner: Container compose-fetch-osie-1  Waiting
+       provisioner: Container compose-fetch-osie-1  Exited
+       provisioner: Container compose-fetch-and-convert-ubuntu-img-1  Exited
+       provisioner: Container compose-web-assets-server-1  Starting
+       provisioner: Container compose-web-assets-server-1  Started
+       provisioner: Container compose-k3s-1  Healthy
+       provisioner: Container compose-tink-crds-apply-1  Starting
+       provisioner: Container compose-tink-crds-apply-1  Started
+       provisioner: Container compose-tink-crds-apply-1  Waiting
+       provisioner: Container compose-tink-crds-apply-1  Waiting
+       provisioner: Container compose-tink-crds-apply-1  Waiting
+       provisioner: Container compose-tink-crds-apply-1  Waiting
+       provisioner: Container compose-tink-crds-apply-1  Waiting
+       provisioner: Container compose-tink-crds-apply-1  Exited
+       provisioner: Container compose-tink-controller-1  Starting
+       provisioner: Container compose-tink-crds-apply-1  Exited
+       provisioner: Container compose-tink-server-1  Starting
+       provisioner: Container compose-tink-crds-apply-1  Exited
+       provisioner: Container compose-boots-1  Starting
+       provisioner: Container compose-tink-crds-apply-1  Exited
+       provisioner: Container compose-hegel-1  Starting
+       provisioner: Container compose-tink-crds-apply-1  Exited
+       provisioner: Container compose-manifest-apply-1  Starting
+       provisioner: Container compose-boots-1  Started
+       provisioner: Container compose-manifest-apply-1  Started
+       provisioner: Container compose-hegel-1  Started
+       provisioner: Container compose-tink-server-1  Started
+       provisioner: Container compose-tink-controller-1  Started
+       provisioner: + create_tink_helper_script /sandbox/compose
+       provisioner: + local compose_dir=/sandbox/compose
+       provisioner: + mkdir -p /home/vagrant/.local/bin
+       provisioner: + cat
+       provisioner: + chmod +x /home/vagrant/.local/bin/tink
+       provisioner: + tweak_bash_interactive_settings /sandbox/compose
+       provisioner: + local compose_dir=/sandbox/compose
+       provisioner: + grep -q 'cd /sandbox/compose' /home/vagrant/.bashrc
+       provisioner: + echo 'cd /sandbox/compose'
+       provisioner: + echo 'export KUBECONFIG=/sandbox/compose/state/kube/kubeconfig.yaml'
+       provisioner: + readarray -t aliases
+       provisioner: + for alias in "${aliases[@]}"
+       provisioner: + grep -q 'dc="docker compose"' /home/vagrant/.bash_aliases
+       provisioner: grep: /home/vagrant/.bash_aliases: No such file or directory
+       provisioner: all done!
+       provisioner: + echo 'alias dc="docker compose"'
+       provisioner: + echo 'all done!'
    ```
 
    </details>
@@ -217,15 +364,46 @@ This option will also show you how to create a machine to provision.
    ```bash
    # log in to the provisioner
    vagrant ssh provisioner
-   # watch the workflow events and status for workflow completion
+
+   # watch for the workflow to complete
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+   kubectl get workflow sandbox-workflow --watch
    ```
 
    <details>
-   <summary>expected output</summary>
+   <summary>Expected output</summary>
 
    ```bash
+   NAME               TEMPLATE       STATE
+   sandbox-workflow   ubuntu-focal   STATE_PENDING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_SUCCESS
+   ```
+
+   </details>
+
+   <details>
+   <summary>Postgres backend</summary>
+
+   ```bash
+   # log in to the provisioner
+   vagrant ssh provisioner
+   # watch the workflow events and status for workflow completion
+   # once the workflow is complete (see the expected output below for completion), move on to the next step
+   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+
    +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
    | WORKER ID                            | TASK NAME       | ACTION NAME         | EXECUTION TIME | MESSAGE                         | ACTION STATUS |
    +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+

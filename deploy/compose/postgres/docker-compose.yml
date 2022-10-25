@@ -1,0 +1,277 @@
+services:
+  ##### Actual services first #####
+  boots:
+    image: $BOOTS_IMAGE
+    command: -log-level DEBUG
+    network_mode: host
+    environment:
+      BOOTP_BIND: 0.0.0.0:67
+      DATA_MODEL_VERSION: 1
+      DNS_SERVERS: 8.8.8.8
+      DOCKER_REGISTRY: $TINKERBELL_HOST_IP
+      FACILITY_CODE: $FACILITY
+      HTTP_BIND: $TINKERBELL_HOST_IP:80
+      MIRROR_BASE_URL: http://$TINKERBELL_HOST_IP:8080
+      PUBLIC_IP: $TINKERBELL_HOST_IP
+      REGISTRY_PASSWORD: $TINKERBELL_REGISTRY_PASSWORD
+      REGISTRY_USERNAME: $TINKERBELL_REGISTRY_USERNAME
+      SYSLOG_BIND: $TINKERBELL_HOST_IP:514
+      TFTP_BIND: $TINKERBELL_HOST_IP:69
+      TINKERBELL_GRPC_AUTHORITY: $TINKERBELL_HOST_IP:42113
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    extra_hosts:
+      - tink-server:$TINKERBELL_HOST_IP
+    depends_on:
+      tink-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: tinkerbell
+      POSTGRES_PASSWORD: tinkerbell
+      POSTGRES_USER: tinkerbell
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U tinkerbell
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    restart: unless-stopped
+
+  hegel:
+    image: $HEGEL_IMAGE
+    environment:
+      CUSTOM_ENDPOINTS: '{"/metadata":""}'
+      DATA_MODEL_VERSION: 1
+      GRPC_PORT: 42115
+      HEGEL_FACILITY: $FACILITY
+      HEGEL_USE_TLS: 0
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    ports:
+      - 50060:50060/tcp
+      - 50061:50061/tcp
+    depends_on:
+      tink-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+  registry:
+    image: registry:2.7.1
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/.htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_HTTP_ADDR: $TINKERBELL_HOST_IP:443
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/$FACILITY/server-crt.pem
+      REGISTRY_HTTP_TLS_KEY: /certs/$FACILITY/server-key.pem
+    init: true
+    network_mode: host
+    volumes:
+      - auth:/auth:ro
+      - certs:/certs/$FACILITY:ro
+      - registry_data:/var/lib/registry
+    depends_on:
+      generate-tls-certs:
+        condition: service_completed_successfully
+      generate-registry-auth:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --no-check-certificate "https://$TINKERBELL_HOST_IP" -O - >/dev/null
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    restart: unless-stopped
+
+  tink-server:
+    image: $TINK_SERVER_IMAGE
+    environment:
+      FACILITY: $FACILITY
+      PGDATABASE: tinkerbell
+      PGHOST: db
+      PGPASSWORD: tinkerbell
+      PGPORT: 5432
+      PGSSLMODE: disable
+      PGUSER: tinkerbell
+      TINKERBELL_GRPC_AUTHORITY: :42113
+      TINKERBELL_HTTP_AUTHORITY: :42114
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    volumes:
+      - certs:/certs/$FACILITY:ro
+    ports:
+      - 42113:42113/tcp
+      - 42114:42114/tcp
+    depends_on:
+      db:
+        condition: service_healthy
+      generate-tls-certs:
+        condition: service_completed_successfully
+      db-migrations:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      # port needs to match TINKERBELL_HTTP_AUTHORITY
+      test:
+        - CMD-SHELL
+        - wget -qO- 127.0.0.1:42114/healthz
+      interval: 5s
+      timeout: 2s
+      retries: 30
+    restart: unless-stopped
+
+  web-assets-server:
+    image: nginx:alpine
+    tty: true
+    user: root
+    ports:
+      - 8080:80/tcp
+    volumes:
+      - ./state/webroot/:/usr/share/nginx/html/:ro
+    depends_on:
+      fetch-and-convert-ubuntu-img:
+        condition: service_completed_successfully
+      fetch-osie:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+  ##### One-off setup processes #####
+  create-tink-records:
+    image: $TINK_CLI_IMAGE
+    command: /app/create.sh "$TINKERBELL_HARDWARE_MANIFEST" "$TINKERBELL_TEMPLATE_MANIFEST" "$TINKERBELL_HOST_IP" "$TINKERBELL_CLIENT_IP" "$TINKERBELL_CLIENT_MAC"
+    environment:
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    volumes:
+      - ./create-tink-records/create.sh:/app/create.sh:ro
+      - ./create-tink-records/manifests:/manifests:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      tink-server:
+        condition: service_healthy
+
+  db-migrations:
+    image: $TINK_SERVER_IMAGE
+    environment:
+      FACILITY: $FACILITY
+      ONLY_MIGRATION: "true"
+      PGDATABASE: tinkerbell
+      PGHOST: db
+      PGPASSWORD: tinkerbell
+      PGPORT: 5432
+      PGSSLMODE: disable
+      PGUSER: tinkerbell
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    volumes:
+      - certs:/certs/$FACILITY:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  fetch-osie:
+    image: bash:4.4
+    command: /app/fetch.sh "$OSIE_DOWNLOAD_URLS" /workdir
+    volumes:
+      - ./fetch-osie/fetch.sh:/app/fetch.sh:ro
+      - ./state/webroot/misc/osie/current:/workdir
+
+  fetch-and-convert-ubuntu-img:
+    image: bash:4.4
+    entrypoint: /app/fetch.sh
+    command: https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img /destination
+    volumes:
+      - ./fetch-and-convert-ubuntu-img/fetch.sh:/app/fetch.sh:ro
+      - ./state/webroot:/destination
+
+  generate-registry-auth:
+    image: httpd:2
+    entrypoint: htpasswd
+    command: -Bbc .htpasswd "$TINKERBELL_REGISTRY_USERNAME" "$TINKERBELL_REGISTRY_PASSWORD"
+    working_dir: /auth
+    volumes:
+      - auth:/auth
+
+  generate-tls-certs:
+    image: cfssl/cfssl
+    entrypoint: /app/generate.sh
+    command: "$TINKERBELL_HOST_IP"
+    environment:
+      FACILITY: $FACILITY
+      TINKERBELL_HOST_IP: $TINKERBELL_HOST_IP
+    volumes:
+      - certs:/certs/$FACILITY
+      - ./generate-tls-certs/:/app:ro
+      - ./state/webroot/workflow/:/workflow/
+
+  sync-images-to-local-registry:
+    image: quay.io/containers/skopeo:v1.4.1
+    entrypoint: /bin/bash
+    command: /app/upload.sh "$TINKERBELL_REGISTRY_USERNAME" "$TINKERBELL_REGISTRY_PASSWORD" "$TINKERBELL_HOST_IP" "$TINK_WORKER_IMAGE" /app/registry_images.txt
+    volumes:
+      - ./sync-images-to-local-registry:/app:ro
+    depends_on:
+      registry:
+        condition: service_healthy
+
+  ##### Debugging/interactive commands #####
+  tink-cli:
+    image: $TINK_CLI_IMAGE
+    environment:
+      TINKERBELL_GRPC_AUTHORITY: tink-server:42113
+      TINKERBELL_TLS: $TINKERBELL_TLS
+    depends_on:
+      db:
+        condition: service_healthy
+      tink-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+volumes:
+  auth:
+  certs:
+  postgres_data:
+  registry_data:

@@ -20,28 +20,23 @@ Tinkerbell.org has a [list of guides](https://docs.tinkerbell.org/deploying-oper
 You can also create your own.
 The following docs will help you get started.
 
-1. [Create Hardware Data](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workers-hardware-data)
-2. [Create a Template](https://docs.tinkerbell.org/setup/local-vagrant/#creating-a-template)
-3. [Create a Workflow](https://docs.tinkerbell.org/setup/local-vagrant/#creating-the-workflow)
+1. [Example Hardware object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/hardware.yaml)
+2. [Example Template object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/template.yaml)
+   - Template [documentation](https://docs.tinkerbell.org/templates/)
+3. [Example Workflow object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/workflow.yaml)
 
 ### In the Sandbox
 
-1. Create your own templates
+1. Add your templates
 
    ```bash
-   docker exec -i compose_tink-cli_1 tink template create < ./custom-template.yaml
+   kubectl apply -f my-custom-template.yaml
    ```
 
-2. Upload any container images you want to use in the templates to the internal registry
+2. Create the workflow
 
    ```bash
-   docker run -it --rm quay.io/containers/skopeo copy --all --dest-tls-verify=false --dest-creds="admin":"Admin1234" docker://hello-world docker://192.168.56.4/hello-world
+   kubectl apply -f my-custom-workflow.yaml
    ```
 
-3. Create a workflow
-
-   ```bash
-   docker exec -i compose_tink-cli_1 tink workflow create -t <TEMPLATE ID> -r '{"device_1":"08:00:27:00:00:01"}')
-   ```
-
-4. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)
+3. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)
