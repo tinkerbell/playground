@@ -58,16 +58,19 @@ kubectl_for_vagrant_user() {
 
 helm_customize_values() {
 	local loadbalancer_ip=$1
+	local helm_chart_version=$2
 
-	helm inspect values oci://ghcr.io/tinkerbell/charts/stack --version 0.1.1 >/tmp/stack-values.yaml
+	helm inspect values oci://ghcr.io/tinkerbell/charts/stack --version "$helm_chart_version" >/tmp/stack-values.yaml
 	sed -i "s/192.168.2.111/${loadbalancer_ip}/g" /tmp/stack-values.yaml
 }
 
 helm_install_tink_stack() {
 	local namespace=$1
+	local version=$2
+	local interface=$3
 
 	trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
-	helm install stack-release oci://ghcr.io/tinkerbell/charts/stack --version 0.1.1 --create-namespace --namespace "$namespace" --wait --set "boots.boots.trustedProxies=${trusted_proxies}" --set "hegel.hegel.trustedProxies=${trusted_proxies}" --set "kubevip.interface=eth1" --values /tmp/stack-values.yaml
+	helm install stack-release oci://ghcr.io/tinkerbell/charts/stack --version "$version" --create-namespace --namespace "$namespace" --wait --set "boots.boots.trustedProxies=${trusted_proxies}" --set "hegel.hegel.trustedProxies=${trusted_proxies}" --set "kubevip.interface=$interface" --values /tmp/stack-values.yaml
 }
 
 apply_manifests() {
@@ -100,14 +103,15 @@ run_helm() {
 	local worker_mac=$3
 	local manifests_dir=$4
 	local loadbalancer_ip=$5
+	local helm_chart_version=$6
+	local loadbalancer_interface=$7
 	local namespace="tink-system"
 
 	install_k3d
 	start_k3d
 	install_helm
-	helm_customize_values "$loadbalancer_ip"
-	# do we need to wait til cluster is ready? TBD
-	helm_install_tink_stack "$namespace"
+	helm_customize_values "$loadbalancer_ip" "$helm_chart_version"
+	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface"
 	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
 	kubectl_for_vagrant_user
 }
@@ -118,12 +122,14 @@ main() {
 	local worker_mac=$3
 	local manifests_dir=$4
 	local loadbalancer_ip=$5
+	local helm_chart_version=$6
+	local loadbalancer_interface=$7
 
 	update_apt
 	install_docker
 	install_kubectl
 
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests "$loadbalancer_ip"
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
