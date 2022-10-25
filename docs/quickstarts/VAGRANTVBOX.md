@@ -20,7 +20,7 @@ This option will also show you how to create a machine to provision.
 2. Start the provisioner
 
    ```bash
-   cd deploy/vagrant
+   cd deploy/infrastructure/vagrant
    vagrant up
    # This process will take about 5-10 minutes depending on your internet connection.
    # OSIE is about 2GB in size and the Ubuntu Focal image is about 500MB
@@ -57,7 +57,7 @@ This option will also show you how to create a machine to provision.
    ==> provisioner: Machine booted and ready!
    ==> provisioner: Checking for guest additions in VM...
    ==> provisioner: Mounting shared folders...
-       provisioner: /sandbox/compose => /private/tmp/sandbox/deploy/compose
+       provisioner: /sandbox/compose => /private/tmp/sandbox/deploy/stack/compose
    ==> provisioner: Running provisioner: shell...
        provisioner: Running: /var/folders/xt/8w5g0fv54tj4njvjhk_0_25r0000gr/T/vagrant-shell20221004-97370-3zoxlv.sh
        provisioner: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/compose

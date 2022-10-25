@@ -36,7 +36,7 @@ This option will also show you how to create a machine to provision.
    ==> provisioner: Creating image (snapshot of base box volume).
    ==> provisioner: Creating domain with the following settings...
    ==> provisioner:  -- Name:              vagrant_provisioner
-   ==> provisioner:  -- Description:       Source: /home/tink/repos/tinkerbell/sandbox/deploy/vagrant/Vagrantfile
+   ==> provisioner:  -- Description:       Source: /home/tink/repos/tinkerbell/sandbox/deploy/infrastructure/vagrant/Vagrantfile
    ==> provisioner:  -- Domain type:       kvm
    ==> provisioner:  -- Cpus:              2
    ==> provisioner:  -- Feature:           acpi
@@ -80,7 +80,7 @@ This option will also show you how to create a machine to provision.
        provisioner: Removing insecure key from the guest if it's present...
        provisioner: Key inserted! Disconnecting and reconnecting using new SSH key...
    ==> provisioner: Machine booted and ready!
-   ==> provisioner: Rsyncing folder: /home/tink/repos/tinkerbell/sandbox/deploy/compose/ => /sandbox/compose
+   ==> provisioner: Rsyncing folder: /home/tink/repos/tinkerbell/sandbox/deploy/stack/compose/ => /sandbox/compose
    ==> provisioner: Running provisioner: shell...
        provisioner: Running: /tmp/vagrant-shell20221004-689177-1x7ep6c.sh
        provisioner: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/compose
