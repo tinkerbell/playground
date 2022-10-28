@@ -70,7 +70,6 @@ services:
 
   hegel:
     image: $HEGEL_IMAGE
-    command: ["--grpc-use-tls=false"]
     environment:
       HEGEL_KUBECONFIG: /output/kubeconfig.yaml
       HEGEL_KUBERNETES: "https://k3s:6443"
