@@ -471,7 +471,7 @@ This option will also show you how to create a machine to provision.
    ```bash
    # crtl-c to exit the watch
    # exit the provisioner
-   vagrant@ubuntu2004:~$ exit
+   vagrant@ubuntu2204:~$ exit
    # restart machine1
    # the output will be the same as step 3, once the command line control is returned to you, you can move on to the next step.
    vagrant reload machine1
