@@ -76,7 +76,7 @@ You will need to bring your own machines to provision.
    ```bash
    # watch for the workflow to completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   KUBECONFIG=./state/kube/kubeconfig.yaml kubectl get workflow sandbox-workflow --watch
+   KUBECONFIG=./state/kube/kubeconfig.yaml kubectl get -n tink-system workflow sandbox-workflow --watch
    ```
 
    <details>

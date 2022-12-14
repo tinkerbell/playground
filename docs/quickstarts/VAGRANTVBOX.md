@@ -367,7 +367,7 @@ This option will also show you how to create a machine to provision.
 
    # watch for the workflow to complete
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   kubectl get workflow sandbox-workflow --watch
+   kubectl get -n tink-system workflow sandbox-workflow --watch
    ```
 
    <details>
