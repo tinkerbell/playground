@@ -70,11 +70,11 @@ Vagrant.configure("2") do |config|
     machine1.vm.boot_timeout = 10
     machine1.vm.synced_folder ".", "/vagrant", disabled: true
     machine1.vm.network "private_network", ip: MACHINE1_IP,
-                                          mac: MACHINE1_MAC.gsub(/[:-]/, "").strip,
-                                          virtualbox__intnet: true,
-                                          libvirt__network_name: "tink_network",
-                                          libvirt__dhcp_enabled: false,
-                                          libvirt__forward_mode: "nat"
+                                           mac: MACHINE1_MAC.gsub(/[:-]/, "").strip,
+                                           virtualbox__intnet: true,
+                                           libvirt__network_name: "tink_network",
+                                           libvirt__dhcp_enabled: false,
+                                           libvirt__forward_mode: "nat"
 
     machine1.vm.provider "libvirt" do |v|
       v.storage :file, :size => "20G"
