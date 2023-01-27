@@ -41,6 +41,7 @@ Vagrant.configure("2") do |config|
     provisioner.vm.box = "generic/ubuntu2204"
     provisioner.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE
     provisioner.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
+                                              virtualbox__intnet: true,
                                               libvirt__network_name: "tink_network",
                                               libvirt__host_ip: LIBVIRT_HOST_IP,
                                               libvirt__netmask: "255.255.255.0",
@@ -68,9 +69,9 @@ Vagrant.configure("2") do |config|
     machine1.ssh.insert_key = false
     machine1.vm.boot_timeout = 10
     machine1.vm.synced_folder ".", "/vagrant", disabled: true
-    machine1.vm.network :private_network, ip: MACHINE1_IP,
+    machine1.vm.network "private_network", ip: MACHINE1_IP,
                                           mac: MACHINE1_MAC.gsub(/[:-]/, "").strip,
-                                          adapter: 1,
+                                          virtualbox__intnet: true,
                                           libvirt__network_name: "tink_network",
                                           libvirt__dhcp_enabled: false,
                                           libvirt__forward_mode: "nat"
@@ -90,7 +91,7 @@ Vagrant.configure("2") do |config|
       v.memory = 2048
       v.cpus = 2
       v.gui = true
-      v.customize ["modifyvm", :id, "--nic1", "hostonly", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+      v.customize ["modifyvm", :id, "--boot1", "disk", "--boot2", "net"]
       v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
     end
