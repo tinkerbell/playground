@@ -70,7 +70,7 @@ helm_install_tink_stack() {
 	local interface=$3
 
 	trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
-	helm install stack-release oci://ghcr.io/tinkerbell/charts/stack --version "$version" --create-namespace --namespace "$namespace" --wait --set "boots.boots.trustedProxies=${trusted_proxies}" --set "hegel.hegel.trustedProxies=${trusted_proxies}" --set "kubevip.interface=$interface" --values /tmp/stack-values.yaml
+	helm install stack-release oci://ghcr.io/tinkerbell/charts/stack --version "$version" --create-namespace --namespace "$namespace" --wait --set "boots.trustedProxies=${trusted_proxies}" --set "hegel.trustedProxies=${trusted_proxies}" --set "kubevip.interface=$interface" --values /tmp/stack-values.yaml
 }
 
 apply_manifests() {
