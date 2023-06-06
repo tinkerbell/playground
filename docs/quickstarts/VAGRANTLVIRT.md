@@ -426,46 +426,6 @@ This option will also show you how to create a machine to provision.
 
    </details>
 
-   <details>
-   <summary>Postgres backend</summary>
-
-   ```bash
-   # log in to the provisioner
-   vagrant ssh provisioner
-   # watch the workflow events and status for workflow completion
-   # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
-
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   | WORKER ID                            | TASK NAME       | ACTION NAME         | EXECUTION TIME | MESSAGE                         | ACTION STATUS |
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | stream-ubuntu-image |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | stream-ubuntu-image |             15 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | install-openssl     |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | install-openssl     |              1 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | create-user         |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | create-user         |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | enable-ssh          |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | enable-ssh          |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | disable-apparmor    |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | disable-apparmor    |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | write-netplan       |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | write-netplan       |              0 | finished execution successfully | STATE_SUCCESS |
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   +----------------------+--------------------------------------+
-   | FIELD NAME           | VALUES                               |
-   +----------------------+--------------------------------------+
-   | Workflow ID          | 3107919b-e59d-11eb-bf99-0242ac120005 |
-   | Workflow Progress    | 100%                                 |
-   | Current Task         | os-installation                      |
-   | Current Action       | write-netplan                        |
-   | Current Worker       | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 |
-   | Current Action State | STATE_SUCCESS                        |
-   +----------------------+--------------------------------------+
-   ```
-
-   </details>
-
 5. Reboot the machine
 
    ```bash

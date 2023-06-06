@@ -14,7 +14,6 @@ PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.4"
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
-USE_POSTGRES = ENV["USE_POSTGRES"] || ""
 USE_HELM = ENV["USE_HELM"] || ""
 HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.1.2"
 HELM_LOADBALANCER_INTERFACE = ENV["HELM_LOADBALANCER_INTERFACE"] || "eth1"
@@ -30,10 +29,6 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "provisioner" do |provisioner|
-    if USE_POSTGRES == "true" && USE_HELM == "true"
-      puts "USE_POSTGRES and USE_HELM cannot both be true"
-      abort
-    end
     if USE_HELM == "true"
       STACK_DIR = STACK_BASE_DIR + "helm/"
       DEST_DIR = DEST_DIR_BASE + "helm/"
@@ -58,9 +53,6 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE, type: "rsync"
     end
 
-    if USE_POSTGRES == "true"
-      DEST_DIR = DEST_DIR_BASE + STACK_OPT + "postgres"
-    end
     provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE]
   end
 

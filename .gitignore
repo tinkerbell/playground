@@ -1,10 +1,7 @@
 # hidden files/dirs
 .*
-!deploy/stack/compose/postgres/state/webroot/misc/osie/current/.keep
-!deploy/stack/compose/postgres/state/webroot/workflow/.keep
 !deploy/infrastructure/vagrant/.env
 !deploy/stack/compose/.env
-!deploy/stack/compose/postgres/.env
 !.gitignore
 !.github/
 
@@ -18,9 +15,6 @@
 
 compose.tar.gz
 compose.zip
-deploy/stack/compose/postgres/state/webroot/*.gz
-deploy/stack/compose/postgres/state/webroot/misc/osie/current/*
-deploy/stack/compose/postgres/state/webroot/workflow/*
 deploy/stack/compose/manifests/manifests.yaml
 deploy/stack/compose/state/*
 !deploy/stack/compose/state/.keep

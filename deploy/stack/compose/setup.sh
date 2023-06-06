@@ -47,9 +47,6 @@ setup_compose_env_overrides() {
 	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
 		disk_device="/dev/vda"
-		if [[ $compose_dir == *"postgres"* ]]; then
-			sed -i 's|sda|vda|g' "$compose_dir"/create-tink-records/manifests/template/ubuntu.yaml
-		fi
 	fi
 
 	readarray -t lines <<-EOF
