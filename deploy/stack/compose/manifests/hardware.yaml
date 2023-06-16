@@ -26,8 +26,8 @@ spec:
         lease_time: 86400
         mac: $TINKERBELL_CLIENT_MAC
         name_servers:
-          - 1.1.1.1
-          - 8.8.8.8
+          - $TINKERBELL_CLIENT_NAMESERVER_1
+          - $TINKERBELL_CLIENT_NAMESERVER_2
         uefi: false
       netboot:
         allowPXE: true

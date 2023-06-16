@@ -9,6 +9,8 @@ You will need to bring your own machines to provision.
 - [Docker](https://docs.docker.com/get-docker/) is installed (version >= 19.03)
 - [Docker Compose](https://docs.docker.com/compose/install/) is installed (version >= 2.10.2)
 
+Both the Tinkerbell host and client require internet access to pull images, this sandbox is not designed to work in an isolated network. 
+
 ## Steps
 
 1. Clone this repository
@@ -18,25 +20,39 @@ You will need to bring your own machines to provision.
    cd sandbox
    ```
 
-2. Set the public IP address for the provisioner
+2. Modify the [.env file](https://github.com/tinkerbell/sandbox/blob/47cfd6d0a0b659f1e364a78a4e63e08cdf168ca8/deploy/stack/compose/.env)
 
    ```bash
    # This should be an IP that's on an interface where you will be provisioning machines
-   export TINKERBELL_HOST_IP=192.168.2.111
+   # This is the IP and MAC of the machine to be provisioned
+   # The IP should normally be in the same network as the IP used for the provisioner
+   TINKERBELL_CLIENT_IP=192.168.56.43
+   TINKERBELL_CLIENT_MAC=08:00:27:9e:f5:3a
+
+   # These are the Gateway and DNS addresses the client should use, required for tink-worker to pull action images
+   TINKERBELL_CLIENT_GW=192.168.65.1
+   TINKERBELL_CLIENT_NAMESERVER_1=1.1.1.1
+   TINKERBELL_CLIENT_NAMESERVER_2=8.8.8.8
+
+   # This should be an IP that's on an interface where you will be provisioning machines
+   TINKERBELL_HOST_IP=192.168.56.4
    ```
 
-3. Set the IP and MAC address of the machine you want to provision (if you want Tink hardware, template, and workflow records auto-generated)
+   If you are provisioning bare metal machines with NVME SSDs, use NVME device paths:
 
    ```bash
-   # This IP and MAC of the machine to be provisioned
-   # The IP should normally be in the same network as the IP used for the provisioner
-   export TINKERBELL_CLIENT_IP=192.168.2.211
-   export TINKERBELL_CLIENT_MAC=08:00:27:9E:F5:3A
+   # This is the boot/primary disk device and the device for its first partition 
+   # for the machine to be provisioned (as it would appear with lsblk)
+   #DISK_DEVICE=/dev/sda
+   #DISK_DEVICE_PARTITION_1=/dev/sda1
+   # Example for a device with an NVME SSD
+   DISK_DEVICE=/dev/nvme0n1
+   DISK_DEVICE_PARTITION_1=/dev/nvme0n1p1
    ```
 
-   > Modify the [hardware.yaml](../../deploy/stack/compose/manifests/hardware.yaml), as needed, for your machine.
+   > Optionally modify the [hardware.yaml](../../deploy/stack/compose/manifests/hardware.yaml), as needed, for your machine.
 
-4. Start the provisioner
+3. Start the provisioner
 
    ```bash
    cd deploy/stack/compose
@@ -69,14 +85,14 @@ You will need to bring your own machines to provision.
 
    </details>
 
-5. Power up the machine to be provisioned
+4. Power up the machine to be provisioned
 
-6. Watch for the provisioner to complete
+5. Watch for the provisioner to complete
 
    ```bash
    # watch for the workflow to completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   KUBECONFIG=./state/kube/kubeconfig.yaml kubectl get -n tink-system workflow sandbox-workflow --watch
+   KUBECONFIG=./state/kube/kubeconfig.yaml kubectl get -n default workflow sandbox-workflow --watch
    ```
 
    <details>
@@ -103,9 +119,9 @@ You will need to bring your own machines to provision.
 
    </details>
 
-7. Reboot the machine
+6. Reboot the machine
 
-8. Login to the machine
+7. Login to the machine
 
    The machine has been provisioned with Ubuntu Focal.
    You can now SSH into the machine.
