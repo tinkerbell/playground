@@ -65,7 +65,7 @@ setup_layer2_network() {
 	local interface=$1
 	local addr=$2
 
-	if ! [ "$(grep -c $interface /proc/net/bonding/bond0)" -eq 1 ]; then
+	if ! [ "$(grep -c "$interface" /proc/net/bonding/bond0)" -eq 1 ]; then
 		echo "Interface already removed from bond0"
 		return
 	fi
