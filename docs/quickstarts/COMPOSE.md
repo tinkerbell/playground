@@ -9,7 +9,7 @@ You will need to bring your own machines to provision.
 - [Docker](https://docs.docker.com/get-docker/) is installed (version >= 19.03)
 - [Docker Compose](https://docs.docker.com/compose/install/) is installed (version >= 2.10.2)
 
-Both the Tinkerbell host and client require internet access to pull images, this sandbox is not designed to work in an isolated network. 
+Both the Tinkerbell host and client require internet access to pull images, this sandbox is not designed to work in an isolated network.
 
 ## Steps
 
@@ -41,7 +41,7 @@ Both the Tinkerbell host and client require internet access to pull images, this
    If you are provisioning bare metal machines with NVME SSDs, use NVME device paths:
 
    ```bash
-   # This is the boot/primary disk device and the device for its first partition 
+   # This is the boot/primary disk device and the device for its first partition
    # for the machine to be provisioned (as it would appear with lsblk)
    #DISK_DEVICE=/dev/sda
    #DISK_DEVICE_PARTITION_1=/dev/sda1

@@ -13,7 +13,7 @@ new_tag=${1-}
 	exit 1
 )
 
-if [[ $(git symbolic-ref HEAD) != refs/heads/main ]] && [[ -z ${ALLOW_NON_MAIN:-} ]]; then
+if [[ $(git symbolic-ref HEAD) != refs/heads/main ]] && [[ -z ${ALLOW_NON_MAIN-} ]]; then
 	echo "Must be on main branch" >&2
 	exit 1
 fi

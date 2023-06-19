@@ -57,7 +57,7 @@ This option will also show you how to create a machine to provision.
 
 6. Watch the provision complete
 
-   Follow the docker-compose logs: 
+   Follow the docker-compose logs:
 
    ```bash
    # log in to the provisioner
@@ -68,13 +68,15 @@ This option will also show you how to create a machine to provision.
    docker-compose -f /sandbox/compose/docker-compose.yml logs -f
 
    ```
-   Some of the steps can take a while to complete. In particular, it may look like tink-worker is hanging and not interacting with the provisioner after pulling the LinuxKit image. It may take a few minutes before it starts any of the workflows. 
+
+   Some of the steps can take a while to complete. In particular, it may look like tink-worker is hanging and not interacting with the provisioner after pulling the LinuxKit image. It may take a few minutes before it starts any of the workflows.
 
    In a separate SSH session, watch the status of workflow tasks:
+
    ```bash
    # log in to the provisioner
    ssh root@$(terraform output -raw provisioner_ssh)
-   
+
    # watch for the workflow to completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
    KUBECONFIG=/sandbox/compose/state/kube/kubeconfig.yaml kubectl get -n default workflow sandbox-workflow --watch

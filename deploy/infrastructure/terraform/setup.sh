@@ -9,7 +9,7 @@ install_docker() {
 
 install_docker_compose() {
 	apt-get install --no-install-recommends python3-pip
-    # Prevents the python X509_V_FLAG_CB_ISSUER_CHECK issue ref: https://stackoverflow.com/questions/73830524/attributeerror-module-lib-has-no-attribute-x509-v-flag-cb-issuer-check
+	# Prevents the python X509_V_FLAG_CB_ISSUER_CHECK issue ref: https://stackoverflow.com/questions/73830524/attributeerror-module-lib-has-no-attribute-x509-v-flag-cb-issuer-check
 	rm -rf /usr/lib/python3/dist-packages/OpenSSL
 	pip3 install pyopenssl && pip install pyopenssl --upgrade
 	pip3 install docker-compose
@@ -49,7 +49,7 @@ get_second_interface_from_bond0() {
 	# if the ip is in a file in interfaces.d then lets assume this is a re-run and we can just
 	# return the basename of the file (which should be named same as the interface)
 	f=$(grep -lr "${addr}" /etc/network/interfaces.d)
-	[[ -n ${f:-} ]] && basename "$f" && return
+	[[ -n ${f-} ]] && basename "$f" && return
 
 	# sometimes the interfaces aren't sorted as expected in the /slaves file
 	#
@@ -65,9 +65,9 @@ setup_layer2_network() {
 	local interface=$1
 	local addr=$2
 
-	if ! [ `grep -c "$interface" /proc/net/bonding/bond0` -eq 1 ]; then
+	if ! [ $(grep -c "$interface" /proc/net/bonding/bond0) -eq 1 ]; then
 		echo "Interface already removed from bond0"
-		return 
+		return
 	fi
 
 	# I tried getting rid of the following "manual" commands in favor of
@@ -129,8 +129,8 @@ extract_compose_files() {
 
 setup_compose_env_overrides() {
 	local worker_mac=$1
-    sed -i "s/TINKERBELL_CLIENT_MAC=.*/TINKERBELL_CLIENT_MAC=$worker_mac/" /root/.env
-    cp /root/.env /sandbox/compose/.env
+	sed -i "s/TINKERBELL_CLIENT_MAC=.*/TINKERBELL_CLIENT_MAC=$worker_mac/" /root/.env
+	cp /root/.env /sandbox/compose/.env
 }
 
 tweak_bash_interactive_settings() {
@@ -162,7 +162,7 @@ main() {
 	setup_compose_env_overrides "$worker_mac"
 	docker-compose -f /sandbox/compose/docker-compose.yml up -d
 
-    tweak_bash_interactive_settings
+	tweak_bash_interactive_settings
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
