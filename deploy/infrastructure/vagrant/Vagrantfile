@@ -22,6 +22,7 @@ STACK_BASE_DIR = "../../stack/"
 STACK_DIR = STACK_BASE_DIR + STACK_OPT
 DEST_DIR_BASE = "/sandbox/stack/"
 DEST_DIR = DEST_DIR_BASE + STACK_OPT
+ENV_FILE = ".env_compose"
 
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
@@ -53,7 +54,12 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE, type: "rsync"
     end
 
-    provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE]
+    if USE_HELM == "true"
+      provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE]
+    else
+      provisioner.vm.provision "file", source: ENV_FILE, destination: DEST_DIR + ".env"  
+      provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh"
+    end
   end
 
   config.vm.define :machine1, autostart: false do |machine1|

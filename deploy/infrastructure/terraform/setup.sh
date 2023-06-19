@@ -133,6 +133,16 @@ setup_compose_env_overrides() {
     cp /root/.env /sandbox/compose/.env
 }
 
+tweak_bash_interactive_settings() {
+	grep -q 'cd /sandbox/compose' ~root/.bashrc || echo 'cd /sandbox/compose' >>~root/.bashrc
+	readarray -t aliases <<-EOF
+		dc=docker-compose
+	EOF
+	for alias in "${aliases[@]}"; do
+		grep -q "$alias" ~root/.bash_aliases || echo "alias $alias" >>~root/.bash_aliases
+	done
+}
+
 main() {
 	worker_mac=$1
 	layer2_ip=192.168.56.4
@@ -150,9 +160,9 @@ main() {
 
 	extract_compose_files
 	setup_compose_env_overrides "$worker_mac"
-    pushd /sandbox/compose
-	docker-compose up -d
-    popd
+	docker-compose -f /sandbox/compose/docker-compose.yml up -d
+
+    tweak_bash_interactive_settings
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

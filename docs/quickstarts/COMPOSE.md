@@ -17,7 +17,7 @@ Both the Tinkerbell host and client require internet access to pull images, this
 
    ```bash
    git clone https://github.com/tinkerbell/sandbox.git
-   cd sandbox
+   cd sandbox/deploy/stack/compose
    ```
 
 2. Modify the [.env file](https://github.com/tinkerbell/sandbox/blob/47cfd6d0a0b659f1e364a78a4e63e08cdf168ca8/deploy/stack/compose/.env)
@@ -30,7 +30,7 @@ Both the Tinkerbell host and client require internet access to pull images, this
    TINKERBELL_CLIENT_MAC=08:00:27:9e:f5:3a
 
    # These are the Gateway and DNS addresses the client should use, required for tink-worker to pull action images
-   TINKERBELL_CLIENT_GW=192.168.65.1
+   TINKERBELL_CLIENT_GW=192.168.56.1
    TINKERBELL_CLIENT_NAMESERVER_1=1.1.1.1
    TINKERBELL_CLIENT_NAMESERVER_2=8.8.8.8
 
@@ -55,7 +55,6 @@ Both the Tinkerbell host and client require internet access to pull images, this
 3. Start the provisioner
 
    ```bash
-   cd deploy/stack/compose
    docker compose up -d
    # This process will take about 5-10 minutes depending on your internet connection.
    # Hook (OSIE) is about 400MB in size and the Ubuntu Focal image is about 500MB

@@ -106,8 +106,6 @@ This option will also show you how to create a machine to provision.
 
 7. Reboot the machine
 
-   Disable PXE booting in the [Equinix Metal Web UI](https://console.equinix.com).
-
    Now reboot the `tink-worker` via the [Equinix Metal Web UI](https://console.equinix.com), or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
    ```bash
