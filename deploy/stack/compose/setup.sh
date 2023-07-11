@@ -6,7 +6,6 @@ install_docker() {
 	update_apt
 	apt-get install --no-install-recommends containerd.io docker-ce docker-ce-cli docker-compose-plugin
 	gpasswd -a vagrant docker
-	apt-get install docker-compose
 }
 
 install_kubectl() {
@@ -62,7 +61,7 @@ main() {
 	install_kubectl
 
 	local compose_dir="/sandbox/stack/compose"
-	docker-compose -f "$compose_dir"/docker-compose.yml up -d
+	docker compose -f "$compose_dir"/docker-compose.yml up -d
 
 	create_tink_helper_script "$compose_dir"
 	tweak_bash_interactive_settings "$compose_dir"
