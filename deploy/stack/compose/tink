@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-exec docker compose -f /vagrant/compose/docker-compose.yml exec tink-cli tink "$@"

@@ -36,7 +36,17 @@ This option will also show you how to create a machine to provision.
    # OSIE is about 2GB in size and the Ubuntu Focal image is about 500MB
    ```
 
-4. Reboot the machine
+4. Confirm setup.sh script has finished
+
+   ```bash
+   # log in to the provisioner
+   ssh root@$(terraform output -raw provisioner_ssh)
+
+   # verify that the /root/setup.sh script has finished running
+   ps -aux | grep setup.sh
+   ```
+
+5. Reboot the machine
 
    In the [Equinix Metal Web UI](https://console.equinix.com), find the `tink_worker` and reboot it.
    Or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
@@ -45,52 +55,58 @@ This option will also show you how to create a machine to provision.
    metal device reboot -i $(terraform output -raw worker_id)
    ```
 
-5. Watch the provision complete
+6. Watch the provision complete
+
+   Follow the docker-compose logs:
 
    ```bash
    # log in to the provisioner
    ssh root@$(terraform output -raw provisioner_ssh)
 
-   # watch the workflow events and status for workflow completion
+   # watch the docker-compose logs
+   # you should see Boots offer tink-worker an IP address and see tink-worker downloading files from the web server
+   docker-compose -f /sandbox/compose/docker-compose.yml logs -f
+
+   ```
+
+   Some of the steps can take a while to complete. In particular, it may look like tink-worker is hanging and not interacting with the provisioner after pulling the LinuxKit image. It may take a few minutes before it starts any of the workflows.
+
+   In a separate SSH session, watch the status of workflow tasks:
+
+   ```bash
+   # log in to the provisioner
+   ssh root@$(terraform output -raw provisioner_ssh)
+
+   # watch for the workflow to completion
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   wid=$(tink workflow get --no-headers | awk '/^\|/ {print $2}'); watch -n1 "tink workflow events ${wid}; tink workflow state ${wid}"
+   KUBECONFIG=/sandbox/compose/state/kube/kubeconfig.yaml kubectl get -n default workflow sandbox-workflow --watch
    ```
 
    <details>
    <summary>expected output</summary>
 
    ```bash
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   | WORKER ID                            | TASK NAME       | ACTION NAME         | EXECUTION TIME | MESSAGE                         | ACTION STATUS |
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | stream-ubuntu-image |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | stream-ubuntu-image |             15 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | install-openssl     |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | install-openssl     |              1 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | create-user         |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | create-user         |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | enable-ssh          |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | enable-ssh          |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | disable-apparmor    |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | disable-apparmor    |              0 | finished execution successfully | STATE_SUCCESS |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | write-netplan       |              0 | Started execution               | STATE_RUNNING |
-   | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 | os-installation | write-netplan       |              0 | finished execution successfully | STATE_SUCCESS |
-   +--------------------------------------+-----------------+---------------------+----------------+---------------------------------+---------------+
-   +----------------------+--------------------------------------+
-   | FIELD NAME           | VALUES                               |
-   +----------------------+--------------------------------------+
-   | Workflow ID          | 3107919b-e59d-11eb-bf99-0242ac120005 |
-   | Workflow Progress    | 100%                                 |
-   | Current Task         | os-installation                      |
-   | Current Action       | write-netplan                        |
-   | Current Worker       | 0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94 |
-   | Current Action State | STATE_SUCCESS                        |
-   +----------------------+--------------------------------------+
+   NAME               TEMPLATE       STATE
+   sandbox-workflow   ubuntu-focal   STATE_PENDING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_RUNNING
+   sandbox-workflow   ubuntu-focal   STATE_SUCCESS
    ```
 
    </details>
 
-6. Reboot the machine
+7. Reboot the machine
 
    Now reboot the `tink-worker` via the [Equinix Metal Web UI](https://console.equinix.com), or if you have the [Equinix Metal CLI](https://github.com/equinix/metal-cli) installed run the following:
 
@@ -98,12 +114,14 @@ This option will also show you how to create a machine to provision.
    metal device reboot -i $(terraform output -raw worker_id)
    ```
 
-7. Login to the machine
+8. Login to the machine
 
-   The machine has been provisioned with Ubuntu Focal.
-   Wait for the reboot to complete and then you can SSH into it.
+   The `tink-worker` machine has been provisioned with Ubuntu Focal.
+   Wait for the reboot to complete and then you can SSH into it from the `tink-provisioner` machine.
+   It may take some time for the worker to become available via SSH.
 
    ```bash
+   # Continuing on the tink-provisioner machine
    # crtl-c to exit the watch
    ssh tink@192.168.56.43 # user/pass => tink/tink
    ```

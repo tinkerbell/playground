@@ -79,7 +79,7 @@ resource "metal_port" "eth1" {
 
 data "archive_file" "compose" {
   type        = "zip"
-  source_dir  = "${path.module}/../compose"
+  source_dir  = "${path.module}/../../stack/compose"
   output_path = "${path.module}/compose.zip"
 }
 
@@ -100,6 +100,7 @@ data "cloudinit_config" "setup" {
     content = templatefile("${path.module}/cloud-config.cfg", {
       COMPOSE_ZIP = local.compose_zip
       SETUPSH     = filebase64("${path.module}/setup.sh")
+      ENVFILE     = filebase64("${path.module}/.env")
       WORKER_MAC  = local.worker_macs[0]
     })
   }

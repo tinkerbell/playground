@@ -1,6 +1,7 @@
 # hidden files/dirs
 .*
 !deploy/infrastructure/vagrant/.env
+!deploy/infrastructure/terraform/.env
 !deploy/stack/compose/.env
 !.gitignore
 !.github/

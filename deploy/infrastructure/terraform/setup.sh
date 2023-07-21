@@ -9,7 +9,16 @@ install_docker() {
 
 install_docker_compose() {
 	apt-get install --no-install-recommends python3-pip
-	pip install docker-compose
+	# Prevents the python X509_V_FLAG_CB_ISSUER_CHECK issue ref: https://stackoverflow.com/questions/73830524/attributeerror-module-lib-has-no-attribute-x509-v-flag-cb-issuer-check
+	rm -rf /usr/lib/python3/dist-packages/OpenSSL
+	pip3 install pyopenssl && pip install pyopenssl --upgrade
+	pip3 install docker-compose
+}
+
+install_kubectl() {
+	curl -LO https://dl.k8s.io/v1.25.2/bin/linux/amd64/kubectl
+	chmod +x ./kubectl
+	mv ./kubectl /usr/local/bin/kubectl
 }
 
 install_iptables_persistent() {
@@ -40,7 +49,7 @@ get_second_interface_from_bond0() {
 	# if the ip is in a file in interfaces.d then lets assume this is a re-run and we can just
 	# return the basename of the file (which should be named same as the interface)
 	f=$(grep -lr "${addr}" /etc/network/interfaces.d)
-	[[ -n ${f:-} ]] && basename "$f" && return
+	[[ -n ${f-} ]] && basename "$f" && return
 
 	# sometimes the interfaces aren't sorted as expected in the /slaves file
 	#
@@ -55,6 +64,11 @@ get_second_interface_from_bond0() {
 setup_layer2_network() {
 	local interface=$1
 	local addr=$2
+
+	if ! [ "$(grep -c "$interface" /proc/net/bonding/bond0)" -eq 1 ]; then
+		echo "Interface already removed from bond0"
+		return
+	fi
 
 	# I tried getting rid of the following "manual" commands in favor of
 	# persisting the network config and then restarting the network but that
@@ -110,29 +124,13 @@ make_host_gw_server() {
 
 extract_compose_files() {
 	mkdir -p /sandbox
-	unzip /root/compose.zip -d /sandbox/compose
+	unzip -o /root/compose.zip -d /sandbox/compose
 }
 
 setup_compose_env_overrides() {
 	local worker_mac=$1
-	readarray -t lines <<-EOF
-		TINKERBELL_CLIENT_MAC=$worker_mac
-		TINKERBELL_TEMPLATE_MANIFEST=/manifests/template/ubuntu-equinix-metal.yaml
-		TINKERBELL_HARDWARE_MANIFEST=/manifests/hardware/hardware-equinix-metal.json
-	EOF
-	for line in "${lines[@]}"; do
-		grep -q "$line" /sandbox/compose/.env && continue
-		echo "$line" >>/sandbox/compose/.env
-	done
-}
-
-create_tink_helper_script() {
-	cat >/usr/local/bin/tink <<-'EOF'
-		#!/usr/bin/env bash
-
-		exec docker-compose -f /sandbox/compose/docker-compose.yml exec tink-cli tink "$@"
-	EOF
-	chmod +x /usr/local/bin/tink
+	sed -i "s/TINKERBELL_CLIENT_MAC=.*/TINKERBELL_CLIENT_MAC=$worker_mac/" /root/.env
+	cp /root/.env /sandbox/compose/.env
 }
 
 tweak_bash_interactive_settings() {
@@ -152,6 +150,7 @@ main() {
 	update_apt
 	install_docker
 	install_docker_compose
+	install_kubectl
 	install_iptables_persistent
 
 	local layer2_interface
@@ -163,7 +162,6 @@ main() {
 	setup_compose_env_overrides "$worker_mac"
 	docker-compose -f /sandbox/compose/docker-compose.yml up -d
 
-	create_tink_helper_script
 	tweak_bash_interactive_settings
 }
 
