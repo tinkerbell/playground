@@ -12,54 +12,42 @@ open(".env", "r").readlines.each {
 LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.4"
+GATEWAY_IP = ENV["GATEWAY_IP"] || ""
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
-USE_HELM = ENV["USE_HELM"] || ""
-HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.1.2"
+HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.4.0"
+KUBECTL_VERSION = ENV["KUBECTL_VERSION"] || "1.28.3"
+K3D_VERSION = ENV["K3D_VERSION"] || "v5.6.0"
 HELM_LOADBALANCER_INTERFACE = ENV["HELM_LOADBALANCER_INTERFACE"] || "eth1"
-STACK_OPT = "compose/"
-STACK_BASE_DIR = "../../stack/"
-STACK_DIR = STACK_BASE_DIR + STACK_OPT
 DEST_DIR_BASE = "/sandbox/stack/"
-DEST_DIR = DEST_DIR_BASE + STACK_OPT
-ENV_FILE = ".env_compose"
 
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
     libvirt.qemu_use_session = false
   end
 
-  config.vm.define "provisioner" do |provisioner|
-    if USE_HELM == "true"
-      STACK_DIR = STACK_BASE_DIR + "helm/"
-      DEST_DIR = DEST_DIR_BASE + "helm/"
-    end
-    provisioner.vm.box = "generic/ubuntu2204"
-    provisioner.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE
-    provisioner.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
+  config.vm.define "stack" do |stack|
+    stack.vm.box = "generic/ubuntu2204"
+    stack.vm.synced_folder "", DEST_DIR_BASE
+    stack.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
                                               libvirt__network_name: "tink_network",
                                               libvirt__host_ip: LIBVIRT_HOST_IP,
                                               libvirt__netmask: "255.255.255.0",
                                               libvirt__dhcp_enabled: false
 
-    provisioner.vm.provider "virtualbox" do |v, override|
+    stack.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
-      override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE
     end
 
-    provisioner.vm.provider "libvirt" do |l, override|
+    stack.vm.provider "libvirt" do |l, override|
       l.memory = 2048
       l.cpus = 2
-      override.vm.synced_folder STACK_BASE_DIR, DEST_DIR_BASE, type: "rsync"
+      override.vm.synced_folder "", DEST_DIR_BASE, type: "rsync"
     end
 
-    if USE_HELM == "true"
-      provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE]
-    else
-      provisioner.vm.provision "file", source: ENV_FILE, destination: DEST_DIR + ".env"
-      provisioner.vm.provision :shell, path: STACK_DIR + "/setup.sh"
-    end
+    stack.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR_BASE, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE, KUBECTL_VERSION, K3D_VERSION, GATEWAY_IP]
+    
   end
 
   config.vm.define :machine1, autostart: false do |machine1|

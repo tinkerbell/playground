@@ -9,7 +9,9 @@ install_docker() {
 }
 
 install_kubectl() {
-	curl -LO https://dl.k8s.io/v1.25.2/bin/linux/amd64/kubectl
+	local kubectl_version=$1
+
+	curl -LO https://dl.k8s.io/v"$kubectl_version"/bin/linux/amd64/kubectl
 	chmod +x ./kubectl
 	mv ./kubectl /usr/local/bin/kubectl
 }
@@ -39,7 +41,9 @@ update_apt() {
 }
 
 install_k3d() {
-	wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.4.6 bash
+	local k3d_Version=$1
+
+	wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="$k3d_version" bash
 }
 
 start_k3d() {
@@ -64,13 +68,46 @@ helm_customize_values() {
 	sed -i "s/192.168.2.111/${loadbalancer_ip}/g" /tmp/stack-values.yaml
 }
 
+# make_host_gw_server makes the host a gateway server
+make_host_gw_server() {
+	local incoming_interface=$1
+	local outgoing_interface=$2
+
+	# drop all rules, especially interested in droppin docker's we don't want to persist docker's rules
+	# docker will re-create them when starting back up
+	apt install -y netfilter-persistent
+	systemctl stop docker
+	netfilter-persistent flush
+
+	iptables -t nat -A POSTROUTING -o "${outgoing_interface}" -j MASQUERADE
+	iptables -A FORWARD -i "${outgoing_interface}" -o "${incoming_interface}" -m state --state RELATED,ESTABLISHED -j ACCEPT
+	iptables -A FORWARD -i "${incoming_interface}" -o "${outgoing_interface}" -j ACCEPT
+
+	netfilter-persistent save
+	systemctl start docker
+}
+
 helm_install_tink_stack() {
 	local namespace=$1
 	local version=$2
 	local interface=$3
+	local loadbalancer_ip=$4
 
+	trusted_proxies=""
+	until [ "$trusted_proxies" != "" ]; do
 	trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
-	helm install stack-release oci://ghcr.io/tinkerbell/charts/stack --version "$version" --create-namespace --namespace "$namespace" --wait --set "boots.boots.trustedProxies=${trusted_proxies}" --set "hegel.hegel.trustedProxies=${trusted_proxies}" --set "kubevip.interface=$interface" --values /tmp/stack-values.yaml
+	done
+	helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack \
+	  --version "$version" \
+	  --create-namespace \
+	  --namespace "$namespace" \
+	  --wait \
+	  --set "smee.trustedProxies={${trusted_proxies}}" \
+	  --set "hegel.trustedProxies={${trusted_proxies}}" \
+	  --set "stack.kubevip.interface=$interface" \
+	  --set "stack.relay.sourceInterface=$interface" \
+	  --set "stack.loadBalancerIP=$loadbalancer_ip" \
+	  --set "smee.publicIP=$loadbalancer_ip"
 }
 
 apply_manifests() {
@@ -79,6 +116,7 @@ apply_manifests() {
 	local manifests_dir=$3
 	local host_ip=$4
 	local namespace=$5
+	local gateway=$6
 
 	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
@@ -88,6 +126,9 @@ apply_manifests() {
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
+	if [ "$gateway" != "" ]; then
+		export TINKERBELL_CLIENT_GW="$gateway"
+	fi
 
 	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
 		envsubst <"$i"
@@ -105,31 +146,37 @@ run_helm() {
 	local loadbalancer_ip=$5
 	local helm_chart_version=$6
 	local loadbalancer_interface=$7
+	local k3d_version=$8
+	local gateway=$9
 	local namespace="tink-system"
 
-	install_k3d
+	install_k3d "$k3d_version"
 	start_k3d
 	install_helm
 	helm_customize_values "$loadbalancer_ip" "$helm_chart_version"
-	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface"
-	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
+	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip"
+	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace" "$gateway"
 	kubectl_for_vagrant_user
 }
 
 main() {
-	local host_ip=$1
-	local worker_ip=$2
-	local worker_mac=$3
-	local manifests_dir=$4
-	local loadbalancer_ip=$5
-	local helm_chart_version=$6
-	local loadbalancer_interface=$7
+	local host_ip="$1"
+	local worker_ip="$2"
+	local worker_mac="$3"
+	local manifests_dir="$4"
+	local loadbalancer_ip="$5"
+	local helm_chart_version="$6"
+	local loadbalancer_interface="$7"
+	local kubectl_version="$8"
+	local k3d_version="$9"
+	local gateway="${10}"
 
 	update_apt
 	install_docker
-	install_kubectl
+	install_kubectl "$kubectl_version"
+	make_host_gw_server "$loadbalancer_interface" "eth0"
 
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir"/manifests "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface"
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$gateway"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

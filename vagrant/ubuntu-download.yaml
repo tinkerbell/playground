@@ -36,7 +36,7 @@ spec:
           command: ["/script/entrypoint.sh"]
           args:
             [
-              "https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img",
+              "https://cloud-images.ubuntu.com/daily/server/jammy/current/jammy-server-cloudimg-amd64.img",
               "/output",
             ]
           volumeMounts:
