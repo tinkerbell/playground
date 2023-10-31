@@ -7,6 +7,7 @@ This option will also create a VM and provision an OS onto it.
 
 - [Vagrant](https://www.vagrantup.com/downloads) is installed
 - [VirtualBox](https://www.virtualbox.org/) is installed
+- A connection to the public internet (air gapped and proxied environments are not supported)
 
 ## Steps
 
