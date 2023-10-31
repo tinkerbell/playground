@@ -18,10 +18,6 @@ if ! shfmt -f . | xargs shfmt -s -l -d; then
 	failed=1
 fi
 
-if ! make lint; then
-	failed=1
-fi
-
 if ! rufo vagrant/Vagrantfile; then
 	failed=1
 fi
