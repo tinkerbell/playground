@@ -76,7 +76,8 @@ Vagrant.configure("2") do |config|
       v.memory = 2048
       v.cpus = 2
       v.gui = true
-      v.customize ["modifyvm", :id, "--nic1", "hostonly", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+      v.customize ["modifyvm", :id, "--nic1", "hostonlynet", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+      v.customize ["modifyvm", :id, "--macaddress1", MACHINE1_MAC.gsub(/[:-]/, "").strip]
       v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
     end
