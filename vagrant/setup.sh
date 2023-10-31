@@ -60,33 +60,6 @@ kubectl_for_vagrant_user() {
 	echo 'export KUBECONFIG="/home/vagrant/.kube/config"' >>~vagrant/.bashrc
 }
 
-helm_customize_values() {
-	local loadbalancer_ip=$1
-	local helm_chart_version=$2
-
-	helm inspect values oci://ghcr.io/tinkerbell/charts/stack --version "$helm_chart_version" >/tmp/stack-values.yaml
-	sed -i "s/192.168.2.111/${loadbalancer_ip}/g" /tmp/stack-values.yaml
-}
-
-# make_host_gw_server makes the host a gateway server
-make_host_gw_server() {
-	local incoming_interface=$1
-	local outgoing_interface=$2
-
-	# drop all rules, especially interested in droppin docker's we don't want to persist docker's rules
-	# docker will re-create them when starting back up
-	apt install -y netfilter-persistent
-	systemctl stop docker
-	netfilter-persistent flush
-
-	iptables -t nat -A POSTROUTING -o "${outgoing_interface}" -j MASQUERADE
-	iptables -A FORWARD -i "${outgoing_interface}" -o "${incoming_interface}" -m state --state RELATED,ESTABLISHED -j ACCEPT
-	iptables -A FORWARD -i "${incoming_interface}" -o "${outgoing_interface}" -j ACCEPT
-
-	netfilter-persistent save
-	systemctl start docker
-}
-
 helm_install_tink_stack() {
 	local namespace=$1
 	local version=$2
@@ -116,7 +89,6 @@ apply_manifests() {
 	local manifests_dir=$3
 	local host_ip=$4
 	local namespace=$5
-	local gateway=$6
 
 	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
@@ -126,9 +98,6 @@ apply_manifests() {
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
-	if [ "$gateway" != "" ]; then
-		export TINKERBELL_CLIENT_GW="$gateway"
-	fi
 
 	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
 		envsubst <"$i"
@@ -147,15 +116,13 @@ run_helm() {
 	local helm_chart_version=$6
 	local loadbalancer_interface=$7
 	local k3d_version=$8
-	local gateway=$9
 	local namespace="tink-system"
 
 	install_k3d "$k3d_version"
 	start_k3d
 	install_helm
-	helm_customize_values "$loadbalancer_ip" "$helm_chart_version"
 	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip"
-	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace" "$gateway"
+	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
 	kubectl_for_vagrant_user
 }
 
@@ -169,14 +136,14 @@ main() {
 	local loadbalancer_interface="$7"
 	local kubectl_version="$8"
 	local k3d_version="$9"
-	local gateway="${10}"
 
 	update_apt
 	install_docker
+	# https://github.com/ipxe/ipxe/pull/863
+	# Needed after iPXE increased the default TCP window size to 2MB.
+	sudo ethtool -K eth1 tx off sg off tso off
 	install_kubectl "$kubectl_version"
-	make_host_gw_server "$loadbalancer_interface" "eth0"
-
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$gateway"
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
