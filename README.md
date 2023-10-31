@@ -1,6 +1,6 @@
 # Playground
 
-The playground is an example deployment for learning and testing Tinkerbell. It is not a production reference architecture.
+The playground is an example deployment of the Tinkerbell stack for use in learning and testing. It is not a production reference architecture.
 Please use the [Helm chart](https://github.com/tinkerbell/charts) for production deployments.
 
 ## Quick-Starts
@@ -13,7 +13,6 @@ Pick the one that works best for you.
 
 - [Vagrant and VirtualBox](docs/quickstarts/VAGRANTVBOX.md)
 - [Vagrant and Libvirt](docs/quickstarts/VAGRANTLVIRT.md)
-- [Terraform and Equinix Metal](docs/quickstarts/TERRAFORMEM.md)
 - [Kubernetes](docs/quickstarts/KUBERNETES.md)
 
 ## Next Steps
