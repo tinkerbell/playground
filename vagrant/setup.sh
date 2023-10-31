@@ -68,19 +68,19 @@ helm_install_tink_stack() {
 
 	trusted_proxies=""
 	until [ "$trusted_proxies" != "" ]; do
-	trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
+		trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
 	done
 	helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack \
-	  --version "$version" \
-	  --create-namespace \
-	  --namespace "$namespace" \
-	  --wait \
-	  --set "smee.trustedProxies={${trusted_proxies}}" \
-	  --set "hegel.trustedProxies={${trusted_proxies}}" \
-	  --set "stack.kubevip.interface=$interface" \
-	  --set "stack.relay.sourceInterface=$interface" \
-	  --set "stack.loadBalancerIP=$loadbalancer_ip" \
-	  --set "smee.publicIP=$loadbalancer_ip"
+		--version "$version" \
+		--create-namespace \
+		--namespace "$namespace" \
+		--wait \
+		--set "smee.trustedProxies={${trusted_proxies}}" \
+		--set "hegel.trustedProxies={${trusted_proxies}}" \
+		--set "stack.kubevip.interface=$interface" \
+		--set "stack.relay.sourceInterface=$interface" \
+		--set "stack.loadBalancerIP=$loadbalancer_ip" \
+		--set "smee.publicIP=$loadbalancer_ip"
 }
 
 apply_manifests() {
