@@ -22,7 +22,7 @@ if ! make lint; then
 	failed=1
 fi
 
-if ! rufo deploy/infrastructure/vagrant/Vagrantfile; then
+if ! rufo vagrant/Vagrantfile; then
 	failed=1
 fi
 
