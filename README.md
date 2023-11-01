@@ -17,28 +17,24 @@ Pick the one that works best for you.
 
 ## Next Steps
 
-Now that you have a Tinkerbell stack up and running, you can start provisioning machines.
-Tinkerbell.org has a [list of guides](https://docs.tinkerbell.org/deploying-operating-systems/the-deployment/) for provisioning machines.
-You can also create your own.
-The following docs will help you get started.
+By default the Vagrant quickstart guides automatically install Ubuntu on the VM (machine1). You can provide your own OS template. To do this:
 
-1. [Example Hardware object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/hardware.yaml)
-2. [Example Template object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/template.yaml)
-   - Template [documentation](https://docs.tinkerbell.org/templates/)
-3. [Example Workflow object](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/workflow.yaml)
-
-### In the Sandbox
-
-1. Add your templates
+1. Login to the stack VM
 
    ```bash
-   kubectl apply -f my-custom-template.yaml
+   vagrant ssh stack
    ```
 
-2. Create the workflow
+1. Add your template. An example Template object can be found [here](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/template.yaml) and more Template documentation can be found [here](https://docs.tinkerbell.org/templates/).
+
+   ```bash
+   kubectl apply -f my-OS-template.yaml
+   ```
+
+1. Create the workflow. An example Workflow object can be found [here](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/workflow.yaml).
 
    ```bash
    kubectl apply -f my-custom-workflow.yaml
    ```
 
-3. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)
+1. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)
