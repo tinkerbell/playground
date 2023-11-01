@@ -9,6 +9,7 @@ You will need to bring your own hardware (machine) for this guide.
 - [K3D](https://k3d.io/#installation)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [Helm](https://helm.sh/docs/intro/install/)
+- A machine to provision
 
 ## Steps
 
