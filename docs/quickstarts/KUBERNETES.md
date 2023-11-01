@@ -1,7 +1,7 @@
 # Quick start guide for Kubernetes
 
-This option will walk through creating a light weight Kubernetes cluster, after which you will be able to deploy the Tinkerbell stack via the Helm chart.
-You will need to bring your own hardware for this guide.
+This option will walk through creating a light weight Kubernetes cluster, after which you will be able to deploy the Tinkerbell stack via the Helm chart, and then provision a machine.
+You will need to bring your own hardware (machine) for this guide.
 
 ## Prerequisites
 
