@@ -19,23 +19,23 @@ spec:
             image: quay.io/tinkerbell-actions/image2disk:v1.0.0
             timeout: 600
             environment:
-              DEST_DISK: $DISK_DEVICE
-              IMG_URL: "http://$TINKERBELL_HOST_IP:8080/focal-server-cloudimg-amd64.raw.gz"
+              DEST_DISK: {{ index .Hardware.Disks 0 }}
+              IMG_URL: "http://$TINKERBELL_HOST_IP:8080/jammy-server-cloudimg-amd64.raw.gz"
               COMPRESSED: true
           - name: "grow-partition"
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
             environment:
-              BLOCK_DEVICE: $DISK_DEVICE_PARTITION_1
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
-              CMD_LINE: "growpart $DISK_DEVICE 1 && resize2fs $DISK_DEVICE_PARTITION_1"
+              CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"
           - name: "install-openssl"
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
             environment:
-              BLOCK_DEVICE: $DISK_DEVICE_PARTITION_1
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -44,7 +44,7 @@ spec:
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
             environment:
-              BLOCK_DEVICE: $DISK_DEVICE_PARTITION_1
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -53,7 +53,7 @@ spec:
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
             environment:
-              BLOCK_DEVICE: $DISK_DEVICE_PARTITION_1
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -62,7 +62,7 @@ spec:
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
             environment:
-              BLOCK_DEVICE: $DISK_DEVICE_PARTITION_1
+              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -71,7 +71,7 @@ spec:
             image: quay.io/tinkerbell-actions/writefile:v1.0.0
             timeout: 90
             environment:
-              DEST_DISK: $DISK_DEVICE_PARTITION_1
+              DEST_DISK: {{ index .Hardware.Disks 0 }}1
               FS_TYPE: ext4
               DEST_PATH: /etc/netplan/config.yaml
               CONTENTS: |
@@ -87,3 +87,14 @@ spec:
               GID: 0
               MODE: 0644
               DIRMODE: 0755
+          - name: "kexec"
+            image: ghcr.io/jacobweinstock/waitdaemon:latest
+            timeout: 90
+            pid: host
+            environment:
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+              FS_TYPE: ext4
+              IMAGE: quay.io/tinkerbell-actions/kexec:v1.0.0
+              WAIT_SECONDS: 10
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock

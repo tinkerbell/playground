@@ -18,15 +18,7 @@ if ! shfmt -f . | xargs shfmt -s -l -d; then
 	failed=1
 fi
 
-if ! make lint; then
-	failed=1
-fi
-
-if ! terraform fmt -write -recursive deploy/infrastructure/terraform/; then
-	failed=1
-fi
-
-if ! rufo deploy/infrastructure/vagrant/Vagrantfile; then
+if ! rufo vagrant/Vagrantfile; then
 	failed=1
 fi
 

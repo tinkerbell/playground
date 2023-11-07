@@ -26,17 +26,17 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: download-ubuntu-focal
+  name: download-ubuntu-jammy
 spec:
   template:
     spec:
       containers:
-        - name: download-ubuntu-focal
+        - name: download-ubuntu-jammy
           image: bash:5.2.2
           command: ["/script/entrypoint.sh"]
           args:
             [
-              "https://cloud-images.ubuntu.com/daily/server/focal/current/focal-server-cloudimg-amd64.img",
+              "https://cloud-images.ubuntu.com/daily/server/jammy/current/jammy-server-cloudimg-amd64.img",
               "/output",
             ]
           volumeMounts:

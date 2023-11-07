@@ -11,16 +11,10 @@ with pkgs;
 
 mkShell {
   buildInputs = [
-    docker-compose
-    go
     nodePackages.prettier
     jq
     shellcheck
     shfmt
-    terraform_0_14
-    gpgme
-    packer
     rufo
-    vagrant
   ];
 }

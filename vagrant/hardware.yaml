@@ -21,7 +21,6 @@ spec:
         hostname: machine1
         ip:
           address: $TINKERBELL_CLIENT_IP
-          gateway: $TINKERBELL_CLIENT_GW
           netmask: 255.255.255.0
         lease_time: 86400
         mac: $TINKERBELL_CLIENT_MAC
