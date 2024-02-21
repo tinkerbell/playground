@@ -57,7 +57,7 @@ spec:
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
-              CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
+              CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
           - name: "disable-apparmor"
             image: quay.io/tinkerbell-actions/cexec:v1.0.0
             timeout: 90
