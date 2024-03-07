@@ -15,6 +15,10 @@ LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.4"
 GATEWAY_IP = ENV["GATEWAY_IP"] || ""
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
+
+MACHINE2_IP = ENV["MACHINE2_IP"] || "192.168.56.44"
+MACHINE2_MAC = (ENV["MACHINE2_MAC"] || "08:00:27:9E:F5:4A").downcase
+
 HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.4.0"
 KUBECTL_VERSION = ENV["KUBECTL_VERSION"] || "1.28.3"
 K3D_VERSION = ENV["K3D_VERSION"] || "v5.6.0"
@@ -34,11 +38,6 @@ Vagrant.configure("2") do |config|
                                         libvirt__host_ip: LIBVIRT_HOST_IP,
                                         libvirt__netmask: "255.255.255.0",
                                         libvirt__dhcp_enabled: false
-
-    stack.vm.provider "virtualbox" do |v, override|
-      v.memory = 2048
-      v.cpus = 2
-    end
 
     stack.vm.provider "libvirt" do |l, override|
       l.memory = 2048
@@ -62,23 +61,34 @@ Vagrant.configure("2") do |config|
 
     machine1.vm.provider "libvirt" do |v|
       v.storage :file, :size => "20G"
-      v.memory = 4096
-      v.cpus = 2
+      v.memory = 3096
+      v.cpus = 1
       v.boot "hd"
       v.boot "network"
       v.graphics_ip = "0.0.0.0"
       v.machine_arch = "x86_64"
     end
+  end
+ 
+  config.vm.define :machine2, autostart: false do |machine2|
+    machine2.ssh.insert_key = false
+    machine2.vm.boot_timeout = 10
+    machine2.vm.synced_folder ".", "/vagrant", disabled: true
+    machine2.vm.network :private_network, ip: MACHINE2_IP,
+                                          mac: MACHINE2_MAC.gsub(/[:-]/, "").strip,
+                                          adapter: 1,
+                                          libvirt__network_name: "tink_network",
+                                          libvirt__dhcp_enabled: false,
+                                          libvirt__forward_mode: "nat"
 
-    machine1.vm.provider "virtualbox" do |v, override|
-      override.vm.box = "jtyr/pxe"
-      v.memory = 2048
-      v.cpus = 2
-      v.gui = true
-      v.customize ["modifyvm", :id, "--nic1", "hostonlynet", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
-      v.customize ["modifyvm", :id, "--macaddress1", MACHINE1_MAC.gsub(/[:-]/, "").strip]
-      v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
-      v.check_guest_additions = false
+    machine2.vm.provider "libvirt" do |v|
+      v.storage :file, :size => "20G"
+      v.memory = 3096
+      v.cpus = 1
+      v.boot "hd"
+      v.boot "network"
+      v.graphics_ip = "0.0.0.0"
+      v.machine_arch = "x86_64"
     end
   end
 end
