@@ -27,7 +27,7 @@ You will need to bring your own hardware (machine) for this guide.
    ```bash
    trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
    LB_IP=<specify a Load balancer IP>
-   STACK_CHART_VERSION=0.4.2
+   STACK_CHART_VERSION=0.4.3
    helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack --version "$STACK_CHART_VERSION" --create-namespace --namespace tink-system --wait --set "smee.trustedProxies={${trusted_proxies}}" --set "hegel.trustedProxies={${trusted_proxies}}" --set "stack.loadBalancerIP=$LB_IP" --set "smee.publicIP=$LB_IP"
    ```
 
