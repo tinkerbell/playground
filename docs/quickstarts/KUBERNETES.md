@@ -43,16 +43,16 @@ You will need to bring your own hardware (machine) for this guide.
 1. Download and convert a cloud image to a raw image
 
    ```bash
-   kubectl apply -f https://raw.githubusercontent.com/tinkerbell/sandbox/main/vagrant/ubuntu-download.yaml
+   kubectl apply -n tink-system -f https://raw.githubusercontent.com/tinkerbell/sandbox/main/vagrant/ubuntu-download.yaml
    # This will download and convert the Ubuntu Jammy 22.04 cloud image.
    ```
 
 1. Create and/or customize Hardware, Template, and Workflow objects and apply them to the cluster. You can use the Hardware, Template, and Workflow in this repo, in the `vagrant/` directory, as a base from which to start.
 
    ```bash
-   kubectl apply -f my-hardware.yaml
-   kubectl apply -f my-template.yaml
-   kubectl apply -f my-workflow.yaml
+   kubectl apply -n tink-system -f my-hardware.yaml
+   kubectl apply -n tink-system -f my-template.yaml
+   kubectl apply -n tink-system -f my-workflow.yaml
    ```
 
 1. Start the machine provision process by rebooting, into a netbooting state, the machine you have specified in the Hardware object above.
