@@ -16,14 +16,14 @@ spec:
           - /lib/firmware:/lib/firmware:ro
         actions:
           - name: "stream-ubuntu-image"
-            image: quay.io/tinkerbell-actions/image2disk:v1.0.0
+            image: quay.io/tinkerbell/actions/image2disk:v1.0.0
             timeout: 600
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}
               IMG_URL: "http://$TINKERBELL_HOST_IP:8080/jammy-server-cloudimg-amd64.raw.gz"
               COMPRESSED: true
           - name: "grow-partition"
-            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:v1.0.0
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -32,7 +32,7 @@ spec:
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"
           - name: "install-openssl"
-            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:v1.0.0
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -41,7 +41,7 @@ spec:
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "apt -y update && apt -y install openssl"
           - name: "create-user"
-            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:v1.0.0
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -50,7 +50,7 @@ spec:
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "useradd -p $(openssl passwd -1 tink) -s /bin/bash -d /home/tink/ -m -G sudo tink"
           - name: "enable-ssh"
-            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:v1.0.0
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -59,7 +59,7 @@ spec:
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
           - name: "disable-apparmor"
-            image: quay.io/tinkerbell-actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:v1.0.0
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -68,7 +68,7 @@ spec:
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "systemctl disable apparmor; systemctl disable snapd"
           - name: "write-netplan"
-            image: quay.io/tinkerbell-actions/writefile:v1.0.0
+            image: quay.io/tinkerbell/actions/writefile:v1.0.0
             timeout: 90
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}1
@@ -94,7 +94,7 @@ spec:
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
-              IMAGE: quay.io/tinkerbell-actions/kexec:v1.0.0
+              IMAGE: quay.io/tinkerbell/actions/kexec:v1.0.0
               WAIT_SECONDS: 10
             volumes:
               - /var/run/docker.sock:/var/run/docker.sock
