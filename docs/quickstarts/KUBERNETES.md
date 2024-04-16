@@ -43,7 +43,7 @@ You will need to bring your own hardware (machine) for this guide.
 1. Download and convert a cloud image to a raw image
 
    ```bash
-   kubectl apply -n tink-system -f https://raw.githubusercontent.com/tinkerbell/sandbox/main/vagrant/ubuntu-download.yaml
+   kubectl apply -n tink-system -f https://raw.githubusercontent.com/tinkerbell/playground/main/vagrant/ubuntu-download.yaml
    # This will download and convert the Ubuntu Jammy 22.04 cloud image.
    ```
 

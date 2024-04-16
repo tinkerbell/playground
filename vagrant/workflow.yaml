@@ -1,9 +1,9 @@
 apiVersion: "tinkerbell.org/v1alpha1"
 kind: Workflow
 metadata:
-  name: sandbox-workflow
+  name: playground-workflow
 spec:
-  templateRef: ubuntu-focal
+  templateRef: ubuntu
   hardwareRef: machine1
   hardwareMap:
     device_1: $TINKERBELL_CLIENT_MAC

@@ -18,8 +18,9 @@ MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
 HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.4.0"
 KUBECTL_VERSION = ENV["KUBECTL_VERSION"] || "1.28.3"
 K3D_VERSION = ENV["K3D_VERSION"] || "v5.6.0"
+HELM_VERSION = ENV["HELM_VERSION"] || "v3.14.4"
 HELM_LOADBALANCER_INTERFACE = ENV["HELM_LOADBALANCER_INTERFACE"] || "eth1"
-DEST_DIR_BASE = "/sandbox/stack/"
+DEST_DIR_BASE = "/playground/stack/"
 
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
@@ -46,7 +47,7 @@ Vagrant.configure("2") do |config|
       override.vm.synced_folder "", DEST_DIR_BASE, type: "rsync"
     end
 
-    stack.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR_BASE, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE, KUBECTL_VERSION, K3D_VERSION, GATEWAY_IP]
+    stack.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR_BASE, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE, KUBECTL_VERSION, K3D_VERSION, HELM_VERSION, GATEWAY_IP]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|

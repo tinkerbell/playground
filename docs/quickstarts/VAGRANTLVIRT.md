@@ -37,7 +37,7 @@ This option will also create a VM and provision an OS onto it.
    ==> stack: Creating image (snapshot of base box volume).
    ==> stack: Creating domain with the following settings...
    ==> stack:  -- Name:              vagrant_stack
-   ==> stack:  -- Description:       Source: /home/tink/repos/tinkerbell/sandbox/vagrant/Vagrantfile
+   ==> stack:  -- Description:       Source: /home/tink/repos/tinkerbell/playground/vagrant/Vagrantfile
    ==> stack:  -- Domain type:       kvm
    ==> stack:  -- Cpus:              2
    ==> stack:  -- Feature:           acpi
@@ -88,15 +88,15 @@ This option will also create a VM and provision an OS onto it.
        stack: Removing insecure key from the guest if it's present...
        stack: Key inserted! Disconnecting and reconnecting using new SSH key...
    ==> stack: Machine booted and ready!
-   ==> stack: Rsyncing folder: /home/tink/repos/tinkerbell/sandbox/vagrant/ => /sandbox/stack
+   ==> stack: Rsyncing folder: /home/tink/repos/tinkerbell/playground/vagrant/ => /playground/stack
    ==> stack: Configuring and enabling network interfaces...
    ==> stack: Running provisioner: shell...
        stack: Running: /tmp/vagrant-shell20231031-285946-1krhzm0.sh
-       stack: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 0.4.2 eth1 1.28.3 v5.6.0 ''
+       stack: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 0.4.2 eth1 1.28.3 v5.6.0 ''
        stack: + local host_ip=192.168.56.4
        stack: + local worker_ip=192.168.56.43
        stack: + local worker_mac=08:00:27:9e:f5:3a
-       stack: + local manifests_dir=/sandbox/stack/
+       stack: + local manifests_dir=/playground/stack/
        stack: + local loadbalancer_ip=192.168.56.5
        stack: + local helm_chart_version=0.4.2
        stack: + local loadbalancer_interface=eth1
@@ -228,11 +228,11 @@ This option will also create a VM and provision an OS onto it.
    100 47.5M  100 47.5M    0     0  24.8M      0  0:00:01  0:00:01 --:--:-- 37.9M
        stack: + chmod +x ./kubectl
        stack: + mv ./kubectl /usr/local/bin/kubectl
-       stack: + run_helm 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 0.4.2 eth1 v5.6.0
+       stack: + run_helm 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 0.4.2 eth1 v5.6.0
        stack: + local host_ip=192.168.56.4
        stack: + local worker_ip=192.168.56.43
        stack: + local worker_mac=08:00:27:9e:f5:3a
-       stack: + local manifests_dir=/sandbox/stack/
+       stack: + local manifests_dir=/playground/stack/
        stack: + local loadbalancer_ip=192.168.56.5
        stack: + local helm_chart_version=0.4.2
        stack: + local loadbalancer_interface=eth1
@@ -319,10 +319,10 @@ This option will also create a VM and provision an OS onto it.
        stack: STATUS: deployed
        stack: REVISION: 1
        stack: TEST SUITE: None
-       stack: + apply_manifests 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 tink-system
+       stack: + apply_manifests 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 tink-system
        stack: + local worker_ip=192.168.56.43
        stack: + local worker_mac=08:00:27:9e:f5:3a
-       stack: + local manifests_dir=/sandbox/stack/
+       stack: + local manifests_dir=/playground/stack/
        stack: + local host_ip=192.168.56.5
        stack: + local namespace=tink-system
        stack: + disk_device=/dev/sda
@@ -349,8 +349,8 @@ This option will also create a VM and provision an OS onto it.
        stack: + kubectl apply -n tink-system -f /tmp/manifests.yaml
        stack: hardware.tinkerbell.org/machine1 created
        stack: template.tinkerbell.org/ubuntu-jammy created
-       stack: workflow.tinkerbell.org/sandbox-workflow created
-       stack: + kubectl apply -n tink-system -f /sandbox/stack//ubuntu-download.yaml
+       stack: workflow.tinkerbell.org/playground-workflow created
+       stack: + kubectl apply -n tink-system -f /playground/stack//ubuntu-download.yaml
        stack: configmap/download-image created
        stack: job.batch/download-ubuntu-jammy created
        stack: + kubectl_for_vagrant_user
@@ -404,7 +404,7 @@ This option will also create a VM and provision an OS onto it.
    Bringing machine 'machine1' up with 'libvirt' provider...
    ==> machine1: Creating domain with the following settings...
    ==> machine1:  -- Name:              vagrant_machine1
-   ==> machine1:  -- Description:       Source: /home/tink/repos/tinkerbell/sandbox/vagrant/Vagrantfile
+   ==> machine1:  -- Description:       Source: /home/tink/repos/tinkerbell/playground/vagrant/Vagrantfile
    ==> machine1:  -- Domain type:       kvm
    ==> machine1:  -- Cpus:              2
    ==> machine1:  -- Feature:           acpi
@@ -442,7 +442,7 @@ This option will also create a VM and provision an OS onto it.
 
    # watch for the workflow to complete
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   kubectl get -n tink-system workflow sandbox-workflow --watch
+   kubectl get -n tink-system workflow playground-workflow --watch
    ```
 
    <details>
@@ -450,21 +450,21 @@ This option will also create a VM and provision an OS onto it.
 
    ```bash
    NAME               TEMPLATE       STATE
-   sandbox-workflow   ubuntu-jammy   STATE_PENDING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_SUCCESS
+   playground-workflow   ubuntu-jammy   STATE_PENDING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_SUCCESS
    ```
 
    </details>

@@ -37,4 +37,4 @@ By default the Vagrant quickstart guides automatically install Ubuntu on the VM 
    kubectl apply -f my-custom-workflow.yaml
    ```
 
-1. Restart the machine to provision (if using the vagrant sandbox test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)
+1. Restart the machine to provision (if using the vagrant playground test machine this is done by running `vagrant destroy -f machine1 && vagrant up machine1`)

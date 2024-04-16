@@ -1,29 +1,29 @@
 apiVersion: "tinkerbell.org/v1alpha1"
 kind: Template
 metadata:
-  name: ubuntu-focal
+  name: ubuntu
 spec:
   data: |
     version: "0.1"
-    name: ubuntu_Focal
+    name: ubuntu
     global_timeout: 1800
     tasks:
-      - name: "os-installation"
+      - name: "os installation"
         worker: "{{.device_1}}"
         volumes:
           - /dev:/dev
           - /dev/console:/dev/console
           - /lib/firmware:/lib/firmware:ro
         actions:
-          - name: "stream-ubuntu-image"
-            image: quay.io/tinkerbell/actions/image2disk:v1.0.0
+          - name: "stream ubuntu image"
+            image: quay.io/tinkerbell/actions/image2disk:latest
             timeout: 600
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}
               IMG_URL: "http://$TINKERBELL_HOST_IP:8080/jammy-server-cloudimg-amd64.raw.gz"
               COMPRESSED: true
           - name: "grow-partition"
-            image: quay.io/tinkerbell/actions/cexec:v1.0.0
+            image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -31,8 +31,8 @@ spec:
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"
-          - name: "install-openssl"
-            image: quay.io/tinkerbell/actions/cexec:v1.0.0
+          - name: "install openssl"
+            image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -40,8 +40,8 @@ spec:
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "apt -y update && apt -y install openssl"
-          - name: "create-user"
-            image: quay.io/tinkerbell/actions/cexec:v1.0.0
+          - name: "create user"
+            image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -49,8 +49,8 @@ spec:
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "useradd -p $(openssl passwd -1 tink) -s /bin/bash -d /home/tink/ -m -G sudo tink"
-          - name: "enable-ssh"
-            image: quay.io/tinkerbell/actions/cexec:v1.0.0
+          - name: "enable ssh"
+            image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -58,8 +58,8 @@ spec:
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
-          - name: "disable-apparmor"
-            image: quay.io/tinkerbell/actions/cexec:v1.0.0
+          - name: "disable apparmor"
+            image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
               BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
@@ -67,8 +67,8 @@ spec:
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
               CMD_LINE: "systemctl disable apparmor; systemctl disable snapd"
-          - name: "write-netplan"
-            image: quay.io/tinkerbell/actions/writefile:v1.0.0
+          - name: "write netplan"
+            image: quay.io/tinkerbell/actions/writefile:latest
             timeout: 90
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}1
@@ -87,14 +87,14 @@ spec:
               GID: 0
               MODE: 0644
               DIRMODE: 0755
-          - name: "kexec"
+          - name: "kexec into os"
             image: ghcr.io/jacobweinstock/waitdaemon:latest
             timeout: 90
             pid: host
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
-              IMAGE: quay.io/tinkerbell/actions/kexec:v1.0.0
+              IMAGE: quay.io/tinkerbell/actions/kexec:latest
               WAIT_SECONDS: 10
             volumes:
               - /var/run/docker.sock:/var/run/docker.sock

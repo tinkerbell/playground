@@ -14,8 +14,8 @@ This option will also create a VM and provision an OS onto it.
 1. Clone this repository
 
    ```bash
-   git clone https://github.com/tinkerbell/sandbox.git
-   cd sandbox
+   git clone https://github.com/tinkerbell/playground.git
+   cd playground
    ```
 
 1. Start the stack
@@ -69,14 +69,14 @@ This option will also create a VM and provision an OS onto it.
         stack: VirtualBox Version: 7.0
     ==> stack: Configuring and enabling network interfaces...
     ==> stack: Mounting shared folders...
-        stack: /sandbox/stack => ~/tinkerbell/sandbox/vagrant
+        stack: /playground/stack => ~/tinkerbell/playground/vagrant
     ==> stack: Running provisioner: shell...
         stack: Running: /var/folders/xt/8w5g0fv54tj4njvjhk_0_25r0000gr/T/vagrant-shell20231031-54683-k09nai.sh
-        stack: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 0.4.2 eth1 1.28.3 v5.6.0 ''
+        stack: + main 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 0.4.2 eth1 1.28.3 v5.6.0 ''
         stack: + local host_ip=192.168.56.4
         stack: + local worker_ip=192.168.56.43
         stack: + local worker_mac=08:00:27:9e:f5:3a
-        stack: + local manifests_dir=/sandbox/stack/
+        stack: + local manifests_dir=/playground/stack/
         stack: + local loadbalancer_ip=192.168.56.5
         stack: + local helm_chart_version=0.4.2
         stack: + local loadbalancer_interface=eth1
@@ -214,11 +214,11 @@ This option will also create a VM and provision an OS onto it.
     100 47.5M  100 47.5M    0     0  21.3M      0  0:00:02  0:00:02 --:--:-- 31.6M
         stack: + chmod +x ./kubectl
         stack: + mv ./kubectl /usr/local/bin/kubectl
-        stack: + run_helm 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 0.4.2 eth1 v5.6.0
+        stack: + run_helm 192.168.56.4 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 0.4.2 eth1 v5.6.0
         stack: + local host_ip=192.168.56.4
         stack: + local worker_ip=192.168.56.43
         stack: + local worker_mac=08:00:27:9e:f5:3a
-        stack: + local manifests_dir=/sandbox/stack/
+        stack: + local manifests_dir=/playground/stack/
         stack: + local loadbalancer_ip=192.168.56.5
         stack: + local helm_chart_version=0.4.2
         stack: + local loadbalancer_interface=eth1
@@ -304,10 +304,10 @@ This option will also create a VM and provision an OS onto it.
         stack: STATUS: deployed
         stack: REVISION: 1
         stack: TEST SUITE: None
-        stack: + apply_manifests 192.168.56.43 08:00:27:9e:f5:3a /sandbox/stack/ 192.168.56.5 tink-system
+        stack: + apply_manifests 192.168.56.43 08:00:27:9e:f5:3a /playground/stack/ 192.168.56.5 tink-system
         stack: + local worker_ip=192.168.56.43
         stack: + local worker_mac=08:00:27:9e:f5:3a
-        stack: + local manifests_dir=/sandbox/stack/
+        stack: + local manifests_dir=/playground/stack/
         stack: + local host_ip=192.168.56.5
         stack: + local namespace=tink-system
         stack: + disk_device=/dev/sda
@@ -333,8 +333,8 @@ This option will also create a VM and provision an OS onto it.
         stack: + kubectl apply -n tink-system -f /tmp/manifests.yaml
         stack: hardware.tinkerbell.org/machine1 created
         stack: template.tinkerbell.org/ubuntu-jammy created
-        stack: workflow.tinkerbell.org/sandbox-workflow created
-        stack: + kubectl apply -n tink-system -f /sandbox/stack//ubuntu-download.yaml
+        stack: workflow.tinkerbell.org/playground-workflow created
+        stack: + kubectl apply -n tink-system -f /playground/stack//ubuntu-download.yaml
         stack: configmap/download-image created
         stack: job.batch/download-ubuntu-jammy created
         stack: + kubectl_for_vagrant_user
@@ -435,7 +435,7 @@ This option will also create a VM and provision an OS onto it.
 
    # watch for the workflow to complete
    # once the workflow is complete (see the example output below for completion), move on to the next step
-   kubectl get -n tink-system workflow sandbox-workflow --watch
+   kubectl get -n tink-system workflow playground-workflow --watch
    ```
 
    <details>
@@ -443,21 +443,21 @@ This option will also create a VM and provision an OS onto it.
 
    ```bash
    NAME               TEMPLATE       STATE
-   sandbox-workflow   ubuntu-jammy   STATE_PENDING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_RUNNING
-   sandbox-workflow   ubuntu-jammy   STATE_SUCCESS
+   playground-workflow   ubuntu-jammy   STATE_PENDING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_RUNNING
+   playground-workflow   ubuntu-jammy   STATE_SUCCESS
    ```
 
    </details>
