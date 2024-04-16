@@ -5,7 +5,7 @@ We're so glad you're here.
 
 ### Important Resources
 
-#### bugs: [https://github.com/tinkerbell/sandbox/issues](https://github.com/tinkerbell/sandbox/issues)
+#### bugs: [https://github.com/tinkerbell/playground/issues](https://github.com/tinkerbell/playground/issues)
 
 ### Code of Conduct
 
@@ -34,19 +34,19 @@ If you have `direnv` installed the included `.envrc` will make that step automat
 
 ### How to Submit Change Requests
 
-Please submit change requests and / or features via [Issues](https://github.com/tinkerbell/sandbox/issues).
+Please submit change requests and / or features via [Issues](https://github.com/tinkerbell/playground/issues).
 There's no guarantee it'll be changed, but you never know until you try.
 We'll try to add comments as soon as possible, though.
 
 ### How to Report a Bug
 
-Bugs are problems in code, in the functionality of an application or in its UI design; you can submit them through [Issues](https://github.com/tinkerbell/sandbox/issues).
+Bugs are problems in code, in the functionality of an application or in its UI design; you can submit them through [Issues](https://github.com/tinkerbell/playground/issues).
 
 ## Code Style Guides
 
 ## Implementation Details
 
-The Sandbox is organized into two high level components: `infrastructure` and `stack`.
+The Playground is organized into two high level components: `infrastructure` and `stack`.
 
 - The `infrastructure` component is responsible for provisioning the infrastructure required to run the Tinkerbell stack. `Vagrant` and `Terraform` are the supported infrastructure tools.
 - The `stack` component is responsible for provisioning the Tinkerbell stack itself. `Docker Compose` and `Helm` are the supported stack tools.

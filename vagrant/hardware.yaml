@@ -7,7 +7,7 @@ spec:
     - device: $DISK_DEVICE
   metadata:
     facility:
-      facility_code: sandbox
+      facility_code: playground
     instance:
       hostname: "machine1"
       id: "$TINKERBELL_CLIENT_MAC"
