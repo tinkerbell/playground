@@ -25,7 +25,7 @@ By default the Vagrant quickstart guides automatically install Ubuntu on the VM 
    vagrant ssh stack
    ```
 
-1. Add your template. An example Template object can be found [here](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/template.yaml) and more Template documentation can be found [here](https://docs.tinkerbell.org/templates/).
+1. Add your template. An example Template object can be found [here](https://github.com/tinkerbell/tink/tree/main/config/crd/examples/template.yaml) and more Template documentation can be found [here](https://tinkerbell.org/docs/concepts/templates/).
 
    ```bash
    kubectl apply -f my-OS-template.yaml
