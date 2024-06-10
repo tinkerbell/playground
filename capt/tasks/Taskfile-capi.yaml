@@ -113,6 +113,8 @@ tasks:
         sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
       TINKERBELL_VIP:
         sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+      CLUSTER_NAME:
+        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
     vars:
       OUTPUT_DIR:
         sh: yq eval '.outputDir' config.yaml

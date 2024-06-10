@@ -201,7 +201,7 @@ patches:
   - target:
       group: bootstrap.cluster.x-k8s.io
       kind: KubeadmConfigTemplate
-      name: "playground-.*"
+      name: "$CLUSTER_NAME-.*"
       version: v1beta1
     patch: |-
       - op: add
@@ -214,7 +214,7 @@ patches:
   - target:
       group: controlplane.cluster.x-k8s.io
       kind: KubeadmControlPlane
-      name: "playground-.*"
+      name: "$CLUSTER_NAME-.*"
       version: v1beta1
     patch: |-
       - op: add
