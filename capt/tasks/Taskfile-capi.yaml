@@ -1,7 +1,6 @@
-version: '3'
+version: "3"
 
 tasks:
-
   ordered:
     summary: |
       CAPI tasks run in order of dependency.
@@ -140,4 +139,4 @@ tasks:
     generates:
       - "{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml"
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" kubectl kustomize {{.OUTPUT_DIR}} -o {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml 
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl kustomize {{.OUTPUT_DIR}} -o {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml

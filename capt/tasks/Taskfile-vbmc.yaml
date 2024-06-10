@@ -1,7 +1,6 @@
-version: '3'
+version: "3"
 
 tasks:
-
   start-server:
     run: once
     summary: |
@@ -28,7 +27,7 @@ tasks:
       - ./scripts/virtualbmc.sh {{.STATE_FILE_FQ_PATH}}
     status:
       - expected=$(yq e '.totalNodes' {{.STATE_FILE_FQ_PATH}}); got=$(docker exec {{.VBMC_NAME}} vbmc list | grep -c "running" || :); [[ "$got" == "$expected" ]]
-  
+
   update-state:
     run: once
     deps: [start-server]

@@ -3,3 +3,4 @@ error.log
 .task
 .state
 capt/output/
+.vscode/
