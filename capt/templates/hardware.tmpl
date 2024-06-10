@@ -1,0 +1,34 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: Hardware
+metadata:
+    labels:
+        tinkerbell.org/role: $NODE_ROLE
+    name: $NODE_NAME
+    namespace: $NAMESPACE
+spec:
+    bmcRef:
+        apiGroup: bmc.tinkerbell.org
+        kind: Machine
+        name: $NODE_NAME
+    disks:
+        - device: /dev/vda
+    interfaces:
+        - dhcp:
+            arch: x86_64
+            hostname: $NODE_NAME
+            ip:
+                address: $NODE_IP
+                gateway: $GATEWAY_IP
+                netmask: 255.255.0.0
+            lease_time: 4294967294
+            mac: $NODE_MAC
+            name_servers:
+                - 8.8.8.8
+                - 1.1.1.1
+          netboot:
+            allowPXE: true
+            allowWorkflow: true
+    metadata:
+        instance:
+            hostname: $NODE_NAME
+            id: $NODE_MAC

@@ -1,0 +1,143 @@
+version: '3'
+
+tasks:
+
+  ordered:
+    summary: |
+      CAPI tasks run in order of dependency.
+    cmds:
+      - task: create-cluster-yaml
+      - task: init
+      - task: generate-cluster-yaml
+      - task: create-kustomize-file
+      - task: apply-kustomization
+
+  create-cluster-yaml:
+    run: once
+    summary: |
+      Create the cluster yaml.
+    env:
+      CAPT_VERSION:
+        sh: yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}
+    vars:
+      OUTPUT_DIR:
+        sh: echo $(yq eval '.outputDir' config.yaml)
+    cmds:
+      - envsubst '$CAPT_VERSION' < templates/clusterctl.tmpl > {{.OUTPUT_DIR}}/clusterctl.yaml
+    status:
+      - grep -q "$CAPT_VERSION" {{.OUTPUT_DIR}}/clusterctl.yaml
+
+  init:
+    run: once
+    deps: [create-cluster-yaml]
+    summary: |
+      Initialize the cluster.
+    env:
+      TINKERBELL_IP:
+        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+      CLUSTERCTL_DISABLE_VERSIONCHECK: true
+      XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
+      XDG_STATE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CACHE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_RUNTIME_DIR: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
+    vars:
+      OUTPUT_DIR:
+        sh: echo $(yq eval '.outputDir' config.yaml)
+      KIND_GATEWAY_IP:
+        sh: yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}
+      KUBECONFIG:
+        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG}}" clusterctl --config {{.OUTPUT_DIR}}/clusterctl.yaml init --infrastructure tinkerbell
+    status:
+      - expected=1; got=$(KUBECONFIG="{{.KUBECONFIG}}" kubectl get pods -n capt-system |grep -ce "capt-controller"); [[ "$got" == "$expected" ]]
+
+  generate-cluster-yaml:
+    run: once
+    deps: [init]
+    summary: |
+      Generate the cluster yaml.
+    env:
+      CONTROL_PLANE_VIP:
+        sh: yq eval '.cluster.controlPlane.vip' {{.STATE_FILE_FQ_PATH}}
+      POD_CIDR:
+        sh: yq eval '.cluster.podCIDR' {{.STATE_FILE_FQ_PATH}}
+      CLUSTERCTL_DISABLE_VERSIONCHECK: true
+      XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
+      XDG_STATE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CACHE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_RUNTIME_DIR: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
+    vars:
+      CLUSTER_NAME:
+        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+      OUTPUT_DIR:
+        sh: yq eval '.outputDir' config.yaml
+      KUBE_VERSION:
+        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
+      CP_COUNT:
+        sh: yq eval '.counts.controlPlanes' {{.STATE_FILE_FQ_PATH}}
+      WORKER_COUNT:
+        sh: yq eval '.counts.workers' {{.STATE_FILE_FQ_PATH}}
+      NAMESPACE:
+        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+      KUBECONFIG:
+        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG}}" clusterctl generate cluster {{.CLUSTER_NAME}} --config {{.OUTPUT_DIR}}/clusterctl.yaml --kubernetes-version "{{.KUBE_VERSION}}" --control-plane-machine-count="{{.CP_COUNT}}" --worker-machine-count="{{.WORKER_COUNT}}" --target-namespace={{.NAMESPACE}} --write-to {{.OUTPUT_DIR}}/prekustomization.yaml
+    status:
+      - grep -q "{{.KUBE_VERSION}}" {{.OUTPUT_DIR}}/prekustomization.yaml
+
+  create-kustomize-file:
+    run: once
+    summary: |
+      Kustomize file for the CAPI generated config file (prekustomization.yaml).
+    env:
+      NAMESPACE:
+        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+      OS_REGISTRY:
+        sh: yq eval '.os.registry' {{.STATE_FILE_FQ_PATH}}
+      OS_DISTRO:
+        sh: yq eval '.os.distro' {{.STATE_FILE_FQ_PATH}}
+      OS_VERSION:
+        sh: yq eval '.os.version' {{.STATE_FILE_FQ_PATH}}
+      VERSIONS_OS:
+        sh: yq eval '.versions.os' {{.STATE_FILE_FQ_PATH}}
+      SSH_AUTH_KEY:
+        sh: yq eval '.os.sshKey' {{.STATE_FILE_FQ_PATH}}
+      KUBE_VERSION:
+        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
+      TINKERBELL_VIP:
+        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+    vars:
+      OUTPUT_DIR:
+        sh: yq eval '.outputDir' config.yaml
+    sources:
+      - config.yaml
+    generates:
+      - "{{.OUTPUT_DIR}}/kustomization.yaml"
+    cmds:
+      - envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" < templates/kustomization.tmpl > {{.OUTPUT_DIR}}/kustomization.yaml
+
+  apply-kustomization:
+    run: once
+    deps: [generate-cluster-yaml, create-kustomize-file]
+    summary: |
+      Kustomize the cluster yaml.
+    vars:
+      CLUSTER_NAME:
+        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+      KUBECONFIG:
+        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+    sources:
+      - "{{.OUTPUT_DIR}}/kustomization.yaml"
+      - "{{.OUTPUT_DIR}}/prekustomization.yaml"
+    generates:
+      - "{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml"
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl kustomize {{.OUTPUT_DIR}} -o {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml 

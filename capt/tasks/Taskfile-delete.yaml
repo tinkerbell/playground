@@ -1,0 +1,58 @@
+version: '3'
+
+tasks:
+
+  playground:
+    summary: |
+      Delete the CAPT playground.
+    cmds:
+      - task: kind-cluster
+      - task: vbmc-container
+      - task: vms
+      - task: output-dir
+
+  kind-cluster:
+    summary: |
+      Delete the KinD cluster.
+    vars:
+      CLUSTER_NAME:
+        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - kind delete cluster --name {{.CLUSTER_NAME}}
+    status:
+      - got=$(kind get clusters | grep -c {{.CLUSTER_NAME}} || :); [[ "$got" == "0" ]]
+
+  vms:
+    summary: |
+      Delete the VMs.
+    vars:
+      VM_NAMES:
+        sh: yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}
+      VM_BASE_NAME:
+        sh: yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - for: { var: VM_NAMES }
+        cmd: (virsh --connect qemu:///system destroy {{.ITEM}} || true) ## if the VM is already off, this will fail
+      - for: { var: VM_NAMES }
+        cmd: virsh --connect qemu:///system undefine --nvram --remove-all-storage {{.ITEM}}
+    status:
+      - got=$(virsh --connect qemu:///system list --all --name | grep -ce "{{.VM_BASE_NAME}}*" || :); [[ "$got" == "0" ]]
+
+  vbmc-container:
+    summary: |
+      Delete the Virtual BMC container.
+    vars:
+      VBMC_CONTAINER_NAME:
+        sh: yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - docker rm -f {{.VBMC_CONTAINER_NAME}}
+    status:
+      - got=$(docker ps -a | grep -c {{.VBMC_CONTAINER_NAME}} || :); [[ "$got" == "0" ]]
+
+  output-dir:
+    summary: |
+      Delete the output directory.
+    cmds:
+      - rm -rf {{.OUTPUT_DIR}}
+    status:
+      - echo ;[ ! -d {{.OUTPUT_DIR}} ]

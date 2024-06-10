@@ -1,0 +1,28 @@
+---
+clusterName: "capt-playground"
+outputDir: "output"
+namespace: "tink"
+counts:
+  controlPlanes: 1
+  workers: 1
+  spares: 1
+versions:
+  capt: 0.5.3
+  chart: 0.4.4
+  kube: v1.28.3
+  os: 20.04
+os:
+  registry: ghcr.io/jacobweinstock/capi-images
+  distro: ubuntu
+  sshKey: ""
+vm:
+  baseName: "node"
+  cpusPerVM: 2
+  memInMBPerVM: 2048
+  diskSizeInGBPerVM: 10
+  diskPath: "/tmp"
+virtualBMC:
+  containerName: "virtualbmc"
+  image: ghcr.io/jacobweinstock/virtualbmc
+  user: "root"
+  pass: "calvin"
