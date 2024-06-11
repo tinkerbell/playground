@@ -9,8 +9,9 @@ counts:
 versions:
   capt: 0.5.3
   chart: 0.4.4
-  kube: v1.28.3
+  kube: v1.29.4
   os: 20.04
+  kubevip: 0.8.0
 os:
   registry: ghcr.io/jacobweinstock/capi-images
   distro: ubuntu

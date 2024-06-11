@@ -224,4 +224,13 @@ patches:
             sudo: ALL=(ALL) NOPASSWD:ALL
             sshAuthorizedKeys:
             - $SSH_AUTH_KEY
-
+  - target:
+      group: controlplane.cluster.x-k8s.io
+      kind: KubeadmControlPlane
+      name: "$CLUSTER_NAME-.*"
+      version: v1beta1
+    patch: |-
+      - op: add
+        path: /spec/kubeadmConfigSpec/preKubeadmCommands
+        value:
+          - mkdir -p /etc/kubernetes/manifests && ctr images pull ghcr.io/kube-vip/kube-vip:v$KUBEVIP_VERSION && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v$KUBEVIP_VERSION vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address $CONTROL_PLANE_VIP --controlplane --leaderElection --k8sConfigPath $CONF_PATH > /etc/kubernetes/manifests/kube-vip.yaml

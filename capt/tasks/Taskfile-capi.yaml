@@ -115,7 +115,15 @@ tasks:
         sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
       CLUSTER_NAME:
         sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+      KUBEVIP_VERSION:
+        sh: yq eval '.versions.kubevip' {{.STATE_FILE_FQ_PATH}}
+      CONTROL_PLANE_VIP:
+        sh: yq eval '.cluster.controlPlane.vip' {{.STATE_FILE_FQ_PATH}}
+      CONF_PATH: # https://github.com/kube-vip/kube-vip/issues/684
+        sh: "[[ $(echo {{.KUBE_VERSION}} | awk -F. '{print $2}') -gt 28 ]] && echo /etc/kubernetes/super-admin.conf || echo /etc/kubernetes/admin.conf"
     vars:
+      KUBE_VERSION:
+        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
       OUTPUT_DIR:
         sh: yq eval '.outputDir' config.yaml
     sources:
