@@ -105,6 +105,8 @@ tasks:
         echo
         echo The workload cluster is now being created.
         echo Once the cluster nodes are up and running, you will need to deploy a CNI for the cluster to be fully functional.
+        echo The management cluster kubeconfig is located at: {{.KIND_KUBECONFIG}}
+        echo The workload cluster kubeconfig is located at: {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
         echo
         echo 1. Watch and wait for the first control plane node to be provisioned successfully: STATE_SUCCESS
         echo "KUBECONFIG={{.KIND_KUBECONFIG}} kubectl get workflows -n {{.NAMESPACE}} -w"
