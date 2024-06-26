@@ -24,8 +24,14 @@ tasks:
       - task: apply-bmc-machines
       - task: apply-hardware
       - task: capi:ordered
+      - task: allow-customization
       - task: create-workload-cluster
       - task: get-workload-cluster-kubeconfig
+
+  allow-customization:
+    prompt: The Workload cluster is ready to be provisioned. Execution is paused to allow for any User customizations. Press `y` to continue to Workload cluster creation. Press `n` to exit the whole process.
+    cmds:
+      - echo 'Creating Workload cluster'
 
   kind-cluster:
     run: once

@@ -8,7 +8,7 @@ counts:
   spares: 1
 versions:
   capt: 0.5.3
-  chart: 0.4.4
+  chart: 0.4.5
   kube: v1.29.4
   os: 20.04
   kubevip: 0.8.0
