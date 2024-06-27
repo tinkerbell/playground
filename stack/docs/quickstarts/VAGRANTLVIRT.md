@@ -22,7 +22,7 @@ This option will also create a VM and provision an OS onto it.
 1. Start the stack
 
    ```bash
-   cd vagrant
+   cd stack/vagrant
    vagrant up
    # This process will take about 5-10 minutes depending on your internet connection.
    # Hook is about 400MB in size and the Ubuntu jammy image is about 500MB
