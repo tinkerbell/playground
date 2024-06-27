@@ -18,7 +18,7 @@ if ! shfmt -f . | xargs shfmt -s -l -d; then
 	failed=1
 fi
 
-if ! rufo vagrant/Vagrantfile; then
+if ! rufo stack/vagrant/Vagrantfile; then
 	failed=1
 fi
 

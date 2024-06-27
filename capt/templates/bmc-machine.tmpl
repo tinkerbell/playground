@@ -1,0 +1,16 @@
+apiVersion: bmc.tinkerbell.org/v1alpha1
+kind: Machine
+metadata:
+    name: $NODE_NAME
+    namespace: $NAMESPACE
+spec:
+    connection:
+        authSecretRef:
+            name: bmc-creds
+            namespace: $NAMESPACE
+        host: $BMC_IP
+        insecureTLS: true
+        port: $BMC_PORT
+        providerOptions:
+            ipmitool:
+                port: $BMC_PORT
