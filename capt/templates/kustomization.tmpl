@@ -18,29 +18,6 @@ patches:
             - labelSelector:
                 matchLabels:
                   tinkerbell.org/role: control-plane
-  - target:
-      group: infrastructure.cluster.x-k8s.io
-      kind: TinkerbellMachineTemplate
-      name: ".*worker.*"
-      version: v1beta1
-    patch: |- 
-      - op: add
-        path: /spec/template/spec
-        value:
-          hardwareAffinity:
-            required:
-            - labelSelector:
-                matchLabels:
-                  tinkerbell.org/role: worker
-  - target:
-      group: infrastructure.cluster.x-k8s.io
-      kind: TinkerbellMachineTemplate
-      name: ".*control-plane.*"
-      version: v1beta1
-    patch: |- 
-      - op: add
-        path: /spec/template/spec
-        value:
           templateOverride: |
             version: "0.1"
             name: playground-template
@@ -118,6 +95,11 @@ patches:
       - op: add
         path: /spec/template/spec
         value:
+          hardwareAffinity:
+            required:
+            - labelSelector:
+                matchLabels:
+                  tinkerbell.org/role: worker
           templateOverride: |
             version: "0.1"
             name: playground-template
