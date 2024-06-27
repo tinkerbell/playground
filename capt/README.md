@@ -6,7 +6,7 @@ The Cluster API Provider Tinkerbell (CAPT) is a Kubernetes Cluster API provider 
 
 The CAPT playground is a tool that will create a local CAPT deployment and a single workload cluster. This includes creating and installing a Kubernetes cluster (KinD), the Tinkerbell stack, all CAPI and CAPT components, Virtual machines that will be used to create the workload cluster, and a Virtual BMC server to manage the VMs.
 
-Start by reviewing and installing the [prerequisites](#prerequisites) and understanding and customizing the [configuration file](./capt/config.yaml) as needed.
+Start by reviewing and installing the [prerequisites](#prerequisites) and understanding and customizing the [configuration file](./config.yaml) as needed.
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ Start by reviewing and installing the [prerequisites](#prerequisites) and unders
 
 ## Usage
 
-Get started by ensuring all the dependencies are installed and you have the required hardware. Then look at the [`config.yaml`](config.yaml) file. This file contains the configuration for the playground. You can customize the playground by changing the values in this file. We recommend you start with the defaults to get familiar with the playground before customizing.
+Start by looking at the [`config.yaml`](./config.yaml) file. This file contains the configuration for the playground. You can customize the playground by changing the values in this file. We recommend you start with the defaults to get familiar with the playground before customizing.
 
 Create the CAPT playground:
 
@@ -43,6 +43,30 @@ Delete the CAPT playground:
 ```bash
 task delete-playground
 ```
+
+## Next Steps
+
+With the playground up and running and a workload cluster created, you can run through a few CAPI lifecycle operations.
+
+### Move/pivot the Tinkerbell stack and CAPI/CAPT components to a workload cluster
+
+To be written.
+
+### Upgrade the management cluster
+
+To be written.
+
+### Upgrade the workload cluster
+
+To be written.
+
+### Scale out the workload cluster
+
+To be written.
+
+### Scale in the workload cluster
+
+To be written.
 
 ## Known Issues
 
