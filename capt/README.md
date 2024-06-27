@@ -29,7 +29,7 @@ Start by reviewing and installing the [prerequisites](#prerequisites) and unders
 
 ## Usage
 
-Get started ensuring all the dependencies are installed. Then look at the [`config.yaml`](config.yaml) file. This file contains the configuration for the playground. You can customize the playground by changing the values in this file. We recommend you start with the defaults to get familiar with the playground before customizing.
+Get started by ensuring all the dependencies are installed and you have the required hardware. Then look at the [`config.yaml`](config.yaml) file. This file contains the configuration for the playground. You can customize the playground by changing the values in this file. We recommend you start with the defaults to get familiar with the playground before customizing.
 
 Create the CAPT playground:
 
