@@ -47,7 +47,8 @@ install_k3d() {
 }
 
 start_k3d() {
-	k3d cluster create --network host --no-lb --k3s-arg "--disable=traefik,servicelb,metrics-server,local-storage"
+	# K3D_FIX_DNS=false is needed because host network mode won't work without it.
+	K3D_FIX_DNS=false k3d cluster create --network host --no-lb --k3s-arg "--disable=traefik,servicelb,metrics-server,local-storage"
 
 	mkdir -p ~/.kube/
 	k3d kubeconfig get -a >~/.kube/config
@@ -122,10 +123,10 @@ run_helm() {
 
 	install_k3d "$k3d_version"
 	start_k3d
+	kubectl_for_vagrant_user
 	install_helm "$helm_version"
 	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip"
 	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
-	kubectl_for_vagrant_user
 }
 
 main() {
