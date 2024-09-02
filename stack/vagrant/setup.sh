@@ -71,6 +71,7 @@ helm_install_tink_stack() {
 	trusted_proxies=""
 	until [ "$trusted_proxies" != "" ]; do
 		trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
+		sleep 5
 	done
 	helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack \
 		--version "$version" \
