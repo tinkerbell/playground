@@ -20,7 +20,7 @@ spec:
             timeout: 600
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}
-              IMG_URL: "http://$TINKERBELL_HOST_IP:8080/jammy-server-cloudimg-amd64.raw.gz"
+              IMG_URL: "http://$TINKERBELL_HOST_IP:8080/noble-server-cloudimg-amd64.raw.gz"
               COMPRESSED: true
           - name: "grow-partition"
             image: quay.io/tinkerbell/actions/cexec:latest
@@ -92,9 +92,12 @@ spec:
             timeout: 90
             pid: host
             environment:
-              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 16 }}
               FS_TYPE: ext4
               IMAGE: quay.io/tinkerbell/actions/kexec:latest
               WAIT_SECONDS: 10
+              KERNEL_PATH: vmlinuz
+              INITRD_PATH: initrd.img
+              CMD_LINE: "root={{ formatPartition ( index .Hardware.Disks 0 ) 1 }} ro"
             volumes:
               - /var/run/docker.sock:/var/run/docker.sock
