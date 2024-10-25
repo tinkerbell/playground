@@ -111,7 +111,7 @@ tasks:
         sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
       CHART_NAME: tink-stack
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} oci://ghcr.io/tinkerbell/charts/stack --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "smee.trustedProxies={{.TRUSTED_PROXIES}}" --set "hegel.trustedProxies={{.TRUSTED_PROXIES}}" --set "stack.loadBalancerIP={{.LB_IP}}" --set "smee.publicIP={{.LB_IP}}"
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} oci://ghcr.io/tinkerbell/charts/stack --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}"
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 
