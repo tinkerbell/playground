@@ -7,11 +7,17 @@ counts:
   workers: 1
   spares: 1
 versions:
-  capt: 0.5.3
+  capt: v0.5.3
   chart: 0.5.0
   kube: v1.29.4
   os: 20.04
   kubevip: 0.8.2
+capt:
+  infrastructureYaml: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
+  #infrastructureYaml: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
+chart:
+  location: "oci://ghcr.io/tinkerbell/charts/stack"
+  #location: "/home/tink/repos/tinkerbell/charts/tinkerbell/stack"
 os:
   registry: ghcr.io/tinkerbell/cluster-api-provider-tinkerbell
   distro: ubuntu
@@ -24,6 +30,6 @@ vm:
   diskPath: "/tmp"
 virtualBMC:
   containerName: "virtualbmc"
-  image: ghcr.io/jacobweinstock/virtualbmc
+  image: ghcr.io/jacobweinstock/virtualbmc:latest
   user: "root"
   pass: "calvin"

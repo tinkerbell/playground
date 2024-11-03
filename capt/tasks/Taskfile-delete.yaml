@@ -7,6 +7,7 @@ tasks:
     cmds:
       - task: kind-cluster
       - task: vbmc-container
+      - task: vbmc-generated-files
       - task: vms
       - task: output-dir
 
@@ -47,6 +48,16 @@ tasks:
       - docker rm -f {{.VBMC_CONTAINER_NAME}}
     status:
       - got=$(docker ps -a | grep -c {{.VBMC_CONTAINER_NAME}} || :); [[ "$got" == "0" ]]
+
+  vbmc-generated-files:
+    summary: |
+      Delete the Virtual BMC generated files.
+    cmds:
+      - rm -f {{.CURR_DIR}}/scripts/htpasswd {{.CURR_DIR}}/scripts/sushy.key {{.CURR_DIR}}/scripts/sushy.cert
+    status:
+      - test ! -f {{.CURR_DIR}}/scripts/htpasswd
+      - test ! -f {{.CURR_DIR}}/scripts/sushy.key
+      - test ! -f {{.CURR_DIR}}/scripts/sushy.cert
 
   output-dir:
     summary: |

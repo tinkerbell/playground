@@ -18,11 +18,13 @@ tasks:
     env:
       CAPT_VERSION:
         sh: yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}
+      LOCATION:
+        sh: yq eval '.capt.infrastructureYaml' {{.STATE_FILE_FQ_PATH}}
     vars:
       OUTPUT_DIR:
         sh: echo $(yq eval '.outputDir' config.yaml)
     cmds:
-      - envsubst '$CAPT_VERSION' < templates/clusterctl.tmpl > {{.OUTPUT_DIR}}/clusterctl.yaml
+      - envsubst '$CAPT_VERSION,$LOCATION' < templates/clusterctl.tmpl > {{.OUTPUT_DIR}}/clusterctl.yaml
     status:
       - grep -q "$CAPT_VERSION" {{.OUTPUT_DIR}}/clusterctl.yaml
 

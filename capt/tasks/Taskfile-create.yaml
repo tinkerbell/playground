@@ -13,6 +13,7 @@ tasks:
       - task: kind-cluster
       - task: update-state
       - task: deploy-tinkerbell-helm-chart
+      - task: vbmc:prepare
       - task: vbmc:start-server
       - task: vbmc:update-state
       - task: hardware-cr
@@ -109,9 +110,11 @@ tasks:
         sh: yq eval '.versions.chart' {{.STATE_FILE_FQ_PATH}}
       NAMESPACE:
         sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+      LOCATION:
+        sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
       CHART_NAME: tink-stack
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} oci://ghcr.io/tinkerbell/charts/stack --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}"
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}" --set "rufio.image=quay.io/tinkerbell/rufio:latest"
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 

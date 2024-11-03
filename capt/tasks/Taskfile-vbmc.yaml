@@ -1,8 +1,28 @@
 version: "3"
 
 tasks:
+  prepare:
+    run: once
+    summary: |
+      Prepare the virtualbmc server.
+    vars:
+      VBMC_CONTAINER_IMAGE:
+        sh: yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}
+      USERNAME:
+        sh: yq eval '.virtualBMC.user' {{.STATE_FILE_FQ_PATH}}
+      PASSWORD:
+        sh: yq eval '.virtualBMC.pass' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - docker run -it --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -nbB "{{.USERNAME}}" "{{.PASSWORD}}" > {{.CURR_DIR}}/scripts/htpasswd
+      - docker run -it --rm --entrypoint openssl -v {{.CURR_DIR}}/scripts:/scripts {{.VBMC_CONTAINER_IMAGE}} req -x509 -newkey rsa:2048 -keyout /scripts/sushy.key -out /scripts/sushy.cert -days 365 -nodes -subj "/C=US/ST=CA/L=Los Angeles/O=Engineering/OU=Engineering/CN=tinkerbell.org"
+    status:
+      - test -f {{.CURR_DIR}}/scripts/htpasswd
+      - test -f {{.CURR_DIR}}/scripts/sushy.key
+      - test -f {{.CURR_DIR}}/scripts/sushy.cert
+
   start-server:
     run: once
+    deps: [prepare]
     summary: |
       Start the virtualbmc server. Requires the "kind" docker network to exist.
     vars:
@@ -11,7 +31,7 @@ tasks:
       VBMC_CONTAINER_IMAGE:
         sh: yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}
     cmds:
-      - docker run -d --privileged --rm --network kind -v /var/run/libvirt/libvirt-sock-ro:/var/run/libvirt/libvirt-sock-ro -v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock --name {{.VBMC_CONTAINER_NAME}} {{.VBMC_CONTAINER_IMAGE}}
+      - docker run -d --privileged --rm --network kind -e SUSHY_EMULATOR_CONFIG=/etc/sushy/sushy-emulator.conf -v /var/run/libvirt:/var/run/libvirt -v "${PWD}/scripts/sushy.key:/etc/sushy/sushy.key" -v "${PWD}/scripts/sushy.cert:/etc/sushy/sushy.cert" -v "${PWD}/scripts/sushy-tools.conf:/etc/sushy/sushy-emulator.conf" -v "${PWD}/scripts/htpasswd:/etc/sushy/htpasswd" --name {{.VBMC_CONTAINER_NAME}} {{.VBMC_CONTAINER_IMAGE}}
     status:
       - docker ps | grep -q {{.VBMC_CONTAINER_NAME}}
 

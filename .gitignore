@@ -4,3 +4,6 @@ error.log
 .state
 capt/output/
 .vscode/
+sushy.cert
+sushy.key
+htpasswd

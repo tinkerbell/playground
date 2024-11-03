@@ -13,7 +13,7 @@ counts:
   spares: 1
 versions:
   capt: 0.5.3
-  chart: 0.4.4
+  chart: 0.5.0
   kube: v1.28.8
   os: 22.04
 os:
