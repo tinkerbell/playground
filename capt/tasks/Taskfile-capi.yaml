@@ -19,7 +19,7 @@ tasks:
       CAPT_VERSION:
         sh: yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}
       LOCATION:
-        sh: yq eval '.capt.infrastructureYaml' {{.STATE_FILE_FQ_PATH}}
+        sh: yq eval '.capt.providerRepository' {{.STATE_FILE_FQ_PATH}}
     vars:
       OUTPUT_DIR:
         sh: echo $(yq eval '.outputDir' config.yaml)

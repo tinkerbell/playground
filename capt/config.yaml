@@ -13,8 +13,8 @@ versions:
   os: 20.04
   kubevip: 0.8.2
 capt:
-  infrastructureYaml: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
-  #infrastructureYaml: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
+  providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
+  #providerRepository: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
 chart:
   location: "oci://ghcr.io/tinkerbell/charts/stack"
   #location: "/home/tink/repos/tinkerbell/charts/tinkerbell/stack"
