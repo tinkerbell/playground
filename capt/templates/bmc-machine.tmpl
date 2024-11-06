@@ -12,5 +12,10 @@ spec:
         insecureTLS: true
         port: $BMC_PORT
         providerOptions:
+            preferredOrder:
+                - ipmitool
             ipmitool:
                 port: $BMC_PORT
+            redfish:
+                useBasicAuth: true
+                systemName: $NODE_NAME

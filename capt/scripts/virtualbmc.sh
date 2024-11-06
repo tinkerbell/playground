@@ -16,7 +16,6 @@ function main() {
 		docker exec "$container_name" vbmc add --username "$username" --password "$password" --port "$port" "$name"
 		docker exec "$container_name" vbmc start "$name"
 	done < <(yq e '.vm.details.[] | [key, .bmc.port] | @csv' "$STATE_FILE")
-
 }
 
 main "$@"

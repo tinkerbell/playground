@@ -13,6 +13,8 @@ patches:
       - op: add
         path: /spec/template/spec
         value:
+          bootOptions:
+            bootMode: netboot
           hardwareAffinity:
             required:
             - labelSelector:
@@ -30,15 +32,15 @@ patches:
                   - /dev/console:/dev/console
                   - /lib/firmware:/lib/firmware:ro
                 actions:
-                  - name: "stream-image"
-                    image: quay.io/tinkerbell-actions/oci2disk:v1.0.0
-                    timeout: 600
+                  - name: "stream image"
+                    image: quay.io/tinkerbell/actions/oci2disk
+                    timeout: 1200
                     environment:
                       IMG_URL: $OS_REGISTRY/$OS_DISTRO-$OS_VERSION:$KUBE_VERSION.gz
                       DEST_DISK: {{ index .Hardware.Disks 0 }}
                       COMPRESSED: true
-                  - name: "add-tink-cloud-init-config"
-                    image: quay.io/tinkerbell-actions/writefile:v1.0.0
+                  - name: "add tink cloud-init config"
+                    image: quay.io/tinkerbell/actions/writefile
                     timeout: 90
                     environment:
                       DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
@@ -62,8 +64,8 @@ patches:
                         manage_etc_hosts: localhost
                         warnings:
                           dsid_missing_source: off
-                  - name: "add-tink-cloud-init-ds-config"
-                    image: quay.io/tinkerbell-actions/writefile:v1.0.0
+                  - name: "add tink cloud-init ds-config"
+                    image: quay.io/tinkerbell/actions/writefile
                     timeout: 90
                     environment:
                       DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
@@ -75,15 +77,15 @@ patches:
                       DIRMODE: 0700
                       CONTENTS: |
                         datasource: Ec2
-                  - name: "kexec-image"
-                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.0
+                  - name: "kexec image"
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
                     timeout: 90
                     pid: host
                     environment:
                       BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
                       FS_TYPE: ext4
-                      IMAGE: quay.io/tinkerbell-actions/kexec:v1.0.0
-                      WAIT_SECONDS: 10
+                      IMAGE: quay.io/tinkerbell/actions/kexec
+                      WAIT_SECONDS: 5
                     volumes:
                       - /var/run/docker.sock:/var/run/docker.sock
   - target:
@@ -95,6 +97,8 @@ patches:
       - op: add
         path: /spec/template/spec
         value:
+          bootOptions:
+            bootMode: netboot
           hardwareAffinity:
             required:
             - labelSelector:
@@ -112,15 +116,15 @@ patches:
                   - /dev/console:/dev/console
                   - /lib/firmware:/lib/firmware:ro
                 actions:
-                  - name: "stream-image"
-                    image: quay.io/tinkerbell-actions/oci2disk:v1.0.0
-                    timeout: 600
+                  - name: "stream image"
+                    image: quay.io/tinkerbell/actions/oci2disk
+                    timeout: 1200
                     environment:
                       IMG_URL: $OS_REGISTRY/$OS_DISTRO-$OS_VERSION:$KUBE_VERSION.gz
                       DEST_DISK: {{ index .Hardware.Disks 0 }}
                       COMPRESSED: true
-                  - name: "add-tink-cloud-init-config"
-                    image: quay.io/tinkerbell-actions/writefile:v1.0.0
+                  - name: "add tink cloud-init config"
+                    image: quay.io/tinkerbell/actions/writefile
                     timeout: 90
                     environment:
                       DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
@@ -144,8 +148,8 @@ patches:
                         manage_etc_hosts: localhost
                         warnings:
                           dsid_missing_source: off
-                  - name: "add-tink-cloud-init-ds-config"
-                    image: quay.io/tinkerbell-actions/writefile:v1.0.0
+                  - name: "add tink cloud-init ds-config"
+                    image: quay.io/tinkerbell/actions/writefile
                     timeout: 90
                     environment:
                       DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
@@ -157,15 +161,15 @@ patches:
                       DIRMODE: 0700
                       CONTENTS: |
                         datasource: Ec2
-                  - name: "kexec-image"
-                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.0
+                  - name: "kexec image"
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
                     timeout: 90
                     pid: host
                     environment:
                       BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
                       FS_TYPE: ext4
-                      IMAGE: quay.io/tinkerbell-actions/kexec:v1.0.0
-                      WAIT_SECONDS: 10
+                      IMAGE: quay.io/tinkerbell/actions/kexec
+                      WAIT_SECONDS: 5
                     volumes:
                       - /var/run/docker.sock:/var/run/docker.sock
   - target:
