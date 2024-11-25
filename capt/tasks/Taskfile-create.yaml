@@ -114,7 +114,7 @@ tasks:
         sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
       CHART_NAME: tink-stack
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}" --set "rufio.image=quay.io/tinkerbell/rufio:latest"
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}"
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 
