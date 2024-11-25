@@ -7,11 +7,11 @@ counts:
   workers: 1
   spares: 1
 versions:
-  capt: v0.5.3
-  chart: 0.5.0
-  kube: v1.29.4
+  capt: v0.6.0
+  chart: 0.6.0
+  kube: v1.28.9
   os: 20.04
-  kubevip: 0.8.2
+  kubevip: 0.8.7
 capt:
   providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
   #providerRepository: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
