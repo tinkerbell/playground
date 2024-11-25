@@ -114,7 +114,7 @@ tasks:
         sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
       CHART_NAME: tink-stack
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}"
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}" --set "stack.hook.extensio=both" --set "smee.iso.enabled=true" --set "smee.iso.url=http://{{.LB_IP}}:8080/hook-latest-lts-x86_64-efi-initrd.iso" --set "smee.iso.staticIPAMEnabled=true"
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 
