@@ -7,8 +7,8 @@ counts:
   workers: 1
   spares: 1
 versions:
-  capt: v0.6.0
-  chart: 0.6.0
+  capt: v0.6.1
+  chart: 0.6.1
   kube: v1.28.9
   os: 20.04
   kubevip: 0.8.7
@@ -33,3 +33,4 @@ virtualBMC:
   image: ghcr.io/jacobweinstock/virtualbmc:latest
   user: "root"
   pass: "calvin"
+bootMode: netboot

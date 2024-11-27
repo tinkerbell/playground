@@ -128,12 +128,16 @@ tasks:
         sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
       OUTPUT_DIR:
         sh: yq eval '.outputDir' config.yaml
+      BOOTMODE:
+        sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
+      KUSTOMIZE_FILE:
+        sh: "[[ {{.BOOTMODE}} == 'iso' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
     sources:
       - config.yaml
     generates:
       - "{{.OUTPUT_DIR}}/kustomization.yaml"
     cmds:
-      - envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" < templates/kustomization.tmpl > {{.OUTPUT_DIR}}/kustomization.yaml
+      - envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" < templates/{{.KUSTOMIZE_FILE}} > {{.OUTPUT_DIR}}/kustomization.yaml
 
   apply-kustomization:
     run: once
