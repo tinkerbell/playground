@@ -33,3 +33,4 @@ virtualBMC:
   image: ghcr.io/jacobweinstock/virtualbmc:latest
   user: "root"
   pass: "calvin"
+bootMode: netboot

@@ -67,6 +67,7 @@ cluster:
   controlPlane:
     vip: 172.18.10.75
   podCIDR: 172.100.0.0/16
+bootMode: netboot
 EOF
 
 set -euo pipefail

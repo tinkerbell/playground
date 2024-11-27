@@ -1,0 +1,300 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: $NAMESPACE
+resources:
+  - prekustomization.yaml
+patches:
+  - target:
+      group: infrastructure.cluster.x-k8s.io
+      kind: TinkerbellMachineTemplate
+      name: ".*control-plane.*"
+      version: v1beta1
+    patch: |- 
+      - op: add
+        path: /spec/template/spec
+        value:
+          bootOptions:
+            bootMode: iso
+            isoURL: "http://$TINKERBELL_VIP:7171/iso/:macAddress/hook.iso"
+          hardwareAffinity:
+            required:
+            - labelSelector:
+                matchLabels:
+                  tinkerbell.org/role: control-plane
+          templateOverride: |
+            version: "0.1"
+            name: playground-template
+            global_timeout: 6000
+            tasks:
+              - name: "playground-template"
+                worker: "{{.device_1}}"
+                volumes:
+                  - /dev:/dev
+                  - /dev/console:/dev/console
+                  - /lib/firmware:/lib/firmware:ro
+                actions:
+                  - name: "stream image"
+                    image: quay.io/tinkerbell/actions/oci2disk
+                    timeout: 1200
+                    environment:
+                      IMG_URL: $OS_REGISTRY/$OS_DISTRO-$OS_VERSION:$KUBE_VERSION.gz
+                      DEST_DISK: {{ index .Hardware.Disks 0 }}
+                      COMPRESSED: true
+                  - name: "add tink cloud-init config"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      DEST_PATH: /etc/cloud/cloud.cfg.d/10_tinkerbell.cfg
+                      UID: 0
+                      GID: 0
+                      MODE: 0600
+                      DIRMODE: 0700
+                      CONTENTS: |
+                        datasource:
+                          Ec2:
+                            metadata_urls: ["http://$TINKERBELL_VIP:50061"]
+                            strict_id: false
+                        system_info:
+                          default_user:
+                            name: tink
+                            groups: [wheel, adm]
+                            sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+                            shell: /bin/bash
+                        manage_etc_hosts: localhost
+                        warnings:
+                          dsid_missing_source: off
+                  - name: "disable cloud-init networking"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      CONTENTS: 'network: {config: disabled}'
+                      DEST_DISK: '{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}'
+                      DEST_PATH: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+                      DIRMODE: "0700"
+                      FS_TYPE: ext4
+                      GID: "0"
+                      MODE: "0600"
+                      UID: "0"
+                  - name: "create static netplan"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      CONTENTS: |
+                        network:
+                          version: 2
+                          renderer: networkd
+                          ethernets:
+                            id0:
+                              match:
+                                macaddress: {{ (index .Hardware.Interfaces 0).DHCP.MAC }}
+                              addresses:
+                                - {{ (index .Hardware.Interfaces 0).DHCP.IP.Address }}/16
+                              nameservers:
+                                addresses: [{{ (index .Hardware.Interfaces 0).DHCP.NameServers | join ","}}]
+                              routes:
+                                - to: default
+                                  via: {{ (index .Hardware.Interfaces 0).DHCP.IP.Gateway }}
+                      DEST_DISK: '{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}'
+                      DEST_PATH: /etc/netplan/config.yaml
+                      DIRMODE: "0755"
+                      FS_TYPE: ext4
+                      GID: "0"
+                      MODE: "0600"
+                      UID: "0"
+                  - name: "add tink cloud-init ds-config"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      DEST_PATH: /etc/cloud/ds-identify.cfg
+                      UID: 0
+                      GID: 0
+                      MODE: 0600
+                      DIRMODE: 0700
+                      CONTENTS: |
+                        datasource: Ec2
+                  - name: "kexec image"
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
+                    timeout: 90
+                    pid: host
+                    environment:
+                      BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      IMAGE: quay.io/tinkerbell/actions/kexec
+                      WAIT_SECONDS: 5
+                    volumes:
+                      - /var/run/docker.sock:/var/run/docker.sock
+  - target:
+      group: infrastructure.cluster.x-k8s.io
+      kind: TinkerbellMachineTemplate
+      name: ".*worker.*"
+      version: v1beta1
+    patch: |- 
+      - op: add
+        path: /spec/template/spec
+        value:
+          bootOptions:
+            bootMode: iso
+            isoURL: "http://$TINKERBELL_VIP:7171/iso/:macAddress/hook.iso"
+          hardwareAffinity:
+            required:
+            - labelSelector:
+                matchLabels:
+                  tinkerbell.org/role: worker
+          templateOverride: |
+            version: "0.1"
+            name: playground-template
+            global_timeout: 6000
+            tasks:
+              - name: "playground-template"
+                worker: "{{.device_1}}"
+                volumes:
+                  - /dev:/dev
+                  - /dev/console:/dev/console
+                  - /lib/firmware:/lib/firmware:ro
+                actions:
+                  - name: "stream image"
+                    image: quay.io/tinkerbell/actions/oci2disk
+                    timeout: 1200
+                    environment:
+                      IMG_URL: $OS_REGISTRY/$OS_DISTRO-$OS_VERSION:$KUBE_VERSION.gz
+                      DEST_DISK: {{ index .Hardware.Disks 0 }}
+                      COMPRESSED: true
+                  - name: "add tink cloud-init config"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      DEST_PATH: /etc/cloud/cloud.cfg.d/10_tinkerbell.cfg
+                      UID: 0
+                      GID: 0
+                      MODE: 0600
+                      DIRMODE: 0700
+                      CONTENTS: |
+                        datasource:
+                          Ec2:
+                            metadata_urls: ["http://$TINKERBELL_VIP:50061"]
+                            strict_id: false
+                        system_info:
+                          default_user:
+                            name: tink
+                            groups: [wheel, adm]
+                            sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+                            shell: /bin/bash
+                        manage_etc_hosts: localhost
+                        warnings:
+                          dsid_missing_source: off
+                  - name: "disable cloud-init networking"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      CONTENTS: 'network: {config: disabled}'
+                      DEST_DISK: '{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}'
+                      DEST_PATH: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+                      DIRMODE: "0700"
+                      FS_TYPE: ext4
+                      GID: "0"
+                      MODE: "0600"
+                      UID: "0"
+                  - name: "create static netplan"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      CONTENTS: |
+                        network:
+                          version: 2
+                          renderer: networkd
+                          ethernets:
+                            id0:
+                              match:
+                                macaddress: {{ (index .Hardware.Interfaces 0).DHCP.MAC }}
+                              addresses:
+                                - {{ (index .Hardware.Interfaces 0).DHCP.IP.Address }}/16
+                              nameservers:
+                                addresses: [{{ (index .Hardware.Interfaces 0).DHCP.NameServers | join ","}}]
+                              routes:
+                                - to: default
+                                  via: {{ (index .Hardware.Interfaces 0).DHCP.IP.Gateway }}
+                      DEST_DISK: '{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}'
+                      DEST_PATH: /etc/netplan/config.yaml
+                      DIRMODE: "0755"
+                      FS_TYPE: ext4
+                      GID: "0"
+                      MODE: "0600"
+                      UID: "0"
+                  - name: "add tink cloud-init ds-config"
+                    image: quay.io/tinkerbell/actions/writefile
+                    timeout: 90
+                    environment:
+                      DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      DEST_PATH: /etc/cloud/ds-identify.cfg
+                      UID: 0
+                      GID: 0
+                      MODE: 0600
+                      DIRMODE: 0700
+                      CONTENTS: |
+                        datasource: Ec2
+                  - name: "kexec image"
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
+                    timeout: 90
+                    pid: host
+                    environment:
+                      BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
+                      FS_TYPE: ext4
+                      IMAGE: quay.io/tinkerbell/actions/kexec
+                      WAIT_SECONDS: 5
+                    volumes:
+                      - /var/run/docker.sock:/var/run/docker.sock
+  - target:
+      group: infrastructure.cluster.x-k8s.io
+      kind: TinkerbellCluster
+      name: ".*"
+      version: v1beta1
+    patch: |-
+      - op: add
+        path: /spec
+        value:
+          imageLookupBaseRegistry: "$OS_REGISTRY"
+          imageLookupOSDistro: "$OS_DISTRO"
+          imageLookupOSVersion: "$VERSIONS_OS"
+  - target:
+      group: bootstrap.cluster.x-k8s.io
+      kind: KubeadmConfigTemplate
+      name: "$CLUSTER_NAME-.*"
+      version: v1beta1
+    patch: |-
+      - op: add
+        path: /spec/template/spec/users
+        value:
+          - name: tink
+            sudo: ALL=(ALL) NOPASSWD:ALL
+            sshAuthorizedKeys:
+            - $SSH_AUTH_KEY
+  - target:
+      group: controlplane.cluster.x-k8s.io
+      kind: KubeadmControlPlane
+      name: "$CLUSTER_NAME-.*"
+      version: v1beta1
+    patch: |-
+      - op: add
+        path: /spec/kubeadmConfigSpec/users
+        value:
+          - name: tink
+            sudo: ALL=(ALL) NOPASSWD:ALL
+            sshAuthorizedKeys:
+            - $SSH_AUTH_KEY
+  - target:
+      group: controlplane.cluster.x-k8s.io
+      kind: KubeadmControlPlane
+      name: "$CLUSTER_NAME-.*"
+      version: v1beta1
+    patch: |-
+      - op: add
+        path: /spec/kubeadmConfigSpec/preKubeadmCommands
+        value:
+          - mkdir -p /etc/kubernetes/manifests && ctr images pull ghcr.io/kube-vip/kube-vip:v$KUBEVIP_VERSION && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v$KUBEVIP_VERSION vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address $CONTROL_PLANE_VIP --controlplane --leaderElection --k8sConfigPath $CONF_PATH > /etc/kubernetes/manifests/kube-vip.yaml

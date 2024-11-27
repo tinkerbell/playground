@@ -113,8 +113,17 @@ tasks:
       LOCATION:
         sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
       CHART_NAME: tink-stack
+      BOOTMODE:
+        sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
+      SET_VARS:
+        - global.trustedProxies={"{{.TRUSTED_PROXIES}}"}
+        - global.publicIP={{.LB_IP}}
+        - stack.hook.extension=both
+        - smee.iso.enabled=true
+        - smee.iso.url=http://{{.LB_IP}}:8080/hook-latest-lts-x86_64-efi-initrd.iso
+        - smee.iso.staticIPAMEnabled=true
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait --set "global.trustedProxies={"{{.TRUSTED_PROXIES}}"}" --set "global.publicIP={{.LB_IP}}" --set "stack.hook.extensio=both" --set "smee.iso.enabled=true" --set "smee.iso.url=http://{{.LB_IP}}:8080/hook-latest-lts-x86_64-efi-initrd.iso" --set "smee.iso.staticIPAMEnabled=true"
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .SET_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "iso" }} --set "smee.dhcp.enabled=false"  --set "stack.relay.enabled=false" {{end}}
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 
