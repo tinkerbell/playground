@@ -115,15 +115,18 @@ tasks:
       CHART_NAME: tink-stack
       BOOTMODE:
         sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
-      SET_VARS:
+      GLOBAL_VARS:
         - global.trustedProxies={"{{.TRUSTED_PROXIES}}"}
         - global.publicIP={{.LB_IP}}
+      ISO_VARS:
         - stack.hook.extension=both
         - smee.iso.enabled=true
         - smee.iso.url=http://{{.LB_IP}}:8080/hook-latest-lts-x86_64-efi-initrd.iso
         - smee.iso.staticIPAMEnabled=true
+        - smee.dhcp.enabled=false
+        - stack.relay.enabled=false
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .SET_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "iso" }} --set "smee.dhcp.enabled=false"  --set "stack.relay.enabled=false" {{end}}
+      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .GLOBAL_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "iso" }} {{- range .ISO_VARS }}--set "{{.}}" {{end}} {{end}}
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
 
