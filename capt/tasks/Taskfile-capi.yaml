@@ -121,8 +121,6 @@ tasks:
         sh: yq eval '.versions.kubevip' {{.STATE_FILE_FQ_PATH}}
       CONTROL_PLANE_VIP:
         sh: yq eval '.cluster.controlPlane.vip' {{.STATE_FILE_FQ_PATH}}
-      CONF_PATH: # https://github.com/kube-vip/kube-vip/issues/684
-        sh: "[[ $(echo {{.KUBE_VERSION}} | awk -F. '{print $2}') -gt 28 ]] && echo /etc/kubernetes/super-admin.conf || echo /etc/kubernetes/admin.conf"
     vars:
       KUBE_VERSION:
         sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
@@ -138,6 +136,7 @@ tasks:
       - "{{.OUTPUT_DIR}}/kustomization.yaml"
     cmds:
       - envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" < templates/{{.KUSTOMIZE_FILE}} > {{.OUTPUT_DIR}}/kustomization.yaml
+      # FYI, the `preKubeadmCommands` checks for k8s v1.29 because of https://github.com/kube-vip/kube-vip/issues/684
 
   apply-kustomization:
     run: once
