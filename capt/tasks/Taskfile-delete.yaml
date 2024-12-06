@@ -9,6 +9,7 @@ tasks:
       - task: vbmc-container
       - task: vbmc-generated-files
       - task: vms
+      - task: default-storage-pool
       - task: output-dir
 
   kind-cluster:
@@ -37,6 +38,16 @@ tasks:
         cmd: virsh --connect qemu:///system undefine --nvram --remove-all-storage {{.ITEM}}
     status:
       - got=$(virsh --connect qemu:///system list --all --name | grep -ce "{{.VM_BASE_NAME}}*" || :); [[ "$got" == "0" ]]
+
+  default-storage-pool:
+    summary: |
+      Delete the default storage pool.
+    cmds:
+      - for vol in $(virsh --connect qemu:///system -q vol-list default | xargs | cut -d " " -f1,3,5,7,9); do virsh --connect qemu:///system vol-delete --pool default $vol; done
+      - virsh --connect qemu:///system pool-destroy default || true
+      - virsh --connect qemu:///system pool-undefine default
+    status:
+      - (! virsh --connect qemu:///system pool-info default )
 
   vbmc-container:
     summary: |

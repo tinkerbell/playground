@@ -9,7 +9,7 @@ counts:
 versions:
   capt: v0.6.1
   chart: 0.6.1
-  kube: v1.28.9
+  kube: v1.29.4
   os: 20.04
   kubevip: 0.8.7
 capt:

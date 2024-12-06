@@ -21,6 +21,7 @@ tasks:
       - task: bmc-secret
       - task: vms
       - task: vbmc:start-vbmcs
+      - task: default-storage-pool
       - task: apply-bmc-secret
       - task: apply-bmc-machines
       - task: apply-hardware
@@ -240,3 +241,12 @@ tasks:
       - echo "Workload cluster kubeconfig saved to {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig."
     status:
       - echo ; [ -f {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig ]
+
+  default-storage-pool:
+    summary: |
+      Create the default storage pool for the redfish emulator to work properly.
+    cmds:
+      - virsh --connect qemu:///system pool-define-as --name default --type dir --target /tmp/iso
+      - virsh --connect qemu:///system pool-start --build default
+    status:
+      - virsh --connect qemu:///system pool-info default

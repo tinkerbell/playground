@@ -19,7 +19,7 @@ tasks:
   create-playground:
     silent: true
     summary: |
-      Create the CAPT playground. Use the .playground file to define things like cluster size and Kubernetes version.
+      Create the CAPT playground. Use the config.yaml file to define things like cluster size and Kubernetes version.
     cmds:
       - task: system-deps-warnings
       - task: validate-binaries
