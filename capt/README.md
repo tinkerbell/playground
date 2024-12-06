@@ -10,6 +10,10 @@ Start by reviewing and installing the [prerequisites](#prerequisites) and unders
 
 ## Prerequisites
 
+### Operating System
+
+This playground has only been tested on Ubuntu 22.04 LTS. If you are using a virtual machine, ensure that you have hardware virtualization enabled.
+
 ### Binaries
 
 - [Libvirtd](https://wiki.debian.org/KVM) >= libvirtd (libvirt) 8.0.0
@@ -21,6 +25,14 @@ Start by reviewing and installing the [prerequisites](#prerequisites) and unders
 - [virt-install](https://virt-manager.org/) >= 4.0.0
 - [yq](https://github.com/mikefarah/yq/#install) >= v4.44.2
 - [task](https://taskfile.dev/installation/) >= 3.37.2
+
+### Packages
+
+The `ovmf` package is required for the libvirt VMs to run properly. OVMF is a port of Intel's tianocore firmware to the qemu virtual machine. Install it with the following command.
+
+```bash
+sudo apt install ovmf
+```
 
 ### Hardware
 
