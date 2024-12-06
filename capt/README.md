@@ -19,6 +19,7 @@ Start by reviewing and installing the [prerequisites](#prerequisites) and unders
 - [clusterctl](https://cluster-api.sigs.k8s.io/user/quick-start#install-clusterctl) >= v1.6.0
 - [kubectl](https://www.downloadkubernetes.com/) >= v1.28.2
 - [virt-install](https://virt-manager.org/) >= 4.0.0
+- [yq](https://github.com/mikefarah/yq/#install) >= v4.44.2
 - [task](https://taskfile.dev/installation/) >= 3.37.2
 
 ### Hardware
