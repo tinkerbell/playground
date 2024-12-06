@@ -50,7 +50,6 @@ tasks:
             "kubectl",
             "clusterctl",
             "virt-install",
-            "brctl",
             "yq",
           ]
         cmd: command -v {{ .ITEM }} >/dev/null || echo "'{{ .ITEM }}' was not found in the \$PATH, please ensure it is installed."
