@@ -27,8 +27,8 @@ You will need to bring your own hardware (machine) for this guide.
    ```bash
    trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
    LB_IP=<specify a Load balancer IP>
-   STACK_CHART_VERSION=0.4.3
-   helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack --version "$STACK_CHART_VERSION" --create-namespace --namespace tink-system --wait --set "smee.trustedProxies={${trusted_proxies}}" --set "hegel.trustedProxies={${trusted_proxies}}" --set "stack.loadBalancerIP=$LB_IP" --set "smee.publicIP=$LB_IP"
+   STACK_CHART_VERSION=0.6.2
+   helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack --version "$STACK_CHART_VERSION" --create-namespace --namespace tink --wait --set "global.trustedProxies={${trusted_proxies}}" --set "global.publicIP=$LB_IP" 
    ```
 
    > These instructions above should be checked against the Charts repo before using. See the [README.md](https://github.com/tinkerbell/charts/tree/main/tinkerbell/stack) in the Helm chart repository for more information on how to use the Helm chart.
