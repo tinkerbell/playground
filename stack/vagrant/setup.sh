@@ -63,27 +63,27 @@ kubectl_for_vagrant_user() {
 }
 
 helm_install_tink_stack() {
-	local namespace=$1
-	local version=$2
-	local interface=$3
-	local loadbalancer_ip=$4
+	local namespace="$1"
+	local version="$2"
+	local interface="$3"
+	local loadbalancer_ip="$4"
+	local loadbalancer_ip_2="$5"
 
 	trusted_proxies=""
 	until [ "$trusted_proxies" != "" ]; do
 		trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
 		sleep 5
 	done
-	helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack \
+	helm install tink-stack oci://ghcr.io/tinkerbell/charts/tinkerbell \
 		--version "$version" \
 		--create-namespace \
 		--namespace "$namespace" \
 		--wait \
-		--set "smee.trustedProxies={${trusted_proxies}}" \
-		--set "hegel.trustedProxies={${trusted_proxies}}" \
-		--set "stack.kubevip.interface=$interface" \
-		--set "stack.relay.sourceInterface=$interface" \
-		--set "stack.loadBalancerIP=$loadbalancer_ip" \
-		--set "smee.publicIP=$loadbalancer_ip"
+		--set "trustedProxies={${trusted_proxies}}" \
+		--set "publicIP=$loadbalancer_ip" \
+		--set "artifactsFileServer=http://$loadbalancer_ip_2:8080" \
+		--set "deployment.init.sourceInterface=$interface" \
+		--set "kubevip.interface=$interface"
 }
 
 apply_manifests() {
@@ -121,13 +121,14 @@ run_helm() {
 	local k3d_version=$8
 	local namespace="tink-system"
 	local helm_version=$9
+	local loadbalancer_ip_2="${10}"
 
 	install_k3d "$k3d_version"
 	start_k3d
 	kubectl_for_vagrant_user
 	install_helm "$helm_version"
-	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip"
-	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$namespace"
+	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip" "$loadbalancer_ip_2"
+	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip_2" "$namespace"
 }
 
 main() {
@@ -141,6 +142,8 @@ main() {
 	local kubectl_version="$8"
 	local k3d_version="$9"
 	local helm_version="${10}"
+	local loadbalancer_ip_2="${11}"
+	local gateway_ip="${12}"
 
 	update_apt
 	install_docker
@@ -148,7 +151,7 @@ main() {
 	# Needed after iPXE increased the default TCP window size to 2MB.
 	sudo ethtool -K eth1 tx off sg off tso off
 	install_kubectl "$kubectl_version"
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$helm_version"
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$helm_version" "$loadbalancer_ip_2"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
