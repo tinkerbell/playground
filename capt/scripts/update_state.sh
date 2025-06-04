@@ -30,6 +30,10 @@ function main() {
 	t_lb=$(echo "$NODE_IP_BASE" | awk -F"." '{print $1"."$2"."$3}').$((IP_LAST_OCTET + idx + offset))
 	yq e -i '.tinkerbell.vip = "'$t_lb'"' "$STATE_FILE"
 
+	# set the Tinkerbell HookOS VIP
+	hookos_vip=$(echo "$NODE_IP_BASE" | awk -F"." '{print $1"."$2"."$3}').$((IP_LAST_OCTET + idx + offset - 1))
+	yq e -i '.tinkerbell.hookosVip = "'$hookos_vip'"' "$STATE_FILE"
+
 	# set the cluster control plane load balancer IP (VIP)
 	cp_lb=$(echo "$NODE_IP_BASE" | awk -F"." '{print $1"."$2"."$3}').$((IP_LAST_OCTET + idx + offset + 1))
 	yq e -i '.cluster.controlPlane.vip = "'$cp_lb'"' "$STATE_FILE"

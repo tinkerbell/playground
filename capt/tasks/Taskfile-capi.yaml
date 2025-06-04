@@ -110,7 +110,7 @@ tasks:
       VERSIONS_OS:
         sh: yq eval '.versions.os' {{.STATE_FILE_FQ_PATH}}
       SSH_AUTH_KEY:
-        sh: yq eval '.os.sshKey' {{.STATE_FILE_FQ_PATH}}
+        sh: yq eval '.os.sshKey // "ssh-ed25519 AAAAC3N..."' {{.STATE_FILE_FQ_PATH}}
       KUBE_VERSION:
         sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
       TINKERBELL_VIP:
@@ -129,7 +129,7 @@ tasks:
       BOOTMODE:
         sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
       KUSTOMIZE_FILE:
-        sh: "[[ {{.BOOTMODE}} == 'iso' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
+        sh: "[[ {{.BOOTMODE}} == 'isoboot' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
     sources:
       - config.yaml
     generates:

@@ -63,6 +63,7 @@ kind:
   bridgeName: br-d086780dac6b
 tinkerbell:
   vip: 172.18.10.74
+  hookosVip: 172.18.10.73
 cluster:
   controlPlane:
     vip: 172.18.10.75

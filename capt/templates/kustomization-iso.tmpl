@@ -14,7 +14,7 @@ patches:
         path: /spec/template/spec
         value:
           bootOptions:
-            bootMode: iso
+            bootMode: isoboot
             isoURL: "http://$TINKERBELL_VIP:7171/iso/:macAddress/hook.iso"
           hardwareAffinity:
             required:
@@ -137,7 +137,7 @@ patches:
         path: /spec/template/spec
         value:
           bootOptions:
-            bootMode: iso
+            bootMode: isoboot
             isoURL: "http://$TINKERBELL_VIP:7171/iso/:macAddress/hook.iso"
           hardwareAffinity:
             required:
