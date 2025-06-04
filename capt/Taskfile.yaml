@@ -108,7 +108,7 @@ tasks:
         echo The workload cluster kubeconfig is located at: {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
         echo
         echo 1. Watch and wait for the first control plane node to be provisioned successfully: STATE_SUCCESS
-        echo "KUBECONFIG={{.KIND_KUBECONFIG}} kubectl get workflows -n {{.NAMESPACE}} -w"
+        echo "KUBECONFIG={{.KIND_KUBECONFIG}} kubectl get workflows -n {{.NAMESPACE}} -o wide -w"
         echo
         echo
         echo 2. Watch and wait for the Kubernetes API server to be ready and responding:
