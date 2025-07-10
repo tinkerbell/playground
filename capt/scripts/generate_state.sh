@@ -139,25 +139,25 @@ function main() {
 	os_version=$(echo "$os_version" | tr -d '.')
 	yq e -i '.os.version = "'$os_version'"' "$state_file"
 
-  # if the sshKey is not set, generate a default one
-  ssh_key=$(yq eval '.os.sshKey' "$config_file")
-  if [[ -z $ssh_key ]]; then
-    rm -rf "$output_dir"/capt-ssh-key* >>"$output_dir"/error.log 2>&1
-    ssh-keygen -t ed25519 -f "$output_dir"/capt-ssh-key -N "" -C "capt-playground" >>"$output_dir"/error.log 2>&1
-    if [[ $? -ne 0 ]]; then
-      echo "Error generating SSH key. Check error.log for details." >>"$output_dir"/error.log 2>&1
-      exit 1
-    fi
-    ssh_key=$(cat "$output_dir/capt-ssh-key.pub"| tr -d '\n')
-    if [[ -z $ssh_key ]]; then
-      echo "Error reading SSH key from $output_dir/capt-ssh-key.pub" >>"$output_dir"/error.log 2>&1
-      exit 1
-    fi
-    yq e -i ".os.sshKey = \"$ssh_key\"" "$state_file"
-    # populate the config file with the generated SSH key
-    # so that we don't re-generate it every time
-    yq e -i ".os.sshKey = \"$ssh_key\"" "$config_file"
-  fi
+	# if the sshKey is not set, generate a default one
+	ssh_key=$(yq eval '.os.sshKey' "$config_file")
+	if [[ -z $ssh_key ]]; then
+		rm -rf "$output_dir"/capt-ssh-key* >>"$output_dir"/error.log 2>&1
+		ssh-keygen -t ed25519 -f "$output_dir"/capt-ssh-key -N "" -C "capt-playground" >>"$output_dir"/error.log 2>&1
+		if [[ $? -ne 0 ]]; then
+			echo "Error generating SSH key. Check error.log for details." >>"$output_dir"/error.log 2>&1
+			exit 1
+		fi
+		ssh_key=$(cat "$output_dir/capt-ssh-key.pub" | tr -d '\n')
+		if [[ -z $ssh_key ]]; then
+			echo "Error reading SSH key from $output_dir/capt-ssh-key.pub" >>"$output_dir"/error.log 2>&1
+			exit 1
+		fi
+		yq e -i ".os.sshKey = \"$ssh_key\"" "$state_file"
+		# populate the config file with the generated SSH key
+		# so that we don't re-generate it every time
+		yq e -i ".os.sshKey = \"$ssh_key\"" "$config_file"
+	fi
 }
 
 main "$@"
