@@ -5,22 +5,31 @@
 cat <<EOF >/dev/null
 ---
 clusterName: "capt-playground"
-outputDir: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/playground/output"
+outputDir: "/home/tink/repos/tinkerbell/playground/capt/output"
 namespace: "tink"
 counts:
   controlPlanes: 1
   workers: 1
   spares: 1
 versions:
-  capt: 0.5.3
-  chart: 0.5.0
-  kube: v1.28.8
-  os: 22.04
+  capt: v0.6.5
+  chart: v0.19.0
+  kube: v1.29.4
+  os: 20.04
+  kubevip: 0.9.1
+capt:
+  providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
+chart:
+  location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
+  extraVars:
+    - deployment.image=custom.registry/tinkerbell/tinkerbell
+    - deployment.imageTag=v0.19.1
+    - deployment.agentImageTag=latest
 os:
-  registry: reg.weinstocklabs.com/tinkerbell/cluster-api-provider-tinkerbell
+  registry: ghcr.io/tinkerbell/cluster-api-provider-tinkerbell
   distro: ubuntu
-  sshKey: ""
-  version: "2204"
+  sshKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH9a2GwjgVfnpjOvIqNuJTwazS3tqJ9xzcepXzKMccVf capt-playground"
+  version: "2004"
 vm:
   baseName: "node"
   cpusPerVM: 2
@@ -51,16 +60,17 @@ vm:
       gateway: 172.18.0.1
 virtualBMC:
   containerName: "virtualbmc"
-  image: ghcr.io/jacobweinstock/virtualbmc
+  image: ghcr.io/jacobweinstock/virtualbmc:latest
   user: "root"
   pass: "calvin"
   ip: 172.18.0.3
+bootMode: netboot
 totalNodes: 3
 kind:
-  kubeconfig: /home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/playground/output/kind.kubeconfig
+  kubeconfig: /home/tink/repos/tinkerbell/playground/capt/output/kind.kubeconfig
   gatewayIP: 172.18.0.1
   nodeIPBase: 172.18.10.20
-  bridgeName: br-d086780dac6b
+  bridgeName: br-3d1549d4f99f
 tinkerbell:
   vip: 172.18.10.74
   hookosVip: 172.18.10.73
@@ -68,7 +78,6 @@ cluster:
   controlPlane:
     vip: 172.18.10.75
   podCIDR: 172.100.0.0/16
-bootMode: netboot
 EOF
 
 set -euo pipefail
@@ -145,6 +154,8 @@ function main() {
       exit 1
     fi
     yq e -i ".os.sshKey = \"$ssh_key\"" "$state_file"
+    # populate the config file with the generated SSH key
+    # so that we don't re-generate it every time
     yq e -i ".os.sshKey = \"$ssh_key\"" "$config_file"
   fi
 }

@@ -115,21 +115,23 @@ tasks:
         sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
       LOCATION:
         sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
-      CHART_NAME: tink-stack
+      CHART_NAME: tinkerbell
       BOOTMODE:
         sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
       GLOBAL_VARS:
         - trustedProxies={"{{.TRUSTED_PROXIES}}"}
         - publicIP={{.LB_IP}}
-        - artifactsFileServer=http://{{.LB_IP2}}:8080
+        - artifactsFileServer=http://{{.LB_IP2}}:7173
       ISO_VARS:
         - deployment.envs.smee.dhcpEnabled=false
-        - hookos.extension=both
-        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:8080/hook-latest-lts-x86_64-efi-initrd.iso
+        - optional.hookos.extension=both
+        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/hook-latest-lts-x86_64-efi-initrd.iso
+      EXTRA_VARS:
+        sh: yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .GLOBAL_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{end}} {{end}}
+      - KUBECONFIG="{{.KUBECONFIG}}" helm upgrade --install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .GLOBAL_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }} {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
     status:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm list -n {{.NAMESPACE}} | grep -q {{.CHART_NAME}}
+      - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]
 
   vms:
     run: once
