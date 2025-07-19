@@ -381,6 +381,7 @@ This option will also create a VM and provision an OS onto it.
    <summary>example output</summary>
 
    Ubuntu image download:
+
    ```bash
    kubectl get jobs -n tinkerbell --watch
    NAME                    COMPLETIONS   DURATION   AGE
@@ -389,7 +390,9 @@ This option will also create a VM and provision an OS onto it.
    download-ubuntu-jammy   0/1           72s        72s
    download-ubuntu-jammy   1/1           72s        72s
    ```
+
    HookOS pod:
+
    ```bash
    kubectl get pods -n tinkerbell --watch
    NAME                          READY   STATUS      RESTARTS   AGE
@@ -494,6 +497,7 @@ This option will also create a VM and provision an OS onto it.
 1. Clean up
 
    After you're done with the playground, clean up all VMs:
+
    ```bash
    vagrant destroy
    ```
