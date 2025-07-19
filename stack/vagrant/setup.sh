@@ -119,7 +119,7 @@ run_helm() {
 	local helm_chart_version=$6
 	local loadbalancer_interface=$7
 	local k3d_version=$8
-	local namespace="tink-system"
+	local namespace="tinkerbell"
 	local helm_version=$9
 	local loadbalancer_ip_2="${10}"
 

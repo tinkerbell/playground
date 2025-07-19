@@ -368,8 +368,8 @@ This option will also create a VM and provision an OS onto it.
 
    ```bash
    vagrant ssh stack
-   kubectl get jobs -n tink-system --watch
-   kubectl get pods -n tink-system --watch
+   kubectl get jobs -n tinkerbell --watch
+   kubectl get pods -n tinkerbell --watch
    exit
    # There is one Kubernetes job to download the Ubuntu image and an init
    # container in the hookos pod downloading the HookOS artifacts.
@@ -382,7 +382,7 @@ This option will also create a VM and provision an OS onto it.
 
    Ubuntu image download:
    ```bash
-   kubectl get jobs -n tink-system --watch
+   kubectl get jobs -n tinkerbell --watch
    NAME                    COMPLETIONS   DURATION   AGE
    download-ubuntu-jammy   0/1           49s        49s
    download-ubuntu-jammy   0/1           70s        70s
@@ -391,7 +391,7 @@ This option will also create a VM and provision an OS onto it.
    ```
    HookOS pod:
    ```bash
-   kubectl get pods -n tink-system --watch
+   kubectl get pods -n tinkerbell --watch
    NAME                          READY   STATUS      RESTARTS   AGE
    download-ubuntu-jammy-2w4wn   0/1     Completed   0          38m
    hookos-58b848576b-hzsv4       2/2     Running     0          38m
@@ -455,7 +455,7 @@ This option will also create a VM and provision an OS onto it.
 
    # watch for the workflow to complete
    # once the workflow is complete (see the expected output below for completion), move on to the next step
-   kubectl get -n tink-system workflow playground-workflow --watch
+   kubectl get -n tinkerbell workflow playground-workflow --watch
    ```
 
    <details>
