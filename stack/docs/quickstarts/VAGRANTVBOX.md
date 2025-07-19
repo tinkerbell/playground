@@ -349,26 +349,39 @@ This option will also create a VM and provision an OS onto it.
 
    </details>
 
-1. Wait for HookOS and Ubuntu image to be downloaded
+1. Wait for Ubuntu image and HookOS to be downloaded
 
    ```bash
    vagrant ssh stack
    kubectl get jobs -n tink-system --watch
+   kubectl get pods -n tink-system --watch
    exit
-   # There are 2 Kubernetes jobs that run to download HookOS and the Ubuntu image.
-   # Once both jobs are complete exit the stack VM.
+   # There is one Kubernetes job to download the Ubuntu image and an init
+   # container in the hookos pod downloading the HookOS artifacts.
+   # Once the job is completed and the hookos pod is in running state, exit
+   # the stack VM.
    ```
 
    <details>
    <summary>example output</summary>
 
+   Ubuntu image download:
    ```bash
+   kubectl get jobs -n tink-system --watch
    NAME                    COMPLETIONS   DURATION   AGE
-   download-hook           1/1           27s        72s
    download-ubuntu-jammy   0/1           49s        49s
    download-ubuntu-jammy   0/1           70s        70s
    download-ubuntu-jammy   0/1           72s        72s
    download-ubuntu-jammy   1/1           72s        72s
+   ```
+   HookOS pod:
+   ```bash
+   kubectl get pods -n tink-system --watch
+   NAME                          READY   STATUS      RESTARTS   AGE
+   download-ubuntu-jammy-2w4wn   0/1     Completed   0          38m
+   hookos-58b848576b-hzsv4       2/2     Running     0          38m
+   kube-vip-kzr6k                1/1     Running     0          38m
+   tinkerbell-94b85bb97-tkr9q    1/1     Running     0          38m
    ```
 
    </details>
@@ -469,4 +482,11 @@ This option will also create a VM and provision an OS onto it.
 
    ```bash
    ssh tink@192.168.56.43 # user/pass => tink/tink
+   ```
+
+1. Clean up
+
+   After you're done with the playground, clean up all VMs:
+   ```bash
+   vagrant destroy
    ```

@@ -24,35 +24,28 @@ You will need to bring your own hardware (machine) for this guide.
 
 1. Install the Tinkerbell stack Helm chart
 
-   ```bash
-   trusted_proxies=$(kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ',')
-   LB_IP=<specify a Load balancer IP>
-   STACK_CHART_VERSION=0.6.2
-   helm install tink-stack oci://ghcr.io/tinkerbell/charts/stack --version "$STACK_CHART_VERSION" --create-namespace --namespace tink --wait --set "global.trustedProxies={${trusted_proxies}}" --set "global.publicIP=$LB_IP"
-   ```
-
-   > These instructions above should be checked against the Charts repo before using. See the [README.md](https://github.com/tinkerbell/charts/tree/main/tinkerbell/stack) in the Helm chart repository for more information on how to use the Helm chart.
+   To install Tinkerbell, follow the official [install documentation](https://tinkerbell.org/docs/setup/install/).
 
 1. Verify the stack is up and running
 
    ```bash
-   kubectl get pods -n tink-system # verify all pods are running
-   kubectl get svc -n tink-system # Verify the tink-stack service has the IP you specified with $LB_IP under the EXTERNAL-IP column
+   kubectl get pods -n tinkerbell # verify all pods are running
+   kubectl get svc -n tinkerbell # Verify the tink-stack service has the IP you specified with $LB_IP under the EXTERNAL-IP column
    ```
 
 1. Download and convert a cloud image to a raw image
 
    ```bash
-   kubectl apply -n tink-system -f https://raw.githubusercontent.com/tinkerbell/playground/main/vagrant/ubuntu-download.yaml
+   kubectl apply -n tinkerbell -f https://raw.githubusercontent.com/tinkerbell/playground/refs/heads/main/stack/vagrant/ubuntu-download.yaml
    # This will download and convert the Ubuntu Jammy 22.04 cloud image.
    ```
 
-1. Create and/or customize Hardware, Template, and Workflow objects and apply them to the cluster. You can use the Hardware, Template, and Workflow in this repo, in the `vagrant/` directory, as a base from which to start.
+1. Create and/or customize Hardware, Template, and Workflow objects and apply them to the cluster. You can use the Hardware, Template, and Workflow in this repo, in the `stack/vagrant/` directory, as a base from which to start.
 
    ```bash
-   kubectl apply -n tink-system -f my-hardware.yaml
-   kubectl apply -n tink-system -f my-template.yaml
-   kubectl apply -n tink-system -f my-workflow.yaml
+   kubectl apply -n tinkerbell -f my-hardware.yaml
+   kubectl apply -n tinkerbell -f my-template.yaml
+   kubectl apply -n tinkerbell -f my-workflow.yaml
    ```
 
 1. Start the machine provision process by rebooting, into a netbooting state, the machine you have specified in the Hardware object above.
@@ -60,6 +53,6 @@ You will need to bring your own hardware (machine) for this guide.
 1. Watch the progress of the workflow.
 
    ```bash
-   kubectl get workflow -n tink-system --watch
-   # Once the workflow is state is `STATE_SUCCESS`, you can login to the machine via the console or via SSH.
+   kubectl get workflow -n tinkerbell --watch
+   # Once the workflow state is `SUCCESS`, you can login to the machine via the console or via SSH.
    ```
