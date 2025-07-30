@@ -115,16 +115,16 @@ tasks:
         echo
         echo
         echo 2. Watch and wait for the Kubernetes API server to be ready and responding:
-        echo "until KUBECONFIG={{CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
+        echo "until KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
         echo
         echo 3. Deploy a CNI
         echo Cilium
-        echo "KUBECONFIG={{CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig cilium install"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig cilium install"
         echo or KUBEROUTER
-        echo "KUBECONFIG={{CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl apply -f https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl apply -f https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml"
         echo
         echo 4. Watch and wait for all nodes to join the cluster and be ready:
-        echo "KUBECONFIG={{CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get nodes -w"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get nodes -w"
       - touch {{.OUTPUT_DIR}}/.next-steps-displayed
     status:
       - echo ;[ -f {{.OUTPUT_DIR}}/.next-steps-displayed ]
