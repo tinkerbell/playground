@@ -81,9 +81,9 @@ helm_install_tink_stack() {
 		--wait \
 		--set "trustedProxies={${trusted_proxies}}" \
 		--set "publicIP=$loadbalancer_ip" \
-		--set "artifactsFileServer=http://$loadbalancer_ip_2:8080" \
+		--set "artifactsFileServer=http://$loadbalancer_ip_2:7173" \
 		--set "deployment.init.sourceInterface=$interface" \
-		--set "kubevip.interface=$interface"
+		--set "optional.kubevip.interface=$interface"
 }
 
 apply_manifests() {
@@ -119,7 +119,7 @@ run_helm() {
 	local helm_chart_version=$6
 	local loadbalancer_interface=$7
 	local k3d_version=$8
-	local namespace="tink-system"
+	local namespace="tinkerbell"
 	local helm_version=$9
 	local loadbalancer_ip_2="${10}"
 
