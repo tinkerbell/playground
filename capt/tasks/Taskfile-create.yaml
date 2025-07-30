@@ -108,7 +108,7 @@ tasks:
       LB_IP2:
         sh: yq eval '.tinkerbell.hookosVip' {{.STATE_FILE_FQ_PATH}}
       TRUSTED_PROXIES:
-        sh: KUBECONFIG={{.KUBECONFIG}} kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
+        sh: KUBECONFIG={{.KUBECONFIG}} kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ','
       STACK_CHART_VERSION:
         sh: yq eval '.versions.chart' {{.STATE_FILE_FQ_PATH}}
       NAMESPACE:
@@ -124,8 +124,8 @@ tasks:
         - artifactsFileServer=http://{{.LB_IP2}}:7173
       ISO_VARS:
         - deployment.envs.smee.dhcpEnabled=false
-        - optional.hookos.extension=both
         - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/hook-latest-lts-x86_64-efi-initrd.iso
+        - optional.hookos.extension=both
       EXTRA_VARS:
         sh: yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs
     cmds:
