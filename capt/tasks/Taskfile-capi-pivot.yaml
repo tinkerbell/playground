@@ -1,0 +1,135 @@
+version: "3"
+
+includes:
+  delete: ./Taskfile-delete.yaml
+
+vars:
+  OUTPUT_DIR:
+    sh: yq eval '.outputDir' config.yaml
+  CURR_DIR:
+    sh: pwd
+  STATE_FILE: ".state"
+  STATE_FILE_FQ_PATH:
+    sh: echo {{joinPath .CURR_DIR .STATE_FILE}}
+  CONFIG_FILE_FQ_PATH:
+    sh: echo {{joinPath .CURR_DIR "config.yaml"}}
+  CLUSTER_NAME:
+    sh: yq eval '.clusterName' config.yaml
+  MGMT_KUBECONFIG:
+    sh: echo {{list .CLUSTER_NAME "kubeconfig" | join "." | joinPath .CURR_DIR .OUTPUT_DIR}}
+  KIND_KUBECONFIG:
+    sh: echo {{ joinPath .CURR_DIR .OUTPUT_DIR "kind.kubeconfig"}}
+
+tasks:
+  ordered:
+    summary: |
+      CAPI pivot tasks run in order of dependency.
+    vars:
+      KUBECONFIG: "{{.MGMT_KUBECONFIG}}"
+    cmds:
+      - task: deploy-tinkerbell-helm-chart
+      - task: init
+      - task: pivot
+      - task: remove-kind-cluster
+
+  deploy-tinkerbell-helm-chart:
+    run: once
+    summary: |
+      Deploy the Tinkerbell Helm chart.
+    vars:
+      KUBECONFIG: "{{.MGMT_KUBECONFIG}}"
+      LB_IP:
+        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+      LB_IP2:
+        sh: yq eval '.tinkerbell.hookosVip' {{.STATE_FILE_FQ_PATH}}
+      TRUSTED_PROXIES:
+        sh: KUBECONFIG={{.KUBECONFIG}} kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ','
+      STACK_CHART_VERSION:
+        sh: yq eval '.versions.chart' {{.STATE_FILE_FQ_PATH}}
+      NAMESPACE:
+        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+      LOCATION:
+        sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
+      CHART_NAME: tinkerbell
+      BOOTMODE:
+        sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
+      GLOBAL_VARS:
+        - trustedProxies={"{{.TRUSTED_PROXIES}}"}
+        - publicIP={{.LB_IP}}
+        - artifactsFileServer=http://{{.LB_IP2}}:7173
+      ISO_VARS:
+        - deployment.envs.smee.dhcpEnabled=false
+        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/hook-latest-lts-x86_64-efi-initrd.iso
+        - optional.hookos.extension=both
+      EXTRA_VARS:
+        sh: yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs
+    cmds:
+      - KUBECONFIG="{{.MGMT_KUBECONFIG}}" helm upgrade --install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .GLOBAL_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }} {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
+    status:
+      - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]
+
+  init:
+    run: once
+    deps: [deploy-tinkerbell-helm-chart]
+    summary: |
+      Initialize the cluster.
+    env:
+      TINKERBELL_IP:
+        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+      CLUSTERCTL_DISABLE_VERSIONCHECK: true
+      XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
+      XDG_STATE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CACHE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_RUNTIME_DIR: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
+    vars:
+      OUTPUT_DIR:
+        sh: echo $(yq eval '.outputDir' config.yaml)
+      KIND_GATEWAY_IP:
+        sh: yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}
+      KUBECONFIG: "{{.MGMT_KUBECONFIG}}"
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG}}" clusterctl --config {{.OUTPUT_DIR}}/clusterctl.yaml init --infrastructure tinkerbell
+    status:
+      - expected=1; got=$(KUBECONFIG="{{.KUBECONFIG}}" kubectl get pods -n capt-system |grep -ce "capt-controller"); [[ "$got" == "$expected" ]]
+
+  pivot:
+    run: once
+    deps: [init]
+    summary: |
+      Pivot the workload cluster (the initial mgmt cluster) to the permanent management cluster.
+    env:
+      CLUSTERCTL_DISABLE_VERSIONCHECK: true
+      XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
+      XDG_STATE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_CACHE_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_RUNTIME_DIR: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
+      XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
+    vars:
+      OUTPUT_DIR:
+        sh: echo $(yq eval '.outputDir' config.yaml)
+      NAMESPACE:
+        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+    cmds:
+      - KUBECONFIG="{{.KIND_KUBECONFIG}}" clusterctl move --to-kubeconfig="{{.MGMT_KUBECONFIG}}" --config {{.OUTPUT_DIR}}/clusterctl.yaml --kubeconfig "{{.KIND_KUBECONFIG}}" -n {{.NAMESPACE}}
+    status:
+      - expected=1; result=$(KUBECONFIG="{{.KIND_KUBECONFIG}}" kubectl get hw,machine.bmc -A | grep -i -e "hardware" -e "machine" && echo $? || echo $?); [[ "$result" == "$expected" ]]
+      - KUBECONFIG="{{.MGMT_KUBECONFIG}}" kubectl get hw,machine.bmc -A | grep -i -e "hardware" -e "machine"
+
+  prompt-remove-kind-cluster:
+    deps: [pivot]
+    prompt: Should the KinD cluster be deleted? Press `y` to delete the KinD cluster. Press `n` to exit.
+    cmds:
+      - echo 'Deleting the KinD cluster...'
+
+  remove-kind-cluster:
+    run: once
+    deps: [prompt-remove-kind-cluster]
+    summary: |
+      Remove the kind cluster.
+    cmds:
+      - task: delete:kind-cluster

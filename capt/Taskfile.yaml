@@ -5,6 +5,7 @@ includes:
   delete: ./tasks/Taskfile-delete.yaml
   vbmc: ./tasks/Taskfile-vbmc.yaml
   capi: ./tasks/Taskfile-capi.yaml
+  capi-pivot: ./tasks/Taskfile-capi-pivot.yaml
 
 vars:
   OUTPUT_DIR:
@@ -14,6 +15,8 @@ vars:
   STATE_FILE: ".state"
   STATE_FILE_FQ_PATH:
     sh: echo {{joinPath .CURR_DIR .STATE_FILE}}
+  CONFIG_FILE_FQ_PATH:
+    sh: echo {{joinPath .CURR_DIR "config.yaml"}}
 
 tasks:
   create-playground:
@@ -108,20 +111,27 @@ tasks:
         echo The workload cluster kubeconfig is located at: {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
         echo
         echo 1. Watch and wait for the first control plane node to be provisioned successfully: STATE_SUCCESS
-        echo "KUBECONFIG={{.KIND_KUBECONFIG}} kubectl get workflows -n {{.NAMESPACE}} -w"
+        echo "KUBECONFIG={{.KIND_KUBECONFIG}} kubectl get workflows -n {{.NAMESPACE}} -o wide -w"
         echo
         echo
         echo 2. Watch and wait for the Kubernetes API server to be ready and responding:
-        echo "until KUBECONFIG={{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
+        echo "until KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
         echo
         echo 3. Deploy a CNI
         echo Cilium
-        echo "KUBECONFIG={{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig cilium install"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig cilium install"
         echo or KUBEROUTER
-        echo "KUBECONFIG={{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl apply -f https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl apply -f https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml"
         echo
         echo 4. Watch and wait for all nodes to join the cluster and be ready:
-        echo "KUBECONFIG={{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get nodes -w"
+        echo "KUBECONFIG={{.CURR_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get nodes -w"
       - touch {{.OUTPUT_DIR}}/.next-steps-displayed
     status:
       - echo ;[ -f {{.OUTPUT_DIR}}/.next-steps-displayed ]
+
+  pivot:
+    silent: true
+    summary: |
+      Pivot the workload cluster to the permanent management cluster.
+    cmds:
+      - task: capi-pivot:ordered

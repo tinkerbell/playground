@@ -129,7 +129,7 @@ tasks:
       BOOTMODE:
         sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
       KUSTOMIZE_FILE:
-        sh: "[[ {{.BOOTMODE}} == 'iso' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
+        sh: "[[ {{.BOOTMODE}} == 'isoboot' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
     sources:
       - config.yaml
     generates:

@@ -53,7 +53,7 @@ patches:
                       CONTENTS: |
                         datasource:
                           Ec2:
-                            metadata_urls: ["http://$TINKERBELL_VIP:50061"]
+                            metadata_urls: ["http://$TINKERBELL_VIP:7172"]
                             strict_id: false
                         system_info:
                           default_user:
@@ -78,7 +78,7 @@ patches:
                       CONTENTS: |
                         datasource: Ec2
                   - name: "kexec image"
-                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.2
                     timeout: 90
                     pid: host
                     environment:
@@ -137,7 +137,7 @@ patches:
                       CONTENTS: |
                         datasource:
                           Ec2:
-                            metadata_urls: ["http://$TINKERBELL_VIP:50061"]
+                            metadata_urls: ["http://$TINKERBELL_VIP:7172"]
                             strict_id: false
                         system_info:
                           default_user:
@@ -162,7 +162,7 @@ patches:
                       CONTENTS: |
                         datasource: Ec2
                   - name: "kexec image"
-                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.1
+                    image: ghcr.io/jacobweinstock/waitdaemon:0.2.2
                     timeout: 90
                     pid: host
                     environment:

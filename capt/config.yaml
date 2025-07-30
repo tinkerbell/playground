@@ -1,23 +1,24 @@
 ---
 clusterName: "capt-playground"
 outputDir: "output"
-namespace: "tink"
+namespace: "tinkerbell"
 counts:
   controlPlanes: 1
   workers: 1
   spares: 1
 versions:
-  capt: v0.6.1
-  chart: 0.6.1
-  kube: v1.29.4
+  capt: v0.6.5
+  chart: v0.19.2
+  kube: v1.31.3
   os: 20.04
-  kubevip: 0.8.7
+  kubevip: 0.9.1
 capt:
   providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
   #providerRepository: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
 chart:
-  location: "oci://ghcr.io/tinkerbell/charts/stack"
-  #location: "/home/tink/repos/tinkerbell/charts/tinkerbell/stack"
+  location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
+  #location: "/home/tink/repos/tinkerbell/tinkerbell/helm/tinkerbell"
+  extraVars:
 os:
   registry: ghcr.io/tinkerbell/cluster-api-provider-tinkerbell
   distro: ubuntu
