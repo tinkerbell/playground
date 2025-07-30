@@ -8,8 +8,8 @@ counts:
   spares: 1
 versions:
   capt: v0.6.5
-  chart: v0.19.0
-  kube: v1.29.4
+  chart: v0.19.2
+  kube: v1.31.3
   os: 20.04
   kubevip: 0.9.1
 capt:
@@ -19,9 +19,6 @@ chart:
   location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
   #location: "/home/tink/repos/tinkerbell/tinkerbell/helm/tinkerbell"
   extraVars:
-  #- deployment.image=your.registry.com/tinkerbell/tinkerbell
-  #- deployment.imageTag=v0.19.1
-  #- deployment.agentImageTag=latest
 os:
   registry: ghcr.io/tinkerbell/cluster-api-provider-tinkerbell
   distro: ubuntu
