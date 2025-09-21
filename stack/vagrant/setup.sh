@@ -107,7 +107,6 @@ apply_manifests() {
 		echo -e '---'
 	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
-	kubectl apply -n "$namespace" -f "$manifests_dir"/ubuntu-download.yaml
 }
 
 run_helm() {

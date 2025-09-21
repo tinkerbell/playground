@@ -16,12 +16,11 @@ spec:
           - /lib/firmware:/lib/firmware:ro
         actions:
           - name: "stream ubuntu image"
-            image: quay.io/tinkerbell/actions/image2disk:latest
+            image: quay.io/tinkerbell/actions/qemuimg2disk:latest
             timeout: 600
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}
-              IMG_URL: "http://$TINKERBELL_HOST_IP:7173/jammy-server-cloudimg-amd64.raw.gz"
-              COMPRESSED: true
+              IMG_URL: "https://cloud-images.ubuntu.com/daily/server/jammy/current/jammy-server-cloudimg-amd64.img"
           - name: "grow-partition"
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90

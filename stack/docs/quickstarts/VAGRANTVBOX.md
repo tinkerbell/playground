@@ -334,9 +334,6 @@ This option will also create a VM and provision an OS onto it.
         stack: hardware.tinkerbell.org/machine1 created
         stack: template.tinkerbell.org/ubuntu-jammy created
         stack: workflow.tinkerbell.org/playground-workflow created
-        stack: + kubectl apply -n tink-system -f /playground/stack//ubuntu-download.yaml
-        stack: configmap/download-image created
-        stack: job.batch/download-ubuntu-jammy created
         stack: + kubectl_for_vagrant_user
         stack: + runuser -l vagrant -c 'mkdir -p ~/.kube/'
         stack: + runuser -l vagrant -c 'k3d kubeconfig get -a > ~/.kube/config'
@@ -349,39 +346,24 @@ This option will also create a VM and provision an OS onto it.
 
    </details>
 
-1. Wait for Ubuntu image and HookOS to be downloaded
+1. Wait for HookOS to be downloaded
 
    ```bash
    vagrant ssh stack
-   kubectl get jobs -n tinkerbell --watch
    kubectl get pods -n tinkerbell --watch
    exit
-   # There is one Kubernetes job to download the Ubuntu image and an init
-   # container in the hookos pod downloading the HookOS artifacts.
-   # Once the job is completed and the hookos pod is in running state, exit
-   # the stack VM.
+   # There is an init container in the hookos pod downloading the HookOS artifacts.
+   # Once the hookos pod is in running state, exit the stack VM.
    ```
 
    <details>
    <summary>example output</summary>
-
-   Ubuntu image download:
-
-   ```bash
-   kubectl get jobs -n tinkerbell --watch
-   NAME                    COMPLETIONS   DURATION   AGE
-   download-ubuntu-jammy   0/1           49s        49s
-   download-ubuntu-jammy   0/1           70s        70s
-   download-ubuntu-jammy   0/1           72s        72s
-   download-ubuntu-jammy   1/1           72s        72s
-   ```
 
    HookOS pod:
 
    ```bash
    kubectl get pods -n tinkerbell --watch
    NAME                          READY   STATUS      RESTARTS   AGE
-   download-ubuntu-jammy-2w4wn   0/1     Completed   0          38m
    hookos-58b848576b-hzsv4       2/2     Running     0          38m
    kube-vip-kzr6k                1/1     Running     0          38m
    tinkerbell-94b85bb97-tkr9q    1/1     Running     0          38m
