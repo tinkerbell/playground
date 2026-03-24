@@ -8,7 +8,7 @@ counts:
   spares: 1
 versions:
   capt: v0.6.7
-  chart: v0.21.0
+  chart: v0.23.0
   kube: v1.31.3
   os: 20.04
   kubevip: 0.9.1
@@ -21,6 +21,7 @@ chart:
   extraVars:
     # - deployment.imagePullPolicy=Always
     - optional.hookos.downloadURL=https://github.com/tinkerbell/hook/releases/download/latest
+    - deployment.envs.ui.enableAutoLogin=true
 os:
   registry: ghcr.io/tinkerbell/cluster-api-provider-tinkerbell
   distro: ubuntu
