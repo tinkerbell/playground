@@ -47,8 +47,10 @@ install_k3d() {
 }
 
 start_k3d() {
+	local k8s_version=$1
+
 	# K3D_FIX_DNS=false is needed because host network mode won't work without it.
-	K3D_FIX_DNS=false k3d cluster create --network host --no-lb --k3s-arg "--disable=traefik,servicelb,metrics-server,local-storage"
+	K3D_FIX_DNS=false k3d cluster create --network host --no-lb --k3s-arg "--disable=traefik,servicelb,metrics-server,local-storage" --image rancher/k3s:"v$k8s_version-k3s1"
 
 	mkdir -p ~/.kube/
 	k3d kubeconfig get -a >~/.kube/config
@@ -83,6 +85,11 @@ helm_install_tink_stack() {
 		--set "publicIP=$loadbalancer_ip" \
 		--set "artifactsFileServer=http://$loadbalancer_ip_2:7173" \
 		--set "deployment.init.sourceInterface=$interface" \
+                --set "deployment.envs.ui.enableAutoLogin=true" \
+		--set "optional.captainos.enabled=true" \
+		--set "optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ea7a56" \
+                --set "deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-6.18.16" \
+                --set "deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-6.18.16" \
 		--set "optional.kubevip.interface=$interface"
 }
 
@@ -124,7 +131,7 @@ run_helm() {
 	local loadbalancer_ip_2="${10}"
 
 	install_k3d "$k3d_version"
-	start_k3d
+	start_k3d "$kubectl_version"
 	kubectl_for_vagrant_user
 	install_helm "$helm_version"
 	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip" "$loadbalancer_ip_2"
@@ -160,3 +167,4 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
 	main "$@"
 	echo "all done!"
 fi
+
