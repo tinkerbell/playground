@@ -393,61 +393,61 @@ This option will also create a VM and provision an OS onto it.
 
 > If you are on Apple M-series `arm64` skip to the next section.
 
-   ```bash
-   vagrant up machine1
-   # This will start a VM to pxe boot. A GUI window of this machines console will be opened.
-   # The `vagrant up machine1` command will exit quickly and show the following error message. This is expected.
-   # Once the command line control is returned to you, you can move on to the next step.
-   ```
+```bash
+vagrant up machine1
+# This will start a VM to pxe boot. A GUI window of this machines console will be opened.
+# The `vagrant up machine1` command will exit quickly and show the following error message. This is expected.
+# Once the command line control is returned to you, you can move on to the next step.
+```
 
    <details>
    <summary>example output</summary>
 
-   ```bash
-   Bringing machine 'machine1' up with 'virtualbox' provider...
-   ==> machine1: Importing base box 'jtyr/pxe'...
-   ==> machine1: Matching MAC address for NAT networking...
-   ==> machine1: Checking if box 'jtyr/pxe' version '2' is up to date...
-   ==> machine1: Setting the name of the VM: vagrant_machine1_1626365105119_9800
-   ==> machine1: Fixed port collision for 22 => 2222. Now on port 2200.
-   ==> machine1: Clearing any previously set network interfaces...
-   ==> machine1: Preparing network interfaces based on configuration...
-       machine1: Adapter 1: hostonly
-   ==> machine1: Forwarding ports...
-       machine1: 22 (guest) => 2200 (host) (adapter 1)
-       machine1: VirtualBox adapter #1 not configured as "NAT". Skipping port
-       machine1: forwards on this adapter.
-   ==> machine1: Running 'pre-boot' VM customizations...
-   ==> machine1: Booting VM...
-   ==> machine1: Waiting for machine to boot. This may take a few minutes...
-       machine1: SSH address: 127.0.0.1:22
-       machine1: SSH username: vagrant
-       machine1: SSH auth method: private key
-       machine1: Warning: Authentication failure. Retrying...
-   Timed out while waiting for the machine to boot. This means that
-   Vagrant was unable to communicate with the guest machine within
-   the configured ("config.vm.boot_timeout" value) time period.
+```bash
+Bringing machine 'machine1' up with 'virtualbox' provider...
+==> machine1: Importing base box 'jtyr/pxe'...
+==> machine1: Matching MAC address for NAT networking...
+==> machine1: Checking if box 'jtyr/pxe' version '2' is up to date...
+==> machine1: Setting the name of the VM: vagrant_machine1_1626365105119_9800
+==> machine1: Fixed port collision for 22 => 2222. Now on port 2200.
+==> machine1: Clearing any previously set network interfaces...
+==> machine1: Preparing network interfaces based on configuration...
+    machine1: Adapter 1: hostonly
+==> machine1: Forwarding ports...
+    machine1: 22 (guest) => 2200 (host) (adapter 1)
+    machine1: VirtualBox adapter #1 not configured as "NAT". Skipping port
+    machine1: forwards on this adapter.
+==> machine1: Running 'pre-boot' VM customizations...
+==> machine1: Booting VM...
+==> machine1: Waiting for machine to boot. This may take a few minutes...
+    machine1: SSH address: 127.0.0.1:22
+    machine1: SSH username: vagrant
+    machine1: SSH auth method: private key
+    machine1: Warning: Authentication failure. Retrying...
+Timed out while waiting for the machine to boot. This means that
+Vagrant was unable to communicate with the guest machine within
+the configured ("config.vm.boot_timeout" value) time period.
 
-   If you look above, you should be able to see the error(s) that
-   Vagrant had when attempting to connect to the machine. These errors
-   are usually good hints as to what may be wrong.
+If you look above, you should be able to see the error(s) that
+Vagrant had when attempting to connect to the machine. These errors
+are usually good hints as to what may be wrong.
 
-   If you're using a custom box, make sure that networking is properly
-   working and you're able to connect to the machine. It is a common
-   problem that networking isn't setup properly in these boxes.
-   Verify that authentication configurations are also setup properly,
-   as well.
+If you're using a custom box, make sure that networking is properly
+working and you're able to connect to the machine. It is a common
+problem that networking isn't setup properly in these boxes.
+Verify that authentication configurations are also setup properly,
+as well.
 
-   If the box appears to be booting properly, you may want to increase
-   the timeout ("config.vm.boot_timeout") value.
+If the box appears to be booting properly, you may want to increase
+the timeout ("config.vm.boot_timeout") value.
 
-   ```
+```
 
    </details>
 
 1. Start the machine to be provisioned (Apple Silicon M-series ARM64)
 
-The  `machine1` PXE doesn't work because there is no support (now?) network boot on Macs.
+The `machine1` PXE doesn't work because there is no support (now?) network boot on Macs.
 Instead start the `arm_machine1`:
 
 ```bash

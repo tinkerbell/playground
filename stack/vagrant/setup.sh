@@ -87,11 +87,11 @@ helm_install_tink_stack() {
 		--set "publicIP=$loadbalancer_ip" \
 		--set "artifactsFileServer=http://$loadbalancer_ip_2:7173" \
 		--set "deployment.init.sourceInterface=$interface" \
-                --set "deployment.envs.ui.enableAutoLogin=true" \
+		--set "deployment.envs.ui.enableAutoLogin=true" \
 		--set "optional.captainos.enabled=true" \
 		--set "optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ea7a56" \
-                --set "deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-6.18.16" \
-                --set "deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-6.18.16" \
+		--set "deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-6.18.16" \
+		--set "deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-6.18.16" \
 		--set "optional.kubevip.interface=$interface"
 }
 
@@ -116,7 +116,7 @@ apply_manifests() {
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
-	export TINKERBELL_CLIENT_ARCH="$(uname -p)" # (x86_64 | aarm64)
+	export TINKERBELL_CLIENT_ARCH="$(uname -p)"                                                          # (x86_64 | aarm64)
 	export TINKERBELL_CLIENT_PLATFORM="$(uname -p | sed 's/^aarch64$/arm64/' | sed 's/^x86_64$/amd64/')" # (amd64 | arm64)
 	export TINKERBELL_CLIENT_GATEWAY="$gateway_ip"
 
