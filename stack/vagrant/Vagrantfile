@@ -1,6 +1,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require "rbconfig"
+
 open(".env", "r").readlines.each {
   |l|
   kv = l.split("=")
@@ -9,11 +11,25 @@ open(".env", "r").readlines.each {
   end
 }
 
+HOST_CPU = RbConfig::CONFIG["host_cpu"]
+HOST_OS = RbConfig::CONFIG["host_os"]
+APPLE_SILICON = HOST_OS.include?("darwin") && ["arm64", "aarch64"].include?(HOST_CPU)
+VM_BOX = ENV["STACK_BOX"] || (APPLE_SILICON ? "bento/ubuntu-22.04" : "generic/ubuntu2204")
+ARM_MACHINE_HYPERVISOR_IP = ENV["ARM_MACHINE_HYPERVISOR_IP"] || "192.168.56.100"
+ARM_MACHINE_HYPERVISOR_NET = ENV["ARM_MACHINE_HYPERVISOR_NET"] || "192.168.56.0/24"
+
 LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.40"
 LOADBALANCER_IP_2 = ENV["LOADBALANCER_IP_2"] || "192.168.56.41"
 GATEWAY_IP = ENV["GATEWAY_IP"] || ""
+# Overwrite GATEWAY_IP on Apple ARM to ARM_MACHINE_HYPERVISOR_IP if it's not set
+GATEWAY_IP =
+  if APPLE_SILICON && GATEWAY_IP.empty?
+    ARM_MACHINE_HYPERVISOR_IP
+  else
+    GATEWAY_IP
+  end
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
 HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.19.1"
@@ -29,7 +45,9 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "stack" do |stack|
-    stack.vm.box = "generic/ubuntu2204"
+    stack.vm.hostname = "stack"
+
+    stack.vm.box = VM_BOX
     stack.vm.synced_folder "", DEST_DIR_BASE
     stack.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
                                         libvirt__network_name: "tink_network",
@@ -81,6 +99,43 @@ Vagrant.configure("2") do |config|
       v.customize ["modifyvm", :id, "--macaddress1", MACHINE1_MAC.gsub(/[:-]/, "").strip]
       v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
+    end
+  end
+
+  config.vm.define "arm_machine1", autostart: false do |arm_machine1|
+    arm_machine1.vm.synced_folder ".", "/vagrant", disabled: true
+    arm_machine1.vm.network "private_network", ip: ARM_MACHINE_HYPERVISOR_IP
+    arm_machine1.vm.hostname = "arm-machine1"
+
+    arm_machine1.vm.provider "virtualbox" do |v, override|
+      override.vm.box = VM_BOX
+      v.memory = 2048
+      v.cpus = 2
+      v.gui = false
+
+      arm_machine1.vm.provision "shell", inline: <<-SHELL
+        sudo apt-get update
+        sudo apt-get install -y bridge-utils qemu-system-aarch64
+
+        sudo ip link add name br0 type bridge || true
+        sudo ip link set eth1 master br0
+        sudo ip addr flush dev eth1
+        sudo ip link set eth1 up
+        sudo ip link set br0 up
+        sudo ip a add #{ARM_MACHINE_HYPERVISOR_IP}/24 dev br0 || true
+
+        sudo mkdir -p /etc/qemu
+        printf 'allow %s\n' "br0" | sudo tee /etc/qemu/bridge.conf >/dev/null
+        sudo chown root:root /etc/qemu/bridge.conf
+        sudo chmod 0640 /etc/qemu/bridge.conf
+
+        sudo sysctl -w net.ipv4.ip_forward=1
+        echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/99-ipforward.conf
+
+        sudo iptables -t nat -A POSTROUTING -s #{ARM_MACHINE_HYPERVISOR_NET} -o eth0 -j MASQUERADE
+        sudo iptables -A FORWARD -i br0 -o eth0 -j ACCEPT
+        sudo iptables -A FORWARD -i eth0 -o br0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+        SHELL
     end
   end
 end

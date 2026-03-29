@@ -391,6 +391,8 @@ This option will also create a VM and provision an OS onto it.
 
 1. Start the machine to be provisioned
 
+> If you are on Apple M-series `arm64` skip to the next section.
+
    ```bash
    vagrant up machine1
    # This will start a VM to pxe boot. A GUI window of this machines console will be opened.
@@ -442,6 +444,40 @@ This option will also create a VM and provision an OS onto it.
    ```
 
    </details>
+
+1. Start the machine to be provisioned (Apple Silicon M-series ARM64)
+
+The  `machine1` PXE doesn't work because there is no support (now?) network boot on Macs.
+Instead start the `arm_machine1`:
+
+```bash
+vagrant up arm_machine1
+```
+
+It's a hypervisor where you can run `qemu` vm to play with tinkerbell.
+
+1. Create a disk:
+
+```bash
+qemu-img create -f qcow2 disk.qcow2 10G
+```
+
+```bash
+
+2. Bootstrap a VM:
+sudo qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a57 \
+  -m 2048 \
+  -nographic \
+  -bios /usr/share/AAVMF/AAVMF_CODE.fd \
+  -netdev bridge,id=net0,br=br0 \
+  -device virtio-net-pci,netdev=net0,mac=08:00:27:9e:f5:3a,bootindex=2 \
+  -drive if=none,file=disk.qcow2,format=qcow2,id=vd0 \
+  -device virtio-blk-pci,drive=vd0,bootindex=1
+```
+
+The boot priority is disk first, and pxe network second.
 
 1. Watch the provision complete
 

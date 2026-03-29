@@ -10,8 +10,9 @@ install_docker() {
 
 install_kubectl() {
 	local kubectl_version=$1
+	local platform=$(uname -p | sed 's/^aarch64$/arm64/' | sed 's/^x86_64$/amd64/')
 
-	curl -LO https://dl.k8s.io/v"$kubectl_version"/bin/linux/amd64/kubectl
+	curl -LO https://dl.k8s.io/v"$kubectl_version"/bin/linux/${platform}/kubectl
 	chmod +x ./kubectl
 	mv ./kubectl /usr/local/bin/kubectl
 }
@@ -81,6 +82,7 @@ helm_install_tink_stack() {
 		--create-namespace \
 		--namespace "$namespace" \
 		--wait \
+		--timeout 15m \
 		--set "trustedProxies={${trusted_proxies}}" \
 		--set "publicIP=$loadbalancer_ip" \
 		--set "artifactsFileServer=http://$loadbalancer_ip_2:7173" \
@@ -99,22 +101,31 @@ apply_manifests() {
 	local manifests_dir=$3
 	local host_ip=$4
 	local namespace=$5
+	local gateway_ip=$6
 
 	disk_device="/dev/sda"
 	if lsblk | grep -q vda; then
 		disk_device="/dev/vda"
 	fi
+
+	if uname -p | grep -q aarch64; then
+		disk_device="/dev/vda"
+	fi
+
 	export DISK_DEVICE="$disk_device"
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
+	export TINKERBELL_CLIENT_ARCH="$(uname -p)" # (x86_64 | aarm64)
+	export TINKERBELL_CLIENT_PLATFORM="$(uname -p | sed 's/^aarch64$/arm64/' | sed 's/^x86_64$/amd64/')" # (amd64 | arm64)
+	export TINKERBELL_CLIENT_GATEWAY="$gateway_ip"
 
-	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
+	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml,ubuntu-download.yaml}; do
 		envsubst <"$i"
 		echo -e '---'
 	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
-	kubectl apply -n "$namespace" -f "$manifests_dir"/ubuntu-download.yaml
+	kubectl apply -n "$namespace" -f "$manifests_dir"/download-entrypoint.yaml
 }
 
 run_helm() {
@@ -129,13 +140,14 @@ run_helm() {
 	local namespace="tinkerbell"
 	local helm_version=$9
 	local loadbalancer_ip_2="${10}"
+	local gateway_ip="${11}"
 
 	install_k3d "$k3d_version"
 	start_k3d "$kubectl_version"
 	kubectl_for_vagrant_user
 	install_helm "$helm_version"
 	helm_install_tink_stack "$namespace" "$helm_chart_version" "$loadbalancer_interface" "$loadbalancer_ip" "$loadbalancer_ip_2"
-	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip_2" "$namespace"
+	apply_manifests "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip_2" "$namespace" "$gateway_ip"
 }
 
 main() {
@@ -158,7 +170,7 @@ main() {
 	# Needed after iPXE increased the default TCP window size to 2MB.
 	sudo ethtool -K eth1 tx off sg off tso off
 	install_kubectl "$kubectl_version"
-	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$helm_version" "$loadbalancer_ip_2"
+	run_helm "$host_ip" "$worker_ip" "$worker_mac" "$manifests_dir" "$loadbalancer_ip" "$helm_chart_version" "$loadbalancer_interface" "$k3d_version" "$helm_version" "$loadbalancer_ip_2" "$gateway_ip"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
@@ -167,4 +179,3 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
 	main "$@"
 	echo "all done!"
 fi
-

@@ -17,11 +17,12 @@ spec:
         version: "20.04"
   interfaces:
     - dhcp:
-        arch: x86_64
+        arch: $TINKERBELL_CLIENT_ARCH
         hostname: machine1
         ip:
           address: $TINKERBELL_CLIENT_IP
           netmask: 255.255.255.0
+          gateway: $TINKERBELL_CLIENT_GATEWAY
         lease_time: 86400
         mac: $TINKERBELL_CLIENT_MAC
         name_servers:
