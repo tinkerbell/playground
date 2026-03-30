@@ -462,9 +462,9 @@ It's a hypervisor where you can run `qemu` vm to play with tinkerbell.
 qemu-img create -f qcow2 disk.qcow2 10G
 ```
 
-```bash
-
 2. Bootstrap a VM:
+
+```bash
 sudo qemu-system-aarch64 \
   -machine virt \
   -cpu cortex-a57 \

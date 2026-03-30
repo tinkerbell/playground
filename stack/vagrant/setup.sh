@@ -1,5 +1,23 @@
 #!/bin/bash
 
+host_arch() {
+	uname -m
+}
+
+normalized_platform() {
+	case "$(host_arch)" in
+	aarch64 | arm64)
+		echo arm64
+		;;
+	x86_64 | amd64)
+		echo amd64
+		;;
+	*)
+		host_arch
+		;;
+	esac
+}
+
 install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
@@ -10,7 +28,9 @@ install_docker() {
 
 install_kubectl() {
 	local kubectl_version=$1
-	local platform=$(uname -p | sed 's/^aarch64$/arm64/' | sed 's/^x86_64$/amd64/')
+	local platform
+
+	platform=$(normalized_platform)
 
 	curl -LO https://dl.k8s.io/v"$kubectl_version"/bin/linux/${platform}/kubectl
 	chmod +x ./kubectl
@@ -108,7 +128,7 @@ apply_manifests() {
 		disk_device="/dev/vda"
 	fi
 
-	if uname -p | grep -q aarch64; then
+	if [ "$(host_arch)" = "aarch64" ] || [ "$(host_arch)" = "arm64" ]; then
 		disk_device="/dev/vda"
 	fi
 
@@ -116,16 +136,16 @@ apply_manifests() {
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
-	export TINKERBELL_CLIENT_ARCH="$(uname -p)"                                                          # (x86_64 | aarm64)
-	export TINKERBELL_CLIENT_PLATFORM="$(uname -p | sed 's/^aarch64$/arm64/' | sed 's/^x86_64$/amd64/')" # (amd64 | arm64)
+	export TINKERBELL_CLIENT_ARCH="$(host_arch)"               # (x86_64 | aarch64)
+	export TINKERBELL_CLIENT_PLATFORM="$(normalized_platform)" # (amd64 | arm64)
 	export TINKERBELL_CLIENT_GATEWAY="$gateway_ip"
 
+	kubectl apply -n "$namespace" -f "$manifests_dir"/download-entrypoint.yaml
 	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml,ubuntu-download.yaml}; do
 		envsubst <"$i"
 		echo -e '---'
 	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
-	kubectl apply -n "$namespace" -f "$manifests_dir"/download-entrypoint.yaml
 }
 
 run_helm() {

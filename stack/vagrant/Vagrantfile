@@ -114,7 +114,7 @@ Vagrant.configure("2") do |config|
 
       arm_machine1.vm.provision "shell", inline: <<-SHELL
         sudo apt-get update
-        sudo apt-get install -y bridge-utils qemu-system-aarch64
+        sudo apt-get install -y bridge-utils qemu-system-aarch64 qemu-utils qemu-efi-aarch64
 
         sudo ip link add name br0 type bridge || true
         sudo ip link set eth1 master br0
@@ -131,9 +131,9 @@ Vagrant.configure("2") do |config|
         sudo sysctl -w net.ipv4.ip_forward=1
         echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/99-ipforward.conf
 
-        sudo iptables -t nat -A POSTROUTING -s #{ARM_MACHINE_HYPERVISOR_NET} -o eth0 -j MASQUERADE
-        sudo iptables -A FORWARD -i br0 -o eth0 -j ACCEPT
-        sudo iptables -A FORWARD -i eth0 -o br0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+        sudo iptables -t nat -C POSTROUTING -s #{ARM_MACHINE_HYPERVISOR_NET} -o eth0 -j MASQUERADE >/dev/null 2>&1 || sudo iptables -t nat -A POSTROUTING -s #{ARM_MACHINE_HYPERVISOR_NET} -o eth0 -j MASQUERADE
+        sudo iptables -C FORWARD -i br0 -o eth0 -j ACCEPT >/dev/null 2>&1 || sudo iptables -A FORWARD -i br0 -o eth0 -j ACCEPT
+        sudo iptables -C FORWARD -i eth0 -o br0 -m state --state RELATED,ESTABLISHED -j ACCEPT >/dev/null 2>&1 || sudo iptables -A FORWARD -i eth0 -o br0 -m state --state RELATED,ESTABLISHED -j ACCEPT
         SHELL
     end
   end
