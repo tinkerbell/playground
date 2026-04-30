@@ -3,6 +3,8 @@ version: "3"
 includes:
   vbmc: ./Taskfile-vbmc.yaml
   capi: ./Taskfile-capi.yaml
+  mirror: ./Taskfile-mirror.yaml
+  helm: ./Taskfile-helm.yaml
 
 tasks:
   playground-ordered:
@@ -11,6 +13,7 @@ tasks:
       Create the CAPT playground.
     cmds:
       - task: kind-cluster
+      - task: tinkerbell-kind-cluster
       - task: update-state
       - task: deploy-tinkerbell-helm-chart
       - task: vbmc:prepare
@@ -25,7 +28,9 @@ tasks:
       - task: apply-bmc-secret
       - task: apply-bmc-machines
       - task: apply-hardware
+      - task: create-external-kubeconfig-secret
       - task: capi:ordered
+      - task: ensure-mgmt-namespace
       - task: allow-customization
       - task: create-workload-cluster
       - task: get-workload-cluster-kubeconfig
@@ -37,101 +42,143 @@ tasks:
 
   kind-cluster:
     run: once
+    deps: [mirror:render-kind-config]
     summary: |
-      Install a KinD cluster.
+      Install the management KinD cluster.
     vars:
+      ENABLED:
+        sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
       CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
+      KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
+      KIND_CONFIG_FLAG: '{{if eq .ENABLED "true"}}--config {{.KIND_CONFIG}}{{end}}'
     cmds:
-      - kind create cluster --name {{.CLUSTER_NAME}} --kubeconfig "{{.KUBECONFIG}}"
+      - kind create cluster --name {{.CLUSTER_NAME}} --kubeconfig "{{.KUBECONFIG}}" {{.KIND_CONFIG_FLAG}}
       - until KUBECONFIG="{{.KUBECONFIG}}" kubectl wait --for=condition=ready node --all --timeout=5m; do echo "Waiting for nodes to be ready..."; sleep 1; done
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" kind get clusters | grep -q {{.CLUSTER_NAME}}
 
-  update-state:
-    silent: true
+  tinkerbell-kind-cluster:
     run: once
-    deps: [kind-cluster]
+    if: '{{eq .EXTERNAL_TINKERBELL "true"}}'
+    deps: [mirror:render-kind-config]
     summary: |
-      Update the state file with the KinD cluster information. Should be run only after the KinD cluster is created.
+      Install a second KinD cluster that hosts the Tinkerbell stack when
+      `externalTinkerbell: true`. Shares the default `kind` docker network
+      with the management cluster so pods in the management cluster can
+      reach the Tinkerbell API server.
+    vars:
+      ENABLED:
+        sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
+      EXTERNAL_TINKERBELL:
+        sh: "yq eval '.externalTinkerbell // false' {{.STATE_FILE_FQ_PATH}}"
+      TINK_CLUSTER_NAME:
+        sh: 'yq eval ''.kind.tinkerbell.clusterName // ""'' {{.STATE_FILE_FQ_PATH}}'
+      TINK_KUBECONFIG:
+        sh: 'yq eval ''.kind.tinkerbell.kubeconfig // ""'' {{.STATE_FILE_FQ_PATH}}'
+      KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
+      KIND_CONFIG_FLAG: '{{if eq .ENABLED "true"}}--config {{.KIND_CONFIG}}{{end}}'
     cmds:
-      - ./scripts/update_state.sh "{{.STATE_FILE_FQ_PATH}}"
+      - kind create cluster --name "{{.TINK_CLUSTER_NAME}}" --kubeconfig "{{.TINK_KUBECONFIG}}" {{.KIND_CONFIG_FLAG}}
+      - until KUBECONFIG="{{.TINK_KUBECONFIG}}" kubectl wait --for=condition=ready node --all --timeout=5m; do echo "Waiting for Tinkerbell cluster nodes to be ready..."; sleep 1; done
+    status:
+      - kind get clusters 2>/dev/null | grep -q "{{.TINK_CLUSTER_NAME}}"
+
+  update-state:
+    run: once
+    deps: [kind-cluster, tinkerbell-kind-cluster]
+    summary: |
+      Re-render .state with KinD-derived values (gateway IP, bridge name)
+      via the cue/state package.
+    vars:
+      CLUSTER_NAME:
+        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
+      GATEWAY_IP:
+        sh: "docker inspect -f '{{`{{ .NetworkSettings.Networks.kind.Gateway }}`}}' {{.CLUSTER_NAME}}-control-plane"
+      NETWORK_ID:
+        sh: "docker network inspect -f '{{`{{.Id}}`}}' kind"
+      BRIDGE_NAME: "br-{{substr 0 12 .NETWORK_ID}}"
+    cmds:
+      - >-
+        cue export ./cue/state yaml: config.yaml -l 'config:'
+        -t cwd="$PWD"
+        -t sshPubKey="$(tr -d '\n' < {{.OUTPUT_DIR}}/capt-ssh-key.pub)"
+        -t gatewayIP="{{.GATEWAY_IP}}"
+        -t bridgeName="{{.BRIDGE_NAME}}"
+        -e out --out yaml > {{.STATE_FILE_FQ_PATH}}
+    status:
+      - '[[ "$(yq eval ''.kind.gatewayIP'' {{.STATE_FILE_FQ_PATH}})" == "{{.GATEWAY_IP}}" ]]'
 
   hardware-cr:
     run: once
     deps: [update-state]
     summary: |
-      Create BMC Machine object.
+      Render Hardware CRs (one per VM) from cue/infra.
     sources:
       - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/infra/*.cue
+      - cue/values/*.cue
     generates:
       - "{{.OUTPUT_DIR}}/hardware-*.yaml"
+    vars:
+      NAMES:
+        sh: "yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - ./scripts/generate_hardware.sh {{.STATE_FILE_FQ_PATH}}
+      - rm -f {{.OUTPUT_DIR}}/hardware-*.yaml
+      - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
+      - for: { var: NAMES }
+        cmd: "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outHardware.{{.ITEM}} --out yaml > {{.OUTPUT_DIR}}/hardware-{{.ITEM}}.yaml"
 
   bmc-machine-cr:
     run: once
     deps: [vbmc:update-state]
     summary: |
-      Create BMC Machine objects.
+      Render BMC Machine CRs (one per VM) from cue/infra.
     sources:
       - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/infra/*.cue
+      - cue/values/*.cue
     generates:
       - "{{.OUTPUT_DIR}}/bmc-machine-*.yaml"
+    vars:
+      NAMES:
+        sh: "yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - ./scripts/generate_bmc.sh {{.STATE_FILE_FQ_PATH}}
+      - rm -f {{.OUTPUT_DIR}}/bmc-machine-*.yaml
+      - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
+      - for: { var: NAMES }
+        cmd: "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outBmcMachines.{{.ITEM}} --out yaml > {{.OUTPUT_DIR}}/bmc-machine-{{.ITEM}}.yaml"
 
   bmc-secret:
     run: once
     deps: [update-state]
     summary: |
-      Create BMC Machine objects.
+      Render the shared BMC credentials Secret from cue/infra.
     sources:
       - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/infra/*.cue
+      - cue/values/*.cue
     generates:
       - "{{.OUTPUT_DIR}}/bmc-secret.yaml"
     cmds:
-      - ./scripts/generate_secret.sh {{.STATE_FILE_FQ_PATH}}
+      - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
+      - "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outBmcSecret --out yaml > {{.OUTPUT_DIR}}/bmc-secret.yaml"
 
   deploy-tinkerbell-helm-chart:
     run: once
-    deps: [kind-cluster, update-state]
+    deps: [kind-cluster, tinkerbell-kind-cluster, update-state]
     summary: |
-      Deploy the Tinkerbell Helm chart.
+      Deploy the Tinkerbell Helm chart. Targets the Tinkerbell KinD cluster
+      when `externalTinkerbell: true`, otherwise the management cluster.
     vars:
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
-      LB_IP:
-        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
-      LB_IP2:
-        sh: yq eval '.tinkerbell.hookosVip' {{.STATE_FILE_FQ_PATH}}
-      TRUSTED_PROXIES:
-        sh: KUBECONFIG={{.KUBECONFIG}} kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ','
-      STACK_CHART_VERSION:
-        sh: yq eval '.versions.chart' {{.STATE_FILE_FQ_PATH}}
-      NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
-      LOCATION:
-        sh: yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}
-      CHART_NAME: tinkerbell
-      BOOTMODE:
-        sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
-      GLOBAL_VARS:
-        - trustedProxies={"{{.TRUSTED_PROXIES}}"}
-        - publicIP={{.LB_IP}}
-        - artifactsFileServer=http://{{.LB_IP2}}:7173
-      ISO_VARS:
-        - deployment.envs.smee.dhcpEnabled=false
-        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/hook-latest-lts-x86_64-efi-initrd.iso
-        - optional.hookos.extension=both
-      EXTRA_VARS:
-        sh: yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs
+        sh: "yq eval '(.kind.tinkerbell.kubeconfig // .kind.kubeconfig)' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" helm upgrade --install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait {{range .GLOBAL_VARS}}--set "{{.}}" {{end}} {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }} {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
-    status:
-      - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]
+      - task: helm:deploy-tinkerbell-helm-chart
+        vars:
+          KUBECONFIG: "{{.KUBECONFIG}}"
 
   vms:
     run: once
@@ -140,9 +187,9 @@ tasks:
       Create Libvirt VMs.
     vars:
       TOTAL_HARDWARE:
-        sh: yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}"
       VM_BASE_NAME:
-        sh: yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - ./scripts/create_vms.sh "{{.STATE_FILE_FQ_PATH}}"
     status:
@@ -150,14 +197,14 @@ tasks:
 
   apply-bmc-secret:
     run: once
-    deps: [kind-cluster, bmc-secret]
+    deps: [kind-cluster, tinkerbell-kind-cluster, bmc-secret]
     summary: |
-      Apply the BMC secret.
+      Apply the BMC secret to the cluster that hosts the Tinkerbell stack.
     vars:
       NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '(.kind.tinkerbell.kubeconfig // .kind.kubeconfig)' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - KUBECONFIG="{{.KUBECONFIG}}" kubectl apply -f {{.OUTPUT_DIR}}/bmc-secret.yaml
     status:
@@ -165,20 +212,20 @@ tasks:
 
   apply-bmc-machines:
     run: once
-    deps: [kind-cluster, bmc-machine-cr]
+    deps: [kind-cluster, tinkerbell-kind-cluster, bmc-machine-cr]
     summary: |
-      Apply the BMC machines.
+      Apply the BMC machines to the cluster that hosts the Tinkerbell stack.
     vars:
       NAMES:
-        sh: yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}"
       TOTAL_HARDWARE:
-        sh: yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}"
       VM_BASE_NAME:
-        sh: yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}"
       NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '(.kind.tinkerbell.kubeconfig // .kind.kubeconfig)' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - for: { var: NAMES }
         cmd: KUBECONFIG="{{.KUBECONFIG}}" kubectl apply -f {{.OUTPUT_DIR}}/bmc-machine-{{.ITEM}}.yaml
@@ -187,20 +234,20 @@ tasks:
 
   apply-hardware:
     run: once
-    deps: [kind-cluster, hardware-cr]
+    deps: [kind-cluster, tinkerbell-kind-cluster, hardware-cr]
     summary: |
-      Apply the hardware.
+      Apply the hardware to the cluster that hosts the Tinkerbell stack.
     vars:
       NAMES:
-        sh: yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}"
       TOTAL_HARDWARE:
-        sh: yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.totalNodes' {{.STATE_FILE_FQ_PATH}}"
       VM_BASE_NAME:
-        sh: yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}"
       NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '(.kind.tinkerbell.kubeconfig // .kind.kubeconfig)' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - for: { var: NAMES }
         cmd: KUBECONFIG="{{.KUBECONFIG}}" kubectl apply -f {{.OUTPUT_DIR}}/hardware-{{.ITEM}}.yaml
@@ -209,21 +256,41 @@ tasks:
 
   create-workload-cluster:
     run: once
-    deps: [kind-cluster, capi:ordered]
+    deps: [kind-cluster, capi:ordered, ensure-mgmt-namespace]
     summary: |
       Create the workload cluster by applying the generated manifest file.
     vars:
       CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
       NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - until KUBECONFIG="{{.KUBECONFIG}}" kubectl apply -f {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml >>{{.OUTPUT_DIR}}/error.log 2>&1; do echo "Trying kubectl apply again..."; sleep 3; done
       - echo "Workload manifest applied to cluster."
     status:
       - KUBECONFIG="{{.KUBECONFIG}}" kubectl get -n {{.NAMESPACE}} cluster {{.CLUSTER_NAME}}
+
+  ensure-mgmt-namespace:
+    run: once
+    deps: [kind-cluster]
+    summary: |
+      Ensure the workload-cluster namespace exists in the management cluster.
+      In single-cluster mode the Tinkerbell helm release creates this
+      namespace as a side effect of `--create-namespace`, but in external
+      Tinkerbell mode the chart targets a different cluster so the
+      management cluster is missing the namespace required by the CAPI
+      Cluster/KCP/MachineDeployment/etc. CRs.
+    vars:
+      NAMESPACE:
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
+      KUBECONFIG:
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl create namespace {{.NAMESPACE}} --dry-run=client -o yaml | KUBECONFIG="{{.KUBECONFIG}}" kubectl apply -f -
+    status:
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl get namespace {{.NAMESPACE}} >/dev/null 2>&1
 
   get-workload-cluster-kubeconfig:
     run: once
@@ -232,17 +299,17 @@ tasks:
       Get the workload cluster's kubeconfig.
     vars:
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
       NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
       CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - until KUBECONFIG="{{.KUBECONFIG}}" clusterctl get kubeconfig -n {{.NAMESPACE}} {{.CLUSTER_NAME}} >>{{.OUTPUT_DIR}}/error.log 2>&1 ; do echo "Waiting for workload cluster kubeconfig to be available..."; sleep 4; done
       - KUBECONFIG="{{.KUBECONFIG}}" clusterctl get kubeconfig -n {{.NAMESPACE}} {{.CLUSTER_NAME}} > {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
       - echo "Workload cluster kubeconfig saved to {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig."
     status:
-      - echo ; [ -f {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig ]
+      - test -f {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
 
   default-storage-pool:
     summary: |
@@ -252,3 +319,26 @@ tasks:
       - virsh --connect qemu:///system pool-start --build default
     status:
       - virsh --connect qemu:///system pool-info default
+
+  create-external-kubeconfig-secret:
+    if: '{{eq .EXTERNAL_TINKERBELL "true"}}'
+    deps: [kind-cluster, tinkerbell-kind-cluster, update-state]
+    summary: |
+      When `externalTinkerbell: true`, create the
+      `external-tinkerbell-kubeconfig` Secret in the management cluster's
+      `capt-system` namespace so the CAPT controller (which mounts it at
+      /var/run/secrets/external-tinkerbell/kubeconfig) can talk to the
+      Tinkerbell KinD cluster's API server. The script labels the secret
+      with clusterctl.cluster.x-k8s.io/move so a `clusterctl move` carries
+      it during pivot. No-op when external mode is off.
+    vars:
+      EXTERNAL_TINKERBELL:
+        sh: "yq eval '.externalTinkerbell // false' {{.STATE_FILE_FQ_PATH}}"
+      TINK_CLUSTER_NAME:
+        sh: 'yq eval ''.kind.tinkerbell.clusterName // ""'' {{.STATE_FILE_FQ_PATH}}'
+      MGMT_KUBECONFIG:
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - ./scripts/create_external_kubeconfig_secret.sh "{{.TINK_CLUSTER_NAME}}" "{{.MGMT_KUBECONFIG}}"
+    status:
+      - 'KUBECONFIG="{{.MGMT_KUBECONFIG}}" kubectl get secret external-tinkerbell-kubeconfig -n capt-system >/dev/null 2>&1'

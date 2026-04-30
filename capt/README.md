@@ -16,15 +16,22 @@ This playground has only been tested on Ubuntu 22.04 LTS. If you are using a vir
 
 ### Binaries
 
+The following must be installed system-wide:
+
 - [Libvirtd](https://wiki.debian.org/KVM) >= libvirtd (libvirt) 8.0.0
 - [Docker](https://docs.docker.com/engine/install/) >= 24.0.7
-- [Helm](https://helm.sh/docs/intro/install/) >= v3.13.1
-- [KinD](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) >= v0.20.0
-- [clusterctl](https://cluster-api.sigs.k8s.io/user/quick-start#install-clusterctl) >= v1.6.0
-- [kubectl](https://www.downloadkubernetes.com/) >= v1.28.2
 - [virt-install](https://virt-manager.org/) >= 4.0.0
-- [yq](https://github.com/mikefarah/yq/#install) >= v4.44.2
 - [task](https://taskfile.dev/installation/) >= 3.37.2
+- `curl`, `tar`, `ssh-keygen` (from `openssh-client`)
+
+The following are downloaded automatically into `./bin/` by `task install-binaries` (invoked as part of `task create-playground`); pinned versions live near the top of [Taskfile.yaml](./Taskfile.yaml):
+
+- `cue` — workload-manifest renderer
+- `helm`
+- `kind`
+- `kubectl`
+- `clusterctl`
+- `yq`
 
 ### Packages
 
@@ -56,6 +63,29 @@ Delete the CAPT playground:
 ```bash
 task delete-playground
 ```
+
+### External Tinkerbell mode
+
+When `externalTinkerbell: true` is set in [`config.yaml`](./config.yaml), the
+playground spins up a **second** KinD cluster (named `<clusterName>-tinkerbell`)
+on the same `kind` docker network and deploys the Tinkerbell stack there
+instead of into the management cluster. Hardware, Machine (BMC), and Workflow
+CRs all live in this second cluster. CAPT, running in the management cluster,
+talks to it via the `external-tinkerbell-kubeconfig` Secret in the
+`capt-system` namespace (created by
+[scripts/create_external_kubeconfig_secret.sh](./scripts/create_external_kubeconfig_secret.sh)
+and labeled for `clusterctl move`).
+
+Two kubeconfigs are produced under `output/`:
+
+- `kind.kubeconfig` — the management cluster (CAPI/CAPT components live here)
+- `tinkerbell-kind.kubeconfig` — the Tinkerbell cluster (Hardware/BMC/Workflows live here)
+
+Caveat: after `task pivot`, the workload cluster receives the secret via
+`clusterctl move`, but it must still be able to reach the Tinkerbell KinD
+container's API server at the IP embedded in the kubeconfig — that IP is only
+reachable from containers on the host's `kind` docker network, so cross-host
+pivots are not supported in this mode.
 
 ## Next Steps
 

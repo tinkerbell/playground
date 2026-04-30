@@ -1,0 +1,139 @@
+version: "3"
+
+# Apply bash-style strict mode to every `cmds:` block in this Taskfile.
+# Replaces the per-task `set -euo pipefail` heredoc preamble.
+# https://taskfile.dev/docs/reference/schema#set-options
+set: [errexit, nounset, pipefail]
+
+tasks:
+  validate-binaries:
+    summary: |
+      Validate that the required system dependencies are installed.
+      Tools that are pinned and installed locally into ./bin are handled by
+      the install-binaries task.
+    vars:
+      REQUIRED_SYSTEM_BINS: "virsh docker virt-install curl tar ssh-keygen"
+    cmds:
+      - for: { var: REQUIRED_SYSTEM_BINS, split: " " }
+        cmd: command -v {{ .ITEM }} >/dev/null || { echo "'{{ .ITEM }}' not found in \$PATH"; exit 1; }
+    status:
+      - for bin in {{.REQUIRED_SYSTEM_BINS}}; do command -v "$bin" >/dev/null || exit 1; done
+
+  ensure-bin-dir:
+    summary: |
+      Create the local bin/ directory used by install-binaries.
+    cmds:
+      - mkdir -p {{.ROOT_DIR}}/bin
+    status:
+      - test -d {{.ROOT_DIR}}/bin
+
+  install-binaries:
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    summary: |
+      Download pinned versions of cue, helm, kind, clusterctl, kubectl, and yq
+      into ./bin from each project's upstream release artifacts. Idempotent:
+      each tool is reinstalled only if missing or its version output does not
+      match the pin.
+    cmds:
+      - task: install-binary-cue
+      - task: install-binary-helm
+      - task: install-binary-kind
+      - task: install-binary-clusterctl
+      - task: install-binary-kubectl
+      - task: install-binary-yq
+    status:
+      - test "$(readlink cue)"        = "cue-{{.CUE_VERSION}}"               && test -x cue-{{.CUE_VERSION}}
+      - test "$(readlink helm)"       = "helm-{{.HELM_VERSION}}"             && test -x helm-{{.HELM_VERSION}}
+      - test "$(readlink kind)"       = "kind-{{.KIND_VERSION}}"             && test -x kind-{{.KIND_VERSION}}
+      - test "$(readlink clusterctl)" = "clusterctl-{{.CLUSTERCTL_VERSION}}" && test -x clusterctl-{{.CLUSTERCTL_VERSION}}
+      - test "$(readlink kubectl)"    = "kubectl-{{.KUBECTL_VERSION}}"       && test -x kubectl-{{.KUBECTL_VERSION}}
+      - test "$(readlink yq)"         = "yq-{{.YQ_VERSION}}"                 && test -x yq-{{.YQ_VERSION}}
+
+  install-binary-cue:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      # cue ships a tarball with the binary at the top level.
+      - |
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        curl -fsSL -o "$tmp/cue.tgz" "https://github.com/cue-lang/cue/releases/download/{{.CUE_VERSION}}/cue_{{.CUE_VERSION}}_{{.OS}}_{{.ARCH}}.tar.gz"
+        tar -C "$tmp" -xzf "$tmp/cue.tgz" cue
+        install -m 0755 "$tmp/cue" cue-{{.CUE_VERSION}}
+      - ln -sfn cue-{{.CUE_VERSION}} cue
+    status:
+      - test -x cue-{{.CUE_VERSION}}
+      - test "$(readlink cue)" = "cue-{{.CUE_VERSION}}"
+
+  install-binary-helm:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      # helm ships a tarball with the binary at <os>-<arch>/helm.
+      - |
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        curl -fsSL -o "$tmp/helm.tgz" "https://get.helm.sh/helm-{{.HELM_VERSION}}-{{.OS}}-{{.ARCH}}.tar.gz"
+        tar -C "$tmp" -xzf "$tmp/helm.tgz" "{{.OS}}-{{.ARCH}}/helm"
+        install -m 0755 "$tmp/{{.OS}}-{{.ARCH}}/helm" helm-{{.HELM_VERSION}}
+      - ln -sfn helm-{{.HELM_VERSION}} helm
+    status:
+      - test -x helm-{{.HELM_VERSION}}
+      - test "$(readlink helm)" = "helm-{{.HELM_VERSION}}"
+
+  install-binary-kind:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      - curl -fsSL -o kind-{{.KIND_VERSION}} "https://github.com/kubernetes-sigs/kind/releases/download/{{.KIND_VERSION}}/kind-{{.OS}}-{{.ARCH}}"
+      - chmod +x kind-{{.KIND_VERSION}}
+      - ln -sfn kind-{{.KIND_VERSION}} kind
+    status:
+      - test -x kind-{{.KIND_VERSION}}
+      - test "$(readlink kind)" = "kind-{{.KIND_VERSION}}"
+
+  install-binary-clusterctl:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      - curl -fsSL -o clusterctl-{{.CLUSTERCTL_VERSION}} "https://github.com/kubernetes-sigs/cluster-api/releases/download/{{.CLUSTERCTL_VERSION}}/clusterctl-{{.OS}}-{{.ARCH}}"
+      - chmod +x clusterctl-{{.CLUSTERCTL_VERSION}}
+      - ln -sfn clusterctl-{{.CLUSTERCTL_VERSION}} clusterctl
+    status:
+      - test -x clusterctl-{{.CLUSTERCTL_VERSION}}
+      - test "$(readlink clusterctl)" = "clusterctl-{{.CLUSTERCTL_VERSION}}"
+
+  install-binary-kubectl:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      - curl -fsSL -o kubectl-{{.KUBECTL_VERSION}} "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/{{.OS}}/{{.ARCH}}/kubectl"
+      - chmod +x kubectl-{{.KUBECTL_VERSION}}
+      - ln -sfn kubectl-{{.KUBECTL_VERSION}} kubectl
+    status:
+      - test -x kubectl-{{.KUBECTL_VERSION}}
+      - test "$(readlink kubectl)" = "kubectl-{{.KUBECTL_VERSION}}"
+
+  install-binary-yq:
+    internal: true
+    silent: true
+    deps: [ensure-bin-dir]
+    dir: "{{.ROOT_DIR}}/bin"
+    cmds:
+      - curl -fsSL -o yq-{{.YQ_VERSION}} "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/yq_{{.OS}}_{{.ARCH}}"
+      - chmod +x yq-{{.YQ_VERSION}}
+      - ln -sfn yq-{{.YQ_VERSION}} yq
+    status:
+      - test -x yq-{{.YQ_VERSION}}
+      - test "$(readlink yq)" = "yq-{{.YQ_VERSION}}"

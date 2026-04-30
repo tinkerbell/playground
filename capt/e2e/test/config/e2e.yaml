@@ -1,0 +1,26 @@
+# CAPI E2E test configuration for CAPT playground matrix testing.
+# Intervals define timeout and polling periods for test operations.
+# Format: ["timeout", "interval"] — both as Go duration strings.
+
+intervals:
+  # Provisioning
+  default/wait-workflow: ["25m", "10s"]
+  default/wait-nodes: ["10m", "10s"]
+
+  # Scale (future)
+  default/wait-scale: ["15m", "30s"]
+
+  # Upgrades (future)
+  default/wait-upgrade: ["30m", "30s"]
+
+  # Deletion (future)
+  default/wait-delete: ["10m", "10s"]
+
+  # Pivot (future)
+  default/wait-pivot: ["15m", "30s"]
+
+variables:
+  KUBERNETES_VERSION: "v1.35.2"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.35.3"
+  CONTROL_PLANE_MACHINE_COUNT: "1"
+  WORKER_MACHINE_COUNT: "1"

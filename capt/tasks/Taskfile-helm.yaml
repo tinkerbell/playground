@@ -1,0 +1,63 @@
+version: "3"
+
+# Shared Tinkerbell Helm chart deployment task. Consumed by both
+# Taskfile-create.yaml (initial playground setup) and
+# Taskfile-capi-pivot.yaml (re-deploy after pivot). Callers pass
+# KUBECONFIG via `vars:` to target the appropriate cluster.
+
+tasks:
+  deploy-tinkerbell-helm-chart:
+    run: once
+    summary: |
+      Deploy the Tinkerbell Helm chart to the cluster identified by
+      KUBECONFIG. When bootMode is isoboot, Captain OS artifact names
+      (ISO, kernel, initrd) are computed from captainos.kernelVersion
+      and arch in .state, matching the upstream naming convention:
+        captainos-<kernelVersion>-<arch>.iso
+        vmlinuz-<kernelVersion>-<arch>
+        initramfs-<kernelVersion>-<arch>
+    vars:
+      # KUBECONFIG must be supplied by the caller.
+      LB_IP:
+        sh: "yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}"
+      LB_IP2:
+        sh: "yq eval '.tinkerbell.hookosVip' {{.STATE_FILE_FQ_PATH}}"
+      TRUSTED_PROXIES:
+        sh: "KUBECONFIG={{.KUBECONFIG}} kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}' | tr ' ' ','"
+      STACK_CHART_VERSION:
+        sh: "yq eval '.versions.chart' {{.STATE_FILE_FQ_PATH}}"
+      NAMESPACE:
+        sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
+      LOCATION:
+        sh: "yq eval '.chart.location' {{.STATE_FILE_FQ_PATH}}"
+      CHART_NAME: tinkerbell
+      BOOTMODE:
+        sh: "yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}"
+      # Map OCI arch (amd64/arm64) to the kernel arch used in Captain OS
+      # artifact filenames (x86_64/aarch64).
+      OSIE_ARCH:
+        sh: "yq eval '.arch' {{.STATE_FILE_FQ_PATH}} | sed 's/amd64/x86_64/;s/arm64/aarch64/'"
+      KERNEL_VER:
+        sh: 'yq eval ''.captainos.kernelVersion // ""'' {{.STATE_FILE_FQ_PATH}}'
+      GLOBAL_VARS:
+        - trustedProxies={"{{.TRUSTED_PROXIES}}"}
+        - publicIP={{.LB_IP}}
+        - artifactsFileServer=http://{{.LB_IP2}}:7173
+        - optional.captainos.enabled=true
+      ISO_VARS:
+        - deployment.envs.smee.dhcpEnabled=false
+        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/captainos-{{.KERNEL_VER}}-{{.OSIE_ARCH}}.iso
+      NETBOOT_VARS:
+        - deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-{{.KERNEL_VER}}
+        - deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-{{.KERNEL_VER}}
+      EXTRA_VARS:
+        sh: "yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs"
+    cmds:
+      - >-
+        KUBECONFIG="{{.KUBECONFIG}}" helm upgrade --install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait
+        {{range .GLOBAL_VARS}}--set "{{.}}" {{end}}
+        {{- if eq .BOOTMODE "netboot" }} {{- range .NETBOOT_VARS }}--set "{{.}}" {{ end }} {{ end }}
+        {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }}
+        {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
+    status:
+      - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]

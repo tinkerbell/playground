@@ -3,7 +3,11 @@ error.log
 .task
 .state
 capt/output/
+capt/bin/
 .vscode/
 sushy.cert
 sushy.key
 htpasswd
+.validation-success
+capt/e2e/artifacts/*
+out

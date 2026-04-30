@@ -7,26 +7,29 @@ tasks:
     cmds:
       - task: create-cluster-yaml
       - task: init
-      - task: generate-cluster-yaml
-      - task: create-kustomize-file
-      - task: apply-kustomization
+      - task: render-cluster-yaml
 
   create-cluster-yaml:
     run: once
     summary: |
-      Create the cluster yaml.
-    env:
-      CAPT_VERSION:
-        sh: yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}
-      LOCATION:
-        sh: yq eval '.capt.providerRepository' {{.STATE_FILE_FQ_PATH}}
+      Render clusterctl config from the cue/clusterctl subpackage. Replaces
+      the previous envsubst pipeline against templates/clusterctl.tmpl.
     vars:
       OUTPUT_DIR:
-        sh: echo $(yq eval '.outputDir' config.yaml)
+        sh: "echo $(yq eval '.outputDir' config.yaml)"
+      CAPT_VERSION:
+        sh: "yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}"
+    sources:
+      - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/clusterctl/*.cue
+      - cue/values/*.cue
+    generates:
+      - "{{.OUTPUT_DIR}}/clusterctl.yaml"
     cmds:
-      - envsubst '$CAPT_VERSION,$LOCATION' < templates/clusterctl.tmpl > {{.OUTPUT_DIR}}/clusterctl.yaml
+      - "cue vet ./cue/clusterctl yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
+      - "cue export ./cue/clusterctl yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e out --out yaml > {{.OUTPUT_DIR}}/clusterctl.yaml"
     status:
-      - grep -q "$CAPT_VERSION" {{.OUTPUT_DIR}}/clusterctl.yaml
+      - grep -q "{{.CAPT_VERSION}}" {{.OUTPUT_DIR}}/clusterctl.yaml
 
   init:
     run: once
@@ -35,7 +38,7 @@ tasks:
       Initialize the cluster.
     env:
       TINKERBELL_IP:
-        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}"
       CLUSTERCTL_DISABLE_VERSIONCHECK: true
       XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
       XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
@@ -46,112 +49,41 @@ tasks:
       XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
     vars:
       OUTPUT_DIR:
-        sh: echo $(yq eval '.outputDir' config.yaml)
+        sh: "echo $(yq eval '.outputDir' config.yaml)"
       KIND_GATEWAY_IP:
-        sh: yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - KUBECONFIG="{{.KUBECONFIG}}" clusterctl --config {{.OUTPUT_DIR}}/clusterctl.yaml init --infrastructure tinkerbell
     status:
       - expected=1; got=$(KUBECONFIG="{{.KUBECONFIG}}" kubectl get pods -n capt-system |grep -ce "capt-controller"); [[ "$got" == "$expected" ]]
 
-  generate-cluster-yaml:
-    run: once
-    deps: [init]
-    summary: |
-      Generate the cluster yaml.
-    env:
-      CONTROL_PLANE_VIP:
-        sh: yq eval '.cluster.controlPlane.vip' {{.STATE_FILE_FQ_PATH}}
-      POD_CIDR:
-        sh: yq eval '.cluster.podCIDR' {{.STATE_FILE_FQ_PATH}}
-      CLUSTERCTL_DISABLE_VERSIONCHECK: true
-      XDG_CONFIG_HOME: "{{.OUTPUT_DIR}}/xdg"
-      XDG_CONFIG_DIRS: "{{.OUTPUT_DIR}}/xdg"
-      XDG_STATE_HOME: "{{.OUTPUT_DIR}}/xdg"
-      XDG_CACHE_HOME: "{{.OUTPUT_DIR}}/xdg"
-      XDG_RUNTIME_DIR: "{{.OUTPUT_DIR}}/xdg"
-      XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
-      XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
-    vars:
-      CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
-      OUTPUT_DIR:
-        sh: yq eval '.outputDir' config.yaml
-      KUBE_VERSION:
-        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
-      CP_COUNT:
-        sh: yq eval '.counts.controlPlanes' {{.STATE_FILE_FQ_PATH}}
-      WORKER_COUNT:
-        sh: yq eval '.counts.workers' {{.STATE_FILE_FQ_PATH}}
-      NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
-      KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
-    cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" clusterctl generate cluster {{.CLUSTER_NAME}} --config {{.OUTPUT_DIR}}/clusterctl.yaml --kubernetes-version "{{.KUBE_VERSION}}" --control-plane-machine-count="{{.CP_COUNT}}" --worker-machine-count="{{.WORKER_COUNT}}" --target-namespace={{.NAMESPACE}} --write-to {{.OUTPUT_DIR}}/prekustomization.yaml
-    status:
-      - grep -q "{{.KUBE_VERSION}}" {{.OUTPUT_DIR}}/prekustomization.yaml
-
-  create-kustomize-file:
+  render-cluster-yaml:
     run: once
     summary: |
-      Kustomize file for the CAPI generated config file (prekustomization.yaml).
-    env:
-      NAMESPACE:
-        sh: yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}
-      OS_REGISTRY:
-        sh: yq eval '.os.registry' {{.STATE_FILE_FQ_PATH}}
-      OS_DISTRO:
-        sh: yq eval '.os.distro' {{.STATE_FILE_FQ_PATH}}
-      OS_VERSION:
-        sh: yq eval '.os.version' {{.STATE_FILE_FQ_PATH}}
-      VERSIONS_OS:
-        sh: yq eval '.versions.os' {{.STATE_FILE_FQ_PATH}}
-      SSH_AUTH_KEY:
-        sh: yq eval '.os.sshKey' {{.STATE_FILE_FQ_PATH}}
-      KUBE_VERSION:
-        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
-      TINKERBELL_VIP:
-        sh: yq eval '.tinkerbell.vip' {{.STATE_FILE_FQ_PATH}}
-      CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
-      KUBEVIP_VERSION:
-        sh: yq eval '.versions.kubevip' {{.STATE_FILE_FQ_PATH}}
-      CONTROL_PLANE_VIP:
-        sh: yq eval '.cluster.controlPlane.vip' {{.STATE_FILE_FQ_PATH}}
+      Render the workload cluster manifest from the cue/capi subpackage.
+      Inputs: capt/.state (read directly as YAML by cue) and the bootMode
+      tag. Output: {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml — a multi-document
+      YAML applied as-is by create-workload-cluster.
     vars:
-      KUBE_VERSION:
-        sh: yq eval '.versions.kube' {{.STATE_FILE_FQ_PATH}}
+      CLUSTER_NAME:
+        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
       OUTPUT_DIR:
-        sh: yq eval '.outputDir' config.yaml
+        sh: "yq eval '.outputDir' config.yaml"
       BOOTMODE:
-        sh: yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}
-      KUSTOMIZE_FILE:
-        sh: "[[ {{.BOOTMODE}} == 'isoboot' ]] && echo kustomization-iso.tmpl || echo kustomization-netboot.tmpl"
+        sh: "yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}"
     sources:
-      - config.yaml
-    generates:
-      - "{{.OUTPUT_DIR}}/kustomization.yaml"
-    cmds:
-      - envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" < templates/{{.KUSTOMIZE_FILE}} > {{.OUTPUT_DIR}}/kustomization.yaml
-      # FYI, the `preKubeadmCommands` checks for k8s v1.29 because of https://github.com/kube-vip/kube-vip/issues/684
-
-  apply-kustomization:
-    run: once
-    deps: [generate-cluster-yaml, create-kustomize-file]
-    summary: |
-      Kustomize the cluster yaml.
-    vars:
-      CLUSTER_NAME:
-        sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
-      KUBECONFIG:
-        sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
-    sources:
-      - "{{.OUTPUT_DIR}}/kustomization.yaml"
-      - "{{.OUTPUT_DIR}}/prekustomization.yaml"
+      - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/capi/*.cue
+      - cue/values/*.cue
+      - cue/mirror/*.cue
     generates:
       - "{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml"
     cmds:
-      - KUBECONFIG="{{.KUBECONFIG}}" kubectl kustomize {{.OUTPUT_DIR}} -o {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml
+      # Lint the CUE module first; fails with line-numbered errors if any
+      # constraints in cue/values/values.cue#Config are violated by .state.
+      # The `yaml:` qualifier tells cue to read .state as YAML directly — no
+      # intermediate JSON conversion needed.
+      - "cue vet ./cue/capi yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
+      - "cue export ./cue/capi yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -t mode={{.BOOTMODE}} -e out --out text > {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.yaml"
