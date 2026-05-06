@@ -1,14 +1,10 @@
 package e2e
 
 import (
-	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 )
-
-// ctx is a package-level context used across all test specs.
-var ctx = context.TODO()
 
 var _ = Describe("Workload cluster provisioning", Label("provisioning"), Ordered, func() {
 	var (
@@ -31,25 +27,25 @@ var _ = Describe("Workload cluster provisioning", Label("provisioning"), Ordered
 		}
 	})
 
-	AfterAll(func() {
+	AfterAll(func(ctx SpecContext) {
 		By("Dumping workflows and hardware for debugging")
 		ListWorkflows(ctx, tinkClient, namespace)
 		ListHardware(ctx, tinkClient, namespace)
 	})
 
-	It("completes all workflows successfully", func() {
+	It("completes all workflows successfully", func(ctx SpecContext) {
 		WaitForWorkflowsSuccess(ctx, tinkClient, namespace, expectedNodes, workflowTimeout, workflowInterval)
-	})
+	}, SpecTimeout(30*time.Minute))
 
-	It("has a reachable workload API server", func() {
-		WaitForAPIServerReady(workloadKubeconfig, nodeTimeout, 10*time.Second)
-	})
+	It("has a reachable workload API server", func(ctx SpecContext) {
+		WaitForAPIServerReady(ctx, workloadKubeconfig, nodeTimeout, 10*time.Second)
+	}, SpecTimeout(15*time.Minute))
 
-	It("deploys CNI to the workload cluster", func() {
-		DeployCNI(workloadKubeconfig)
-	})
+	It("deploys CNI to the workload cluster", func(ctx SpecContext) {
+		DeployCNI(ctx, workloadKubeconfig)
+	}, SpecTimeout(5*time.Minute))
 
-	It("has all nodes Ready after CNI deployment", func() {
+	It("has all nodes Ready after CNI deployment", func(ctx SpecContext) {
 		WaitForAllNodesReady(ctx, workloadClient, expectedNodes, nodeTimeout, nodeInterval)
-	})
+	}, SpecTimeout(15*time.Minute))
 })

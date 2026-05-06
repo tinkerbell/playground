@@ -119,6 +119,13 @@ tasks:
     generates:
       - .state
     cmds:
+      # Validate config.yaml against the cue/state schema (and transitively
+      # cue/values + cue/mirror) before exporting. Surfaces schema errors
+      # before they appear as confusing yaml-export failures.
+      # Folded scalar (>-) is required because the bare `yaml:` token would
+      # otherwise be parsed as a YAML mapping key.
+      - >-
+        cue vet ./cue/state yaml: config.yaml -l 'config:'
       - >-
         cue export ./cue/state yaml: config.yaml -l 'config:'
         -t cwd="$PWD"

@@ -63,11 +63,13 @@ func WaitForAllNodesReady(ctx context.Context, c client.Client, expectedCount in
 }
 
 // WaitForAPIServerReady polls the workload cluster API server until it responds.
-func WaitForAPIServerReady(kubeconfigPath string, timeout, interval time.Duration) {
+// The provided ctx bounds each kubectl invocation so a hung connection cannot
+// outlive the spec.
+func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout, interval time.Duration) {
 	By(fmt.Sprintf("Waiting for workload API server to be reachable (timeout %s)", timeout))
 
 	Eventually(func(g Gomega) {
-		cmd := exec.CommandContext(context.TODO(),
+		cmd := exec.CommandContext(ctx,
 			"kubectl", "--kubeconfig", kubeconfigPath,
 			"get", "--raw", "/readyz",
 		)
@@ -77,9 +79,9 @@ func WaitForAPIServerReady(kubeconfigPath string, timeout, interval time.Duratio
 }
 
 // DeployCNI applies kube-router to the workload cluster so nodes can reach Ready.
-func DeployCNI(kubeconfigPath string) {
+func DeployCNI(ctx context.Context, kubeconfigPath string) {
 	By("Deploying kube-router CNI")
-	cmd := exec.CommandContext(context.TODO(),
+	cmd := exec.CommandContext(ctx,
 		"kubectl", "--kubeconfig", kubeconfigPath,
 		"apply", "-f", "https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml",
 	)

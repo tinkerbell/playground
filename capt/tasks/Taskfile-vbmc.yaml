@@ -12,11 +12,16 @@ tasks:
         sh: "yq eval '.virtualBMC.user' {{.STATE_FILE_FQ_PATH}}"
       PASSWORD:
         sh: "yq eval '.virtualBMC.pass' {{.STATE_FILE_FQ_PATH}}"
+      # Absolute path is required for `docker -v` bind mounts (relative paths
+      # are interpreted as named volumes). state.cue resolves outputDir to an
+      # absolute path when generating .state.
       OUTPUT_DIR_ABS:
         sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - mkdir -p {{.OUTPUT_DIR}}
-      - docker run -it --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -nbB "{{.USERNAME}}" "{{.PASSWORD}}" > {{.OUTPUT_DIR}}/htpasswd
+      # Pass the password via stdin (-i) instead of argv (-b) so it does not
+      # appear in `ps`/`docker ps --no-trunc` while htpasswd runs.
+      - printf '%s' "{{.PASSWORD}}" | docker run -i --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -niB "{{.USERNAME}}" > {{.OUTPUT_DIR}}/htpasswd
       - docker run -it --rm --entrypoint openssl -v {{.OUTPUT_DIR_ABS}}:/scripts {{.VBMC_CONTAINER_IMAGE}} req -x509 -newkey rsa:2048 -keyout /scripts/sushy.key -out /scripts/sushy.cert -days 365 -nodes -subj "/C=US/ST=CA/L=Los Angeles/O=Engineering/OU=Engineering/CN=tinkerbell.org"
     status:
       - test -f {{.OUTPUT_DIR}}/htpasswd
@@ -33,6 +38,7 @@ tasks:
         sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
       VBMC_CONTAINER_IMAGE:
         sh: "yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}"
+      # Absolute path required for `docker -v` bind mounts (see prepare).
       OUTPUT_DIR_ABS:
         sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:

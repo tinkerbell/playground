@@ -177,9 +177,15 @@ _kct: {
 		hardwareAffinity: required: [{
 			labelSelector: matchLabels: "tinkerbell.org/role": _role
 		}]
-		templateOverride: yaml.Marshal(_workflow)
+		templateOverride: _workflowYAML
 	}
 }
+
+// Marshal the workflow once at package scope so `cue vet ./cue/capi`
+// evaluates it eagerly (rather than only when a TMT is materialised).
+// Any structural error in _workflow surfaces during validation, not at
+// kubectl-apply time.
+_workflowYAML: yaml.Marshal(_workflow)
 
 _tmtCp: #tmt & {
 	_name: c.tmtCpName
