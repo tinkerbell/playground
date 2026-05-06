@@ -38,6 +38,9 @@ package infra
 					gateway: _gateway
 					netmask: "255.255.0.0"
 				}
+				// As DHCP addresses are Reservations in Tinkerbell it doesn't
+				// matter much the value here. We don't want the dhcp client constaintly
+				// renewing its address though, so we just use the Max DHCP lease time (uint32 max - 1).
 				lease_time: 4294967294
 				mac:        _mac
 				uefi:       true

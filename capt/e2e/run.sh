@@ -92,7 +92,9 @@ EOF
 	--cleanup)
 		echo "Cleaning up playground and restoring config..."
 		cd "$CAPT_DIR"
-		task delete-playground 2>&1 || true
+		if ! task delete-playground 2>&1; then
+			echo "WARN: 'task delete-playground' exited non-zero ($?); continuing cleanup." >&2
+		fi
 		if [[ -f "$CAPT_DIR/config.yaml.e2e-backup" ]]; then
 			cp "$CAPT_DIR/config.yaml.e2e-backup" "$CAPT_DIR/config.yaml"
 			rm -f "$CAPT_DIR/config.yaml.e2e-backup"
@@ -283,10 +285,19 @@ for COMBO in "${COMBOS[@]}"; do
 	# --- Step 7: Delete playground (unless --no-teardown) ---
 
 	if $NO_TEARDOWN; then
-		echo "Skipping teardown (--no-teardown). Run './e2e/run.sh --cleanup' to clean up."
+		echo ""
+		echo "################################################################"
+		echo "# --no-teardown: leaving playground RUNNING for combo: $COMBO"
+		echo "# Resources (VMs, kind clusters, BMC container) will persist."
+		echo "# Clean up manually with: ./e2e/run.sh --cleanup"
+		echo "################################################################"
 	else
 		echo "Deleting playground for combo: $COMBO"
-		task delete-playground >"$COMBO_ARTIFACTS/delete.log" 2>&1 || true
+		if ! task delete-playground >"$COMBO_ARTIFACTS/delete.log" 2>&1; then
+			rc=$?
+			echo "WARN: teardown failed for $COMBO (exit $rc); see $COMBO_ARTIFACTS/delete.log" >&2
+			COMBO_DETAIL="${COMBO_DETAIL:+$COMBO_DETAIL; }teardown failed (exit $rc)"
+		fi
 	fi
 
 	# --- Record result ---

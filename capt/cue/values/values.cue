@@ -13,64 +13,107 @@ package values
 
 import "strings"
 
+// Inner structs are closed to catch field-name typos at vet time. The
+// outermost #Config keeps an open `...` so that sibling files (e.g.
+// mirror_extension.cue) can additively extend it via the extension
+// pattern documented at the top of those files.
 #Config: {
 	clusterName: string & !=""
 	namespace:   string & !=""
 	outputDir:   string & !=""
 	arch:        "amd64" | "arm64"
 	bootMode:    "netboot" | "isoboot"
-	versions: {
+
+	// externalTinkerbell + totalNodes are added by cue/state/state.cue.
+	externalTinkerbell?: bool
+	totalNodes?:         int & >0
+
+	versions: close({
 		kube:    =~"^v[0-9]+\\.[0-9]+\\.[0-9]+$"
 		os:      string | int
 		kubevip: string | number
 		capt:    string & !=""
-		...
-	}
-	capt: {
+		chart:   string & !=""
+	})
+	capt: close({
 		providerRepository: string & !=""
-		...
-	}
-	os: {
+	})
+	chart: close({
+		// chart.location is injected by cue/state/mirror_extension.cue;
+		// it is always present in .state.
+		location: string & !=""
+		extraVars?: [...string]
+	})
+	os: close({
+		// os.registry is injected by cue/state/mirror_extension.cue.
 		registry: string & !=""
 		sshKey:   string & !=""
 		version:  string | int
-		...
-	}
-	tinkerbell: {
-		vip: string & !=""
-		...
-	}
-	cluster: {
-		controlPlane: {
+	})
+	// tinkerbell + cluster are populated by state.cue once the kind
+	// gateway IP is known. Required here because every capi consumer
+	// references them unconditionally; cue/values is only vetted via
+	// .state generated AFTER the kind cluster is up (Taskfile-create's
+	// `render-state` task supplies -t gatewayIP). The partial .state
+	// produced by the root generate-state task is never vetted by capi.
+	tinkerbell: close({
+		vip:       string & !=""
+		hookosVip: string & !=""
+	})
+	cluster: close({
+		controlPlane: close({
 			vip: string & !=""
-			...
-		}
+		})
 		podCIDR?: string
-		...
-	}
-	counts: {
+	})
+	counts: close({
 		controlPlanes: int & >=1
 		workers:       int & >=0
 		spares:        int & >=0
-		...
-	}
-	vm: {
-		details: [string]: {
-			mac:     string & !=""
-			role:    "control-plane" | "worker" | "spare"
-			ip:      string & !=""
-			gateway: string & !=""
-			bmc: port: int & >0
-			...
-		}
-		...
-	}
-	virtualBMC: {
-		ip:   string & !=""
-		user: string & !=""
-		pass: string & !=""
-		...
-	}
+	})
+	vm: close({
+		baseName:          string & !=""
+		cpusPerVM:         int & >0
+		memInMBPerVM:      int & >0
+		diskSizeInGBPerVM: int & >0
+		diskPath:          string & !=""
+		details: [string]: close({
+			mac:      string & !=""
+			role:     "control-plane" | "worker" | "spare"
+			ip?:      string & !=""
+			gateway?: string & !=""
+			bmc: close({
+				port: int & >0
+			})
+		})
+	})
+	virtualBMC: close({
+		// containerName + image come from config.yaml; ip is injected by
+		// tasks/Taskfile-vbmc.yaml after the vbmc container starts (its
+		// IP is only known then). Required here because cue/infra/bmc.cue
+		// references it unconditionally; cue/infra is only vetted via a
+		// .state regenerated AFTER vbmc:update-state has run.
+		containerName: string & !=""
+		image:         string & !=""
+		ip:            string & !=""
+		user:          string & !=""
+		pass:          string & !=""
+	})
+	captainos?: close({
+		kernelVersion: string & !=""
+	})
+	// kind block is populated by state.cue.
+	kind?: close({
+		kubeconfig:  string & !=""
+		gatewayIP?:  string & !=""
+		nodeIPBase?: string & !=""
+		bridgeName?: string & !=""
+		tinkerbell?: close({
+			clusterName: string & !=""
+			kubeconfig:  string & !=""
+		})
+	})
+	// registryMirror is added by cue/values/mirror_extension.cue.
 	...
 }
 
