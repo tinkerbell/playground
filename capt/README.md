@@ -111,6 +111,77 @@ To be written.
 
 To be written.
 
+## Running E2E Tests
+
+The `e2e/run.sh` script orchestrates a matrix of provisioning combos
+(topology × bootmode × mirror) defined in [`e2e/cue/matrix.cue`](e2e/cue/matrix.cue).
+Each combo renders its own `config.yaml` from CUE, runs
+`task create-playground`, executes Ginkgo specs against the resulting
+clusters, then tears the playground down.
+
+List available combos:
+
+```bash
+./e2e/run.sh --list
+```
+
+Run a single combo:
+
+```bash
+./e2e/run.sh single-nomirror-netboot
+```
+
+Run the whole matrix (combos that use the registry mirror require
+`--mirror-host`):
+
+```bash
+./e2e/run.sh --mirror-host reg.example.com all
+```
+
+Useful flags:
+
+- `--no-teardown` — keep the playground running after tests so you can
+  poke at it. **Resources persist; clean up with `./e2e/run.sh --cleanup`.**
+- `--dry-run` — render configs and print what would run, but skip
+  `task` and `ginkgo` invocations.
+- `--labels FILTER` — Ginkgo `--label-filter` (default `provisioning`).
+- `--artifacts DIR` — where per-combo logs and JUnit reports are written
+  (default `e2e/artifacts/`).
+
+The Ginkgo suite under [`e2e/test/`](e2e/test/) can also be run directly
+against an already-provisioned playground by exporting the kubeconfig
+paths:
+
+```bash
+E2E_MGMT_KUBECONFIG="$(yq .kind.kubeconfig .state)" \
+E2E_WORKLOAD_KUBECONFIG="$(yq .outputDir .state)/$(yq .clusterName .state).kubeconfig" \
+E2E_NAMESPACE="$(yq .namespace .state)" \
+ginkgo -v --label-filter=provisioning ./e2e/test/...
+```
+
+## How CUE renders the playground
+
+`config.yaml` is the only file most users touch. Everything else
+(`.state`, generated CAPI manifests, kind config, hardware/BMC YAML,
+`hosts.toml` mirror drop-ins) is derived by CUE packages under
+[`cue/`](cue/):
+
+- [`cue/state`](cue/state/state.cue) — reads `config.yaml`, computes
+  derived names/IPs/MACs, writes `.state` (the source of truth for
+  every downstream renderer).
+- [`cue/values`](cue/values/values.cue) — the `#Config` schema for
+  `.state`. Inner structs are closed so typos fail `cue vet`.
+- [`cue/capi`](cue/capi/render.cue), [`cue/infra`](cue/infra/render.cue),
+  [`cue/clusterctl`](cue/clusterctl/clusterctl.cue), [`cue/kind`](cue/kind/kind.cue)
+  — render Kubernetes resources from `.state`.
+- [`cue/mirror`](cue/mirror/schema.cue) — optional pull-through OCI
+  registry mirror. Disabled by default; the wiring sentinel in
+  [`cue/wiring`](cue/wiring/wiring.cue) ensures the feature can't be
+  half-removed by accident.
+
+`task generate-state` runs `cue vet` before `cue export`, so schema
+errors surface with line numbers before any other task runs.
+
 ## Known Issues
 
 ### DNS issue

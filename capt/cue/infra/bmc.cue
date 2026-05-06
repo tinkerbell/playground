@@ -1,6 +1,4 @@
 // BMC Machine CRs (one per VM) and the single shared BMC credentials Secret.
-// Replaces templates/bmc-machine.tmpl + templates/bmc-secret.tmpl rendered by
-// scripts/generate_bmc.sh + scripts/generate_secret.sh.
 package infra
 
 import "encoding/base64"

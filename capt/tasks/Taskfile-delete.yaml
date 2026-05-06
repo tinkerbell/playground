@@ -44,16 +44,20 @@ tasks:
       Delete the VMs.
     vars:
       VM_NAMES:
-        sh: "yq e '.vm.details[] | [key] | @csv' {{.STATE_FILE_FQ_PATH}}"
-      VM_BASE_NAME:
-        sh: "yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}"
+        sh: "yq e '.vm.details | keys | .[]' {{.STATE_FILE_FQ_PATH}}"
+      VM_NAMES_RE:
+        sh: 'yq e ''.vm.details | keys | join("|")'' {{.STATE_FILE_FQ_PATH}}'
     cmds:
       - for: { var: VM_NAMES }
-        cmd: (virsh --connect qemu:///system destroy {{.ITEM}} || true) ## if the VM is already off, this will fail
-      - for: { var: VM_NAMES }
-        cmd: virsh --connect qemu:///system undefine --nvram --remove-all-storage {{.ITEM}}
+        cmd: |
+          virsh --connect qemu:///system dominfo {{.ITEM}} >/dev/null 2>&1 || exit 0
+          virsh --connect qemu:///system destroy {{.ITEM}} >/dev/null 2>&1 || true
+          virsh --connect qemu:///system undefine --nvram --remove-all-storage {{.ITEM}}
     status:
-      - virsh --connect qemu:///system list --all --name | grep -ce "{{.VM_BASE_NAME}}*" && exit 1 || exit 0
+      # Same shape as kind-cluster's status (line 26). grep -xE = whole-line
+      # ERE match, so 'node1|node2|node3' only matches those exact names —
+      # not 'nod', not 'nodeeee', not unrelated host VMs like 'virtual'.
+      - "virsh --connect qemu:///system list --all --name 2>/dev/null | grep -qxE '{{.VM_NAMES_RE}}' && exit 1 || exit 0"
 
   default-storage-pool:
     summary: |

@@ -14,8 +14,8 @@ tasks:
       (ISO, kernel, initrd) are computed from captainos.kernelVersion
       and arch in .state, matching the upstream naming convention:
         captainos-<kernelVersion>-<arch>.iso
-        vmlinuz-<kernelVersion>-<arch>
-        initramfs-<kernelVersion>-<arch>
+        vmlinuz-<kernelVersion>
+        initramfs-<kernelVersion>
     vars:
       # KUBECONFIG must be supplied by the caller.
       LB_IP:
