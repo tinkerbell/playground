@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<!--
+  Minimal OVF for a small "iPXE on disk" VM, parameterised for amd64 and
+  arm64 VirtualBox 7.1+. Substitution slots:
+    @@UUID@@         VM UUID
+    @@DISK_UUID@@    UUID of the disk image
+    @@DISK_BYTES@@   raw size in bytes of the .vmdk's source
+    @@OSTYPE@@       Ubuntu_64 | Ubuntu_arm64
+    @@PLATFORM@@     x86 | ARM        (case matters; matches VBox 7.1 export)
+    @@CHIPSET@@      ich9 | ARMv8Virtual
+    @@GFX@@          VBoxVGA | QemuRamFB  (arm64 cannot use VGA -> VERR_PGM_RAM_CONFLICT)
+
+  Structure mirrors the output of `VBoxManage export` on a working arm64
+  VM. Notably, `<Platform>` lives inside `<vbox:Machine>` as a sibling of
+  `<Hardware>` and `<Chipset>` is nested inside it; this is how VBox
+  decides the VM's architecture at import time.
+-->
+<Envelope ovf:version="1.0" xml:lang="en-US"
+          xmlns="http://schemas.dmtf.org/ovf/envelope/1"
+          xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1"
+          xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData"
+          xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns:vbox="http://www.virtualbox.org/ovf/machine">
+  <References>
+    <File ovf:id="file1" ovf:href="box-disk.vmdk"/>
+  </References>
+  <DiskSection>
+    <Info>List of the virtual disks used in the package</Info>
+    <Disk ovf:capacity="@@DISK_BYTES@@" ovf:diskId="vmdisk1" ovf:fileRef="file1"
+          ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized"
+          vbox:uuid="@@DISK_UUID@@"/>
+  </DiskSection>
+  <NetworkSection>
+    <Info>Logical networks used in the package</Info>
+    <Network ovf:name="NAT">
+      <Description>Logical network used by this appliance.</Description>
+    </Network>
+  </NetworkSection>
+  <VirtualSystem ovf:id="pxe">
+    <Info>A virtual machine</Info>
+    <OperatingSystemSection ovf:id="1">
+      <Info>The kind of installed guest operating system</Info>
+      <Description>Other</Description>
+      <vbox:OSType ovf:required="false">@@OSTYPE@@</vbox:OSType>
+    </OperatingSystemSection>
+    <VirtualHardwareSection>
+      <Info>Virtual hardware requirements for a virtual machine</Info>
+      <System>
+        <vssd:ElementName>Virtual Hardware Family</vssd:ElementName>
+        <vssd:InstanceID>0</vssd:InstanceID>
+        <vssd:VirtualSystemIdentifier>pxe</vssd:VirtualSystemIdentifier>
+        <vssd:VirtualSystemType>virtualbox-2.2</vssd:VirtualSystemType>
+      </System>
+      <Item>
+        <rasd:Caption>1 virtual CPU</rasd:Caption>
+        <rasd:Description>Number of virtual CPUs</rasd:Description>
+        <rasd:ElementName>1 virtual CPU</rasd:ElementName>
+        <rasd:InstanceID>1</rasd:InstanceID>
+        <rasd:ResourceType>3</rasd:ResourceType>
+        <rasd:VirtualQuantity>1</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:AllocationUnits>MegaBytes</rasd:AllocationUnits>
+        <rasd:Caption>512 MB of memory</rasd:Caption>
+        <rasd:Description>Memory Size</rasd:Description>
+        <rasd:ElementName>512 MB of memory</rasd:ElementName>
+        <rasd:InstanceID>2</rasd:InstanceID>
+        <rasd:ResourceType>4</rasd:ResourceType>
+        <rasd:VirtualQuantity>512</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:Address>0</rasd:Address>
+        <rasd:Caption>nvmeController0</rasd:Caption>
+        <rasd:Description>NVMe Controller</rasd:Description>
+        <rasd:ElementName>nvmeController0</rasd:ElementName>
+        <rasd:InstanceID>3</rasd:InstanceID>
+        <rasd:ResourceSubType>NVMe</rasd:ResourceSubType>
+        <rasd:ResourceType>20</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>0</rasd:AddressOnParent>
+        <rasd:Caption>disk1</rasd:Caption>
+        <rasd:Description>Disk Image</rasd:Description>
+        <rasd:ElementName>disk1</rasd:ElementName>
+        <rasd:HostResource>/disk/vmdisk1</rasd:HostResource>
+        <rasd:InstanceID>5</rasd:InstanceID>
+        <rasd:Parent>3</rasd:Parent>
+        <rasd:ResourceType>17</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Caption>Ethernet adapter on 'NAT'</rasd:Caption>
+        <rasd:Connection>NAT</rasd:Connection>
+        <rasd:ElementName>Ethernet adapter on 'NAT'</rasd:ElementName>
+        <rasd:InstanceID>6</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Caption>Ethernet adapter 2</rasd:Caption>
+        <rasd:Connection>intnet</rasd:Connection>
+        <rasd:ElementName>Ethernet adapter 2</rasd:ElementName>
+        <rasd:InstanceID>7</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+      </Item>
+    </VirtualHardwareSection>
+    <vbox:Machine ovf:required="false" version="1.20-macosx"
+                  uuid="{@@UUID@@}" name="pxe" OSType="@@OSTYPE@@"
+                  snapshotFolder="Snapshots">
+      <ovf:Info>Complete VirtualBox machine configuration in VirtualBox format</ovf:Info>
+      <Hardware>
+        <Memory RAMSize="512"/>
+        <Firmware type="EFI"/>
+        <BIOS>
+          <BootMenu mode="MessageAndMenu"/>
+          <Boot position="1" device="HardDisk"/>
+          <Boot position="2" device="Network"/>
+          <Boot position="3" device="None"/>
+          <Boot position="4" device="None"/>
+        </BIOS>
+        <USB>
+          <Controllers>
+            <Controller name="xHCI" type="XHCI"/>
+          </Controllers>
+        </USB>
+        <Input HID="USBKeyboard" Pointing="USBTablet"/>
+        <Display controller="@@GFX@@" VRAMSize="8"/>
+        <Network>
+          <Adapter slot="0" enabled="true" type="82540EM">
+            <NAT/>
+          </Adapter>
+          <Adapter slot="1" enabled="true" type="82540EM">
+            <InternalNetwork name="intnet"/>
+          </Adapter>
+        </Network>
+        <StorageControllers>
+          <StorageController name="NVMe" type="NVMe" PortCount="1"
+                             useHostIOCache="false" Bootable="true">
+            <AttachedDevice type="HardDisk" hotpluggable="false" port="0" device="0">
+              <Image uuid="{@@DISK_UUID@@}"/>
+            </AttachedDevice>
+          </StorageController>
+        </StorageControllers>
+      </Hardware>
+      <Platform architecture="@@PLATFORM@@">
+        <RTC localOrUTC="UTC"/>
+        <Chipset type="@@CHIPSET@@"/>
+        <CPU/>
+      </Platform>
+    </vbox:Machine>
+  </VirtualSystem>
+</Envelope>

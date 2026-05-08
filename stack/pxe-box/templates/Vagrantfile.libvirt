@@ -1,0 +1,11 @@
+# Inner Vagrantfile baked into the libvirt .box artifact.
+Vagrant.configure("2") do |config|
+  config.ssh.insert_key = false
+  config.vm.boot_timeout = 1
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "libvirt" do |v|
+    v.boot "hd"
+    v.boot "network"
+  end
+end
