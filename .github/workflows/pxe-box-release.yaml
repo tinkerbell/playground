@@ -72,4 +72,3 @@ jobs:
             stack/pxe-box/out/pxe-amd64-libvirt.box
             stack/pxe-box/out/pxe-arm64-libvirt.box
             stack/pxe-box/out/metadata.json
-

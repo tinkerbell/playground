@@ -85,11 +85,11 @@ helm_install_tink_stack() {
 		--set "publicIP=$loadbalancer_ip" \
 		--set "artifactsFileServer=http://$loadbalancer_ip_2:7173" \
 		--set "deployment.init.sourceInterface=$interface" \
-                --set "deployment.envs.ui.enableAutoLogin=true" \
+		--set "deployment.envs.ui.enableAutoLogin=true" \
 		--set "optional.captainos.enabled=true" \
 		--set "optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ea7a56" \
-                --set "deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-6.18.16" \
-                --set "deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-6.18.16" \
+		--set "deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-6.18.16" \
+		--set "deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-6.18.16" \
 		--set "optional.kubevip.interface=$interface"
 }
 
@@ -167,4 +167,3 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
 	main "$@"
 	echo "all done!"
 fi
-
