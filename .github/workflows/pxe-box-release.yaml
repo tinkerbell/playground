@@ -45,10 +45,19 @@ jobs:
           echo "--- metadata.json ---"
           cat stack/pxe-box/out/metadata.json
 
+      - name: Remove previous rolling release & tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --cleanup-tag --yes || true
+
       - name: Publish to rolling GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           name: "tinkerbell/pxe (rolling)"
           make_latest: "false"
           prerelease: false
