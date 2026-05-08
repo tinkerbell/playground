@@ -1,0 +1,12 @@
+# Inner Vagrantfile baked into the VirtualBox .box artifact.
+# Sets sensible defaults for an iPXE-on-disk "PXE worker" VM.
+Vagrant.configure("2") do |config|
+  config.ssh.insert_key = false
+  config.vm.boot_timeout = 1
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "virtualbox" do |v|
+    v.check_guest_additions = false
+    v.gui = true
+  end
+end

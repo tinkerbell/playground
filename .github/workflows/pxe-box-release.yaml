@@ -1,0 +1,75 @@
+name: Build & publish tinkerbell/pxe box
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string written into metadata.json (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: pxe-box-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            dosfstools mtools qemu-utils gdisk uuid-runtime
+
+      - name: Compute BASE_URL
+        id: base
+        run: |
+          echo "url=https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build all box artifacts
+        run: |
+          make -C stack/pxe-box \
+            NAME=tinkerbell/pxe \
+            VERSION='${{ inputs.version }}' \
+            BASE_URL='${{ steps.base.outputs.url }}'
+
+      - name: Show outputs
+        run: |
+          ls -lh stack/pxe-box/out/
+          echo "--- metadata.json ---"
+          cat stack/pxe-box/out/metadata.json
+
+      - name: Publish to rolling GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "tinkerbell/pxe (rolling)"
+          make_latest: "false"
+          prerelease: false
+          draft: false
+          body: |
+            Rolling release of the `tinkerbell/pxe` Vagrant box.
+
+            - version in `metadata.json`: `${{ inputs.version }}`
+            - commit: `${{ github.sha }}`
+            - built by: ${{ github.workflow }} (${{ github.run_id }})
+
+            Use it from a `Vagrantfile`:
+
+            ```ruby
+            config.vm.box     = "tinkerbell/pxe"
+            config.vm.box_url = "https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/metadata.json"
+            ```
+          files: |
+            stack/pxe-box/out/pxe-amd64-virtualbox.box
+            stack/pxe-box/out/pxe-arm64-virtualbox.box
+            stack/pxe-box/out/pxe-amd64-libvirt.box
+            stack/pxe-box/out/pxe-arm64-libvirt.box
+            stack/pxe-box/out/metadata.json
+
