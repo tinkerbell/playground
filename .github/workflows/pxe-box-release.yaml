@@ -69,15 +69,32 @@ jobs:
             - commit: `${{ github.sha }}`
             - built by: ${{ github.workflow }} (${{ github.run_id }})
 
+            `metadata.json` is published to GitHub Pages — Vagrant requires
+            a `Content-Type: application/json` response, which Release assets
+            cannot provide (they're served as `application/octet-stream`).
+
             Use it from a `Vagrantfile`:
 
             ```ruby
             config.vm.box     = "tinkerbell/pxe"
-            config.vm.box_url = "https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/metadata.json"
+            config.vm.box_url = "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pxe-box/metadata.json"
             ```
           files: |
             stack/pxe-box/out/pxe-amd64-virtualbox.box
             stack/pxe-box/out/pxe-arm64-virtualbox.box
             stack/pxe-box/out/pxe-amd64-libvirt.box
             stack/pxe-box/out/pxe-arm64-libvirt.box
-            stack/pxe-box/out/metadata.json
+
+      - name: Stage metadata.json for GitHub Pages
+        run: |
+          mkdir -p pages-publish/pxe-box
+          cp stack/pxe-box/out/metadata.json pages-publish/pxe-box/metadata.json
+
+      - name: Publish metadata.json to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: pages-publish
+          publish_branch: gh-pages
+          keep_files: true
+          commit_message: "pxe-box: publish metadata.json (${{ github.sha }})"
