@@ -18,22 +18,22 @@ spec:
             timeout: 600
             environment:
               DEST_DISK: {{ index .Hardware.Disks 0 }}
-              IMG_URL: "http://$TINKERBELL_HOST_IP:7173/jammy-server-cloudimg-amd64.raw.gz"
+              IMG_URL: "http://$TINKERBELL_HOST_IP:7173/jammy-server-cloudimg-$TINKERBELL_CLIENT_PLATFORM.raw.gz"
               COMPRESSED: true
           - name: "grow-partition"
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
-              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
-              CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"
+              CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}"
           - name: "install openssl"
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
-              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -42,7 +42,7 @@ spec:
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
-              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -51,7 +51,7 @@ spec:
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
-              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -60,7 +60,7 @@ spec:
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90
             environment:
-              BLOCK_DEVICE: {{ index .Hardware.Disks 0 }}1
+              BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
@@ -69,7 +69,7 @@ spec:
             image: quay.io/tinkerbell/actions/writefile:latest
             timeout: 90
             environment:
-              DEST_DISK: {{ index .Hardware.Disks 0 }}1
+              DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
               DEST_PATH: /etc/netplan/config.yaml
               CONTENTS: |
@@ -85,14 +85,25 @@ spec:
               GID: 0
               MODE: 0644
               DIRMODE: 0755
+          {{- if regexMatch "a(arch|rm)" (lower (index .Hardware.Interfaces 0).DHCP.Arch) }}
+          - name: "reboot into os"
+          {{- else }}
           - name: "kexec into os"
-            image: reg.weinstocklabs.com/jacobweinstock/waitdaemon:latest
+          {{- end }}
+            image: ghcr.io/jacobweinstock/waitdaemon:latest
             timeout: 90
+            {{- if regexMatch "a(arch|rm)" (lower (index .Hardware.Interfaces 0).DHCP.Arch) }}
+            command: ["sh", "-c", "echo 1 > /proc/sys/kernel/sysrq && echo b > /proc/sysrq-trigger"]
+            {{- end }}
             pid: host
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
+              {{- if regexMatch "a(arch|rm)" (lower (index .Hardware.Interfaces 0).DHCP.Arch) }}
+              IMAGE: alpine:latest
+              {{- else }}
               IMAGE: quay.io/tinkerbell/actions/kexec:latest
-              WAIT_SECONDS: 10
+              {{- end }}
+              WAIT_SECONDS: 5
             volumes:
               - /var/run/docker.sock:/var/run/docker.sock

@@ -17,7 +17,7 @@ spec:
         version: "20.04"
   interfaces:
     - dhcp:
-        arch: x86_64
+        arch: $TINKERBELL_CLIENT_ARCH
         hostname: machine1
         ip:
           address: $TINKERBELL_CLIENT_IP

@@ -9,6 +9,10 @@ This option will also create a VM and provision an OS onto it.
 - [Libvirt](https://ubuntu.com/server/docs/virtualization-libvirt) is installed
 - Vagrant Libvirt plugin is installed: `vagrant plugin install vagrant-libvirt`
 - A connection to the public internet (air gapped and proxied environments are not supported)
+- Tools to build the worker `tinkerbell/pxe` Vagrant box (one-time, no
+  hosting required):
+  - Debian/Ubuntu: `sudo apt-get install dosfstools mtools qemu-utils gdisk`
+  - Fedora: `sudo dnf install dosfstools mtools qemu-img gdisk`
 
 ## Steps
 
@@ -17,6 +21,22 @@ This option will also create a VM and provision an OS onto it.
    ```bash
    git clone https://github.com/tinkerbell/playground.git
    cd playground
+   ```
+
+1. Build and register the `tinkerbell/pxe` worker box (one-time, per host)
+
+   The worker VM (`machine1`) PXE-boots via a tiny iPXE-on-disk box built
+   from [`stack/pxe-box/`](../../pxe-box/README.md). It's not published to a
+   registry; build it locally for your host's architecture and register it
+   with Vagrant:
+
+   ```bash
+   cd stack/pxe-box
+   # Pick the arch your host runs (amd64 or arm64).
+   make ARCHES=amd64 libvirt
+   vagrant box add --provider libvirt --architecture amd64 \
+     --name tinkerbell/pxe out/pxe-amd64-libvirt.box
+   cd ../..
    ```
 
 1. Start the stack

@@ -1,6 +1,28 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require "fileutils"
+
+OVMF_CODE_PATHS = [
+  "/usr/share/OVMF/OVMF_CODE_4M.fd",
+  "/usr/share/OVMF/OVMF_CODE.fd",
+  "/usr/share/edk2/ovmf/OVMF_CODE.fd",
+  "/usr/share/edk2-ovmf/x64/OVMF_CODE.fd",
+  "/usr/share/qemu/ovmf-x86_64-code.bin",
+].freeze
+
+OVMF_VARS_PATHS = [
+  "/usr/share/OVMF/OVMF_VARS_4M.fd",
+  "/usr/share/OVMF/OVMF_VARS.fd",
+  "/usr/share/edk2/ovmf/OVMF_VARS.fd",
+  "/usr/share/edk2-ovmf/x64/OVMF_VARS.fd",
+  "/usr/share/qemu/ovmf-x86_64-vars.bin",
+].freeze
+
+def find_ovmf(candidates)
+  candidates.find { |p| File.exist?(p) }
+end
+
 open(".env", "r").readlines.each {
   |l|
   kv = l.split("=")
@@ -13,7 +35,6 @@ LIBVIRT_HOST_IP = ENV["LIBVIRT_HOST_IP"] || "192.168.56.1"
 PROVISIONER_IP = ENV["PROVISIONER_IP"] || "192.168.56.4"
 LOADBALANCER_IP = ENV["LOADBALANCER_IP"] || "192.168.56.40"
 LOADBALANCER_IP_2 = ENV["LOADBALANCER_IP_2"] || "192.168.56.41"
-GATEWAY_IP = ENV["GATEWAY_IP"] || ""
 MACHINE1_IP = ENV["MACHINE1_IP"] || "192.168.56.43"
 MACHINE1_MAC = (ENV["MACHINE1_MAC"] || "08:00:27:9E:F5:3A").downcase
 HELM_CHART_VERSION = ENV["HELM_CHART_VERSION"] || "0.19.1"
@@ -21,6 +42,7 @@ KUBECTL_VERSION = ENV["KUBECTL_VERSION"] || "1.28.3"
 K3D_VERSION = ENV["K3D_VERSION"] || "v5.6.0"
 HELM_VERSION = ENV["HELM_VERSION"] || "v3.14.4"
 HELM_LOADBALANCER_INTERFACE = ENV["HELM_LOADBALANCER_INTERFACE"] || "eth1"
+PXE_BOX_URL = ENV["PXE_BOX_URL"] || "https://tinkerbell.github.io/playground/pxe-box/metadata.json"
 DEST_DIR_BASE = "/playground/stack/"
 
 Vagrant.configure("2") do |config|
@@ -29,58 +51,118 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "stack" do |stack|
-    stack.vm.box = "generic/ubuntu2204"
-    stack.vm.synced_folder "", DEST_DIR_BASE
+    stack.vm.box = "bento/ubuntu-22.04"
     stack.vm.network "private_network", ip: "192.168.56.4", netmask: "255.255.255.0",
                                         libvirt__network_name: "tink_network",
                                         libvirt__host_ip: LIBVIRT_HOST_IP,
                                         libvirt__netmask: "255.255.255.0",
-                                        libvirt__dhcp_enabled: false
+                                        libvirt__dhcp_enabled: false,
+                                        libvirt__forward_mode: "nat"
 
     stack.vm.provider "virtualbox" do |v, override|
       v.memory = 2048
       v.cpus = 2
+      override.vm.synced_folder "", DEST_DIR_BASE
     end
 
     stack.vm.provider "libvirt" do |l, override|
-      l.memory = 2048
+      l.memory = 4096
       l.cpus = 2
+      l.machine_type = "q35"
+      l.driver = "kvm"
+      l.cpu_mode = "host-passthrough"
+      ovmf_code = find_ovmf(OVMF_CODE_PATHS)
+      ovmf_vars = find_ovmf(OVMF_VARS_PATHS)
+      if ovmf_code && ovmf_vars
+        l.loader = ovmf_code
+        l.nvram = ovmf_vars
+      else
+        $stderr.puts "WARNING: OVMF not found; install ovmf (Debian/Ubuntu) or edk2-ovmf (Fedora/Arch) for UEFI boot"
+      end
+      override.vm.synced_folder ".", "/vagrant", disabled: true
       override.vm.synced_folder "", DEST_DIR_BASE, type: "rsync"
     end
 
-    stack.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR_BASE, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE, KUBECTL_VERSION, K3D_VERSION, HELM_VERSION, LOADBALANCER_IP_2, GATEWAY_IP]
+    stack.vm.provision :shell, path: "setup.sh", args: [PROVISIONER_IP, MACHINE1_IP, MACHINE1_MAC, DEST_DIR_BASE, LOADBALANCER_IP, HELM_CHART_VERSION, HELM_LOADBALANCER_INTERFACE, KUBECTL_VERSION, K3D_VERSION, HELM_VERSION, LOADBALANCER_IP_2]
   end
 
   config.vm.define :machine1, autostart: false do |machine1|
-    machine1.ssh.insert_key = false
-    machine1.vm.boot_timeout = 10
+    machine1.vm.box = "tinkerbell/pxe"
+    machine1.vm.box_url = PXE_BOX_URL
+    machine1.vm.boot_timeout = 1
     machine1.vm.synced_folder ".", "/vagrant", disabled: true
+    # Pin the host-only / tink_network NIC to adapter slot 1. On VirtualBox
+    # this overrides Vagrant's default (NAT on slot 1) so iPXE picks up the
+    # Tinkerbell network as net0 and DHCPs from smee immediately instead of
+    # iterating through NAT's failed IPv4/IPv6/PXE/HTTP timeouts. The
+    # :adapter key is ignored by the libvirt provider.
     machine1.vm.network :private_network, ip: MACHINE1_IP,
                                           mac: MACHINE1_MAC.gsub(/[:-]/, "").strip,
                                           adapter: 1,
                                           libvirt__network_name: "tink_network",
-                                          libvirt__dhcp_enabled: false,
-                                          libvirt__forward_mode: "nat"
+                                          libvirt__dhcp_enabled: false
 
-    machine1.vm.provider "libvirt" do |v|
-      v.storage :file, :size => "20G"
+    machine1.vm.provider "libvirt" do |v, override|
+      override.vm.box = nil
+      boot_network = { "network" => "tink_network" }
+      v.boot boot_network
+      v.boot "hd"
+      v.storage :file, :size => "10G"
       v.memory = 4096
       v.cpus = 2
-      v.boot "hd"
-      v.boot "network"
+      v.machine_type = "q35"
+      v.driver = "kvm"
+      v.cpu_mode = "host-passthrough"
+      ovmf_code = find_ovmf(OVMF_CODE_PATHS)
+      ovmf_vars = find_ovmf(OVMF_VARS_PATHS)
+      if ovmf_code && ovmf_vars
+        v.loader = ovmf_code
+        v.nvram = ovmf_vars
+      end
       v.graphics_ip = "0.0.0.0"
-      v.machine_arch = "x86_64"
     end
 
     machine1.vm.provider "virtualbox" do |v, override|
-      override.vm.box = "jtyr/pxe"
-      v.memory = 2048
+      v.memory = 4096
       v.cpus = 2
       v.gui = true
-      v.customize ["modifyvm", :id, "--nic1", "hostonlynet", "--nic2", "nat", "--boot1", "disk", "--boot2", "net"]
+
+      # NAT moves to slot 2 so the booted OS still has internet via VBox NAT
+      # while the host-only NIC (slot 1, set above) drives PXE.
+      v.network_adapter(2, :nat, auto_config: false)
+
+      # virtio is required for VBox amd64 EFI to expose an SNP handle that
+      # snponly.efi can use; without it iPXE prints "No more network devices".
+      v.customize ["modifyvm", :id, "--nictype1", "virtio"]
+      v.customize ["modifyvm", :id, "--nictype2", "virtio"]
+
+      # The smee-known MAC lives on the host-only NIC, which is now slot 1.
       v.customize ["modifyvm", :id, "--macaddress1", MACHINE1_MAC.gsub(/[:-]/, "").strip]
-      v.customize ["setextradata", :id, "GUI/ScaleFactor", "3.0"]
       v.check_guest_additions = false
+
+      # Attach an extra 10GB disk on the existing NVMe controller (port 1).
+      # The box ships with a 64MB disk on NVMe port 0; this gives the OS
+      # install something realistic to land on.
+      machine1_disk_dir = File.expand_path("../.vagrant/machine1", __FILE__)
+      machine1_disk_path = File.join(machine1_disk_dir, "extra-disk.vdi")
+      FileUtils.mkdir_p(machine1_disk_dir)
+      unless File.exist?(machine1_disk_path)
+        v.customize ["createmedium", "disk",
+                     "--filename", machine1_disk_path,
+                     "--size", "10240",
+                     "--format", "VDI"]
+      end
+      v.customize ["storagectl", :id,
+                   "--name", "VSCSI-extra",
+                   "--add", "virtio-scsi",
+                   "--portcount", "1",
+                   "--bootable", "off"]
+      v.customize ["storageattach", :id,
+                   "--storagectl", "VSCSI-extra",
+                   "--port", "0",
+                   "--device", "0",
+                   "--type", "hdd",
+                   "--medium", machine1_disk_path]
     end
   end
 end
