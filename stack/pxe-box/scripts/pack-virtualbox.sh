@@ -13,12 +13,14 @@ case "$arch" in
 amd64)
 	ostype=Ubuntu_64
 	platform=x86
-	chipset=ich9
+	platform_block='<x86/>'
+	chipset=PIIX3
 	gfx=VBoxVGA
 	;;
 arm64)
 	ostype=Ubuntu_arm64
 	platform=ARM
+	platform_block='<arm/>'
 	chipset=ARMv8Virtual
 	gfx=QemuRamFB
 	;;
@@ -47,6 +49,7 @@ sed \
 	-e "s|@@DISK_BYTES@@|$disk_bytes|g" \
 	-e "s|@@OSTYPE@@|$ostype|g" \
 	-e "s|@@PLATFORM@@|$platform|g" \
+	-e "s|@@PLATFORM_BLOCK@@|$platform_block|g" \
 	-e "s|@@CHIPSET@@|$chipset|g" \
 	-e "s|@@GFX@@|$gfx|g" \
 	"$here/templates/box.ovf.tmpl" >"$work/box.ovf"

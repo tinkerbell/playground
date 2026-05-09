@@ -20,25 +20,25 @@ cat <<JSON
           "name": "virtualbox",
           "architecture": "amd64",
           "default_architecture": true,
-          "url": "$base_url/$version/pxe-amd64-virtualbox.box"
+          "url": "$base_url/pxe-amd64-virtualbox.box"
         },
         {
           "name": "virtualbox",
           "architecture": "arm64",
           "default_architecture": false,
-          "url": "$base_url/$version/pxe-arm64-virtualbox.box"
+          "url": "$base_url/pxe-arm64-virtualbox.box"
         },
         {
           "name": "libvirt",
           "architecture": "amd64",
           "default_architecture": true,
-          "url": "$base_url/$version/pxe-amd64-libvirt.box"
+          "url": "$base_url/pxe-amd64-libvirt.box"
         },
         {
           "name": "libvirt",
           "architecture": "arm64",
           "default_architecture": false,
-          "url": "$base_url/$version/pxe-arm64-libvirt.box"
+          "url": "$base_url/pxe-arm64-libvirt.box"
         }
       ]
     }

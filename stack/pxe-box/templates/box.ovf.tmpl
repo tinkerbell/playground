@@ -5,10 +5,15 @@
     @@UUID@@         VM UUID
     @@DISK_UUID@@    UUID of the disk image
     @@DISK_BYTES@@   raw size in bytes of the .vmdk's source
-    @@OSTYPE@@       Ubuntu_64 | Ubuntu_arm64
-    @@PLATFORM@@     x86 | ARM        (case matters; matches VBox 7.1 export)
-    @@CHIPSET@@      ich9 | ARMv8Virtual
-    @@GFX@@          VBoxVGA | QemuRamFB  (arm64 cannot use VGA -> VERR_PGM_RAM_CONFLICT)
+    @@OSTYPE@@         Ubuntu_64 | Ubuntu_arm64
+    @@PLATFORM@@       x86 | ARM        (case matters; matches VBox 7.1 export)
+    @@PLATFORM_BLOCK@@ <x86/> | <arm/>
+                       (required <Platform> child element on VBox 7.2+)
+    @@CHIPSET@@        PIIX3 | ARMv8Virtual
+                       (PIIX3 chosen for amd64 to avoid VBox 7.2 OVF-import
+                       gap where ICH9 needs IOAPIC but the imported XML's
+                       <x86><APIC/></x86> isn't honored at runtime)
+    @@GFX@@            VBoxVGA | QemuRamFB  (arm64 cannot use VGA -> VERR_PGM_RAM_CONFLICT)
 
   Structure mirrors the output of `VBoxManage export` on a working arm64
   VM. Notably, `<Platform>` lives inside `<vbox:Machine>` as a sibling of
@@ -146,6 +151,7 @@
         </StorageControllers>
       </Hardware>
       <Platform architecture="@@PLATFORM@@">
+        @@PLATFORM_BLOCK@@
         <RTC localOrUTC="UTC"/>
         <Chipset type="@@CHIPSET@@"/>
         <CPU/>
