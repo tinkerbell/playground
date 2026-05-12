@@ -22,7 +22,7 @@ spec:
               COMPRESSED: true
           - name: "grow-partition"
             image: quay.io/tinkerbell/actions/cexec:latest
-            timeout: 90
+            timeout: 180
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -31,7 +31,7 @@ spec:
               CMD_LINE: "sleep 5 && growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}"
           - name: "install openssl"
             image: quay.io/tinkerbell/actions/cexec:latest
-            timeout: 90
+            timeout: 180
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -40,7 +40,7 @@ spec:
               CMD_LINE: "apt -y update && apt -y install openssl"
           - name: "create user"
             image: quay.io/tinkerbell/actions/cexec:latest
-            timeout: 90
+            timeout: 180
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -49,7 +49,7 @@ spec:
               CMD_LINE: "useradd -p $(openssl passwd -1 tink) -s /bin/bash -d /home/tink/ -m -G sudo tink"
           - name: "enable ssh"
             image: quay.io/tinkerbell/actions/cexec:latest
-            timeout: 90
+            timeout: 180
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -58,7 +58,7 @@ spec:
               CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
           - name: "disable apparmor"
             image: quay.io/tinkerbell/actions/cexec:latest
-            timeout: 90
+            timeout: 180
             environment:
               BLOCK_DEVICE: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -67,7 +67,7 @@ spec:
               CMD_LINE: "systemctl disable apparmor; systemctl disable snapd"
           - name: "write netplan"
             image: quay.io/tinkerbell/actions/writefile:latest
-            timeout: 90
+            timeout: 180
             environment:
               DEST_DISK: {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}
               FS_TYPE: ext4
@@ -91,7 +91,7 @@ spec:
           - name: "kexec into os"
           {{- end }}
             image: ghcr.io/jacobweinstock/waitdaemon:latest
-            timeout: 90
+            timeout: 180
             {{- if regexMatch "a(arch|rm)" (lower (index .Hardware.Interfaces 0).DHCP.Arch) }}
             command: ["sh", "-c", "echo 1 > /proc/sys/kernel/sysrq && echo b > /proc/sysrq-trigger"]
             {{- end }}
