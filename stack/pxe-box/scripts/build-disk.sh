@@ -13,11 +13,11 @@ out=${2:?output path required}
 
 case "$arch" in
 amd64)
-	url="https://boot.ipxe.org/x86_64-efi/ipxe.efi"
+	url="https://boot.ipxe.org/x86_64-efi/snponly.efi"
 	loader="BOOTX64.EFI"
 	;;
 arm64)
-	url="https://boot.ipxe.org/arm64-efi/ipxe.efi"
+	url="https://boot.ipxe.org/arm64-efi/snponly.efi"
 	loader="BOOTAA64.EFI"
 	;;
 *)
