@@ -1,0 +1,86 @@
+version: "3"
+
+# Optional pull-through OCI registry mirror tasks. The single render-only
+# task here (render-kind-config) self-gates on `.registryMirror.enabled`
+# in .state — when disabled it's a strict no-op via its `status:` guard
+# and writes nothing. Both kind-cluster and tinkerbell-kind-cluster in
+# Taskfile-create.yaml depend on it and conditionally pass --config to
+# `kind create` based on the same enabled flag.
+#
+# Where the rest of the redirection happens (NOT in this file):
+#   - Image strings pulled OUTSIDE any containerd (chart.location,
+#     os.registry, virtualBMC.image) are rewritten in CUE by
+#     cue/state/mirror_extension.cue using cue/mirror/#rewrite, so they
+#     land in .state already pointing at the mirror host.
+#   - kind nodes get the mirror via cue/kind/kind.cue → nodes[].extraMounts,
+#     bind-mounting the host-rendered <output>/certs.d tree into each node
+#     at /etc/containerd/certs.d. kind's default containerd config already
+#     sets `config_path` there, so no containerdConfigPatches are needed.
+#   - Workload (CAPT) nodes get the same hosts.toml drop-ins via
+#     KubeadmConfigSpec.files, baked in by cue/capi/resources.cue using
+#     cue/mirror/#cloudInitFiles.
+# Everything pulled by a mirrored containerd (workflow actions, kube-vip
+# `ctr` pulls, all helm-chart Pod images including captainos, kubeadm
+# pulls) is left referencing the original upstream hostname — the
+# containerd registry-mirror config redirects them at pull time.
+#
+# To remove the entire feature: delete this file, the cue/mirror and
+# cue/kind packages, the *_extension.cue files in cue/values and
+# cue/state, the `mirror:` line in ../Taskfile.yaml#includes, the
+# `deps: [mirror:render-kind-config]` and the `KIND_CONFIG_FLAG` var
+# in Taskfile-create.yaml#kind-cluster and #tinkerbell-kind-cluster, the
+# mirror references in cue/capi/resources.cue (_mirrorFiles /
+# _mirrorPreCmds), and the `registryMirror:` block in ../config.yaml.
+#
+# Invariants:
+#   - HTTPS only. No insecure knobs anywhere.
+#   - When the mirror is disabled, the render task is a strict no-op and
+#     writes no file. When enabled, the render runs each invocation
+#     (sub-second cue export); we accept that over the alternative of
+#     writing a stale file when the feature is off.
+
+tasks:
+  render-kind-config:
+    summary: |
+      Render output/kind-config.yaml from cue/kind AND the per-upstream
+      hosts.toml tree under output/certs.d/<u>/hosts.toml from cue/mirror.
+      The kind config bind-mounts that tree into every node at
+      /etc/containerd/certs.d via nodes[].extraMounts. Both kind-cluster
+      and tinkerbell-kind-cluster consume the kind-config.yaml file (a
+      single file serves both — cue/kind has no per-cluster differentiation
+      today).
+
+      Strict no-op when the mirror is disabled — neither the kind-config
+      nor the certs.d tree is written, kind-cluster's KIND_CONFIG_FLAG is
+      empty, and `kind create` runs without `--config`.
+
+      We deliberately use `status:` rather than go-task's
+      `sources:`/`generates:` fingerprinting: when `status:` returns
+      non-zero (i.e. mirror enabled) go-task ignores any sources/generates
+      entries and always runs the cmds, so the two are mutually exclusive.
+      The cue renders are sub-second, and the user-experience win of
+      "no files when feature is off" outweighs skipping a fast cue
+      invocation when it's on.
+    vars:
+      ENABLED:
+        sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
+      KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
+      CERTS_DIR: "{{.OUTPUT_DIR}}/certs.d"
+    cmds:
+      - "cue export ./cue/kind yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e out --out yaml > {{.KIND_CONFIG}}"
+      # Render the host-side certs.d tree from cue/mirror#hostCertsdFiles.
+      # CUE emits [{path, content}, ...]; we iterate by index with yq so
+      # multi-line `content` values stay intact (no awk/sed escaping). Wipe
+      # and recreate the dir so removed upstreams don't leave stale entries.
+      - |
+        rm -rf "{{.CERTS_DIR}}"
+        mkdir -p "{{.CERTS_DIR}}"
+        manifest="$(cue export ./cue/mirror yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e hostCertsdFiles --out json)"
+        count=$(yq -p json '. | length' <<<"$manifest")
+        for i in $(seq 0 $((count - 1))); do
+          path=$(yq -p json ".[$i].path" <<<"$manifest")
+          mkdir -p "{{.CERTS_DIR}}/$(dirname "$path")"
+          yq -p json -r ".[$i].content" <<<"$manifest" > "{{.CERTS_DIR}}/$path"
+        done
+    status:
+      - '[[ "{{.ENABLED}}" != "true" ]]'

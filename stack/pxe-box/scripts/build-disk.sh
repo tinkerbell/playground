@@ -17,7 +17,7 @@ amd64)
 	loader="BOOTX64.EFI"
 	;;
 arm64)
-	url="https://boot.ipxe.org/arm64-efi/snponly.efi"
+	url="https://boot.ipxe.org/arm64-efi/ipxe.efi"
 	loader="BOOTAA64.EFI"
 	;;
 *)

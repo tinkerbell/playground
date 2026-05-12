@@ -1,5 +1,23 @@
 #!/bin/bash
 
+host_arch() {
+	uname -m
+}
+
+normalized_platform() {
+	case "$(host_arch)" in
+	aarch64 | arm64)
+		echo arm64
+		;;
+	x86_64 | amd64)
+		echo amd64
+		;;
+	*)
+		host_arch
+		;;
+	esac
+}
+
 install_docker() {
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
@@ -10,8 +28,11 @@ install_docker() {
 
 install_kubectl() {
 	local kubectl_version=$1
+	local platform
 
-	curl -LO https://dl.k8s.io/v"$kubectl_version"/bin/linux/amd64/kubectl
+	platform=$(normalized_platform)
+
+	curl -LO "https://dl.k8s.io/v$kubectl_version/bin/linux/${platform}/kubectl"
 	chmod +x ./kubectl
 	mv ./kubectl /usr/local/bin/kubectl
 }
@@ -41,7 +62,7 @@ update_apt() {
 }
 
 install_k3d() {
-	local k3d_Version=$1
+	local k3d_version=$1
 
 	wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="$k3d_version" bash
 }
@@ -55,6 +76,73 @@ start_k3d() {
 	mkdir -p ~/.kube/
 	k3d kubeconfig get -a >~/.kube/config
 	until kubectl wait --for=condition=Ready nodes --all --timeout=600s; do sleep 1; done
+
+	fix_coredns_upstream
+}
+
+# With --network host and K3D_FIX_DNS=false, CoreDNS inherits the node's
+# /etc/resolv.conf which on Ubuntu points at the systemd-resolved stub at
+# 127.0.0.53. That address is unreachable from inside a pod's network namespace,
+# so cluster pods get DNS failures (the host and the k3d container itself work
+# because they share the host netns).
+#
+# The k3s-supported "coredns-custom" ConfigMap can NOT be used here:
+#   - "*.override" entries are imported INSIDE the bundled ".:53 { ... }" block,
+#     but "forward" is a single-instance plugin so it can't be redeclared.
+#   - "*.server" entries are imported OUTSIDE the bundled block, intended for
+#     additional zones; declaring ". { ... }" there collides with the bundled
+#     ".:53" server and CoreDNS aborts with
+#       "cannot serve dns://.:53 - it is already defined".
+#
+# Instead, patch the bundled "coredns" ConfigMap in place: replace
+# "forward . /etc/resolv.conf" with the discovered host upstreams and restart
+# the Deployment. This is fine for the single-shot vagrant playground because
+# k3s is never restarted within a session (the addon manager would otherwise
+# re-apply the bundled manifest).
+fix_coredns_upstream() {
+	local upstreams=""
+	if [[ -r /run/systemd/resolve/resolv.conf ]]; then
+		upstreams=$(awk '/^nameserver / {print $2}' /run/systemd/resolve/resolv.conf | grep -v '^127\.' | tr '\n' ' ' | sed 's/ $//')
+	fi
+	if [[ -z $upstreams ]]; then
+		upstreams="1.1.1.1"
+	fi
+	echo "==> Patching bundled CoreDNS Corefile to forward to: $upstreams"
+
+	# Wait (bounded) for the CoreDNS ConfigMap and Deployment to exist. k3s
+	# deploys them asynchronously via the addon manager.
+	local waited=0
+	until kubectl -n kube-system get configmap coredns >/dev/null 2>&1 &&
+		kubectl -n kube-system get deployment coredns >/dev/null 2>&1; do
+		if ((waited >= 180)); then
+			echo "!! CoreDNS did not appear within ${waited}s; dumping diagnostics" >&2
+			kubectl get all,cm,helmchart -A >&2 || true
+			docker logs k3d-k3s-default-server-0 2>&1 | tail -200 >&2 || true
+			return 1
+		fi
+		sleep 2
+		waited=$((waited + 2))
+	done
+
+	# Replace the "forward . /etc/resolv.conf" line in the Corefile with the
+	# discovered upstreams. Re-apply the ConfigMap preserving the NodeHosts
+	# data key (the bundled ConfigMap has both Corefile and NodeHosts).
+	local corefile new_corefile nodehosts
+	corefile=$(kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}')
+	nodehosts=$(kubectl -n kube-system get configmap coredns -o jsonpath='{.data.NodeHosts}')
+	new_corefile=$(printf '%s\n' "$corefile" | sed -E "s|forward \. /etc/resolv\.conf|forward . ${upstreams}|")
+	if [[ $new_corefile == "$corefile" ]]; then
+		echo "!! Could not find 'forward . /etc/resolv.conf' in CoreDNS Corefile; current contents:" >&2
+		printf '%s\n' "$corefile" >&2
+		return 1
+	fi
+	kubectl -n kube-system create configmap coredns \
+		--from-literal=Corefile="$new_corefile" \
+		--from-literal=NodeHosts="$nodehosts" \
+		--dry-run=client -o yaml | kubectl apply -f -
+
+	kubectl -n kube-system rollout restart deployment coredns
+	kubectl -n kube-system rollout status deployment coredns --timeout=120s
 }
 
 kubectl_for_vagrant_user() {
@@ -108,13 +196,14 @@ apply_manifests() {
 	export TINKERBELL_CLIENT_IP="$worker_ip"
 	export TINKERBELL_CLIENT_MAC="$worker_mac"
 	export TINKERBELL_HOST_IP="$host_ip"
+	export TINKERBELL_CLIENT_ARCH="$(host_arch)"               # (x86_64 | aarch64)
+	export TINKERBELL_CLIENT_PLATFORM="$(normalized_platform)" # (amd64 | arm64)
 
-	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml}; do
-		envsubst <"$i"
+	for i in "$manifests_dir"/{hardware.yaml,template.yaml,workflow.yaml,ubuntu-download.yaml}; do
+		envsubst '$DISK_DEVICE $TINKERBELL_CLIENT_IP $TINKERBELL_CLIENT_MAC $TINKERBELL_HOST_IP $TINKERBELL_CLIENT_ARCH $TINKERBELL_CLIENT_PLATFORM' <"$i"
 		echo -e '---'
 	done >/tmp/manifests.yaml
 	kubectl apply -n "$namespace" -f /tmp/manifests.yaml
-	kubectl apply -n "$namespace" -f "$manifests_dir"/ubuntu-download.yaml
 }
 
 run_helm() {
@@ -150,7 +239,6 @@ main() {
 	local k3d_version="$9"
 	local helm_version="${10}"
 	local loadbalancer_ip_2="${11}"
-	local gateway_ip="${12}"
 
 	update_apt
 	install_docker

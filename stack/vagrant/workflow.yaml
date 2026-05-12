@@ -7,3 +7,5 @@ spec:
   hardwareRef: machine1
   hardwareMap:
     device_1: $TINKERBELL_CLIENT_MAC
+  bootOptions:
+    toggleAllowNetboot: true

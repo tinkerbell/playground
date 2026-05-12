@@ -7,18 +7,26 @@ tasks:
       Prepare the virtualbmc server.
     vars:
       VBMC_CONTAINER_IMAGE:
-        sh: yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}"
       USERNAME:
-        sh: yq eval '.virtualBMC.user' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.user' {{.STATE_FILE_FQ_PATH}}"
       PASSWORD:
-        sh: yq eval '.virtualBMC.pass' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.pass' {{.STATE_FILE_FQ_PATH}}"
+      # Absolute path is required for `docker -v` bind mounts (relative paths
+      # are interpreted as named volumes). state.cue resolves outputDir to an
+      # absolute path when generating .state.
+      OUTPUT_DIR_ABS:
+        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - docker run -it --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -nbB "{{.USERNAME}}" "{{.PASSWORD}}" > {{.CURR_DIR}}/scripts/htpasswd
-      - docker run -it --rm --entrypoint openssl -v {{.CURR_DIR}}/scripts:/scripts {{.VBMC_CONTAINER_IMAGE}} req -x509 -newkey rsa:2048 -keyout /scripts/sushy.key -out /scripts/sushy.cert -days 365 -nodes -subj "/C=US/ST=CA/L=Los Angeles/O=Engineering/OU=Engineering/CN=tinkerbell.org"
+      - mkdir -p {{.OUTPUT_DIR}}
+      # Pass the password via stdin (-i) instead of argv (-b) so it does not
+      # appear in `ps`/`docker ps --no-trunc` while htpasswd runs.
+      - printf '%s' "{{.PASSWORD}}" | docker run -i --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -niB "{{.USERNAME}}" > {{.OUTPUT_DIR}}/htpasswd
+      - docker run -it --rm --entrypoint openssl -v {{.OUTPUT_DIR_ABS}}:/scripts {{.VBMC_CONTAINER_IMAGE}} req -x509 -newkey rsa:2048 -keyout /scripts/sushy.key -out /scripts/sushy.cert -days 365 -nodes -subj "/C=US/ST=CA/L=Los Angeles/O=Engineering/OU=Engineering/CN=tinkerbell.org"
     status:
-      - test -f {{.CURR_DIR}}/scripts/htpasswd
-      - test -f {{.CURR_DIR}}/scripts/sushy.key
-      - test -f {{.CURR_DIR}}/scripts/sushy.cert
+      - test -f {{.OUTPUT_DIR}}/htpasswd
+      - test -f {{.OUTPUT_DIR}}/sushy.key
+      - test -f {{.OUTPUT_DIR}}/sushy.cert
 
   start-server:
     run: once
@@ -27,11 +35,14 @@ tasks:
       Start the virtualbmc server. Requires the "kind" docker network to exist.
     vars:
       VBMC_CONTAINER_NAME:
-        sh: yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
       VBMC_CONTAINER_IMAGE:
-        sh: yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}"
+      # Absolute path required for `docker -v` bind mounts (see prepare).
+      OUTPUT_DIR_ABS:
+        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - docker run -d --privileged --rm --network kind -e SUSHY_EMULATOR_CONFIG=/etc/sushy/sushy-emulator.conf -v /var/run/libvirt:/var/run/libvirt -v "${PWD}/scripts/sushy.key:/etc/sushy/sushy.key" -v "${PWD}/scripts/sushy.cert:/etc/sushy/sushy.cert" -v "${PWD}/scripts/sushy-tools.conf:/etc/sushy/sushy-emulator.conf" -v "${PWD}/scripts/htpasswd:/etc/sushy/htpasswd" --name {{.VBMC_CONTAINER_NAME}} {{.VBMC_CONTAINER_IMAGE}}
+      - docker run -d --privileged --rm --network kind -e SUSHY_EMULATOR_CONFIG=/etc/sushy/sushy-emulator.conf -v /var/run/libvirt:/var/run/libvirt -v "{{.OUTPUT_DIR_ABS}}/sushy.key:/etc/sushy/sushy.key" -v "{{.OUTPUT_DIR_ABS}}/sushy.cert:/etc/sushy/sushy.cert" -v "${PWD}/scripts/sushy-tools.conf:/etc/sushy/sushy-emulator.conf" -v "{{.OUTPUT_DIR_ABS}}/htpasswd:/etc/sushy/htpasswd" --name {{.VBMC_CONTAINER_NAME}} {{.VBMC_CONTAINER_IMAGE}}
     status:
       - docker ps | grep -q {{.VBMC_CONTAINER_NAME}}
 
@@ -42,7 +53,7 @@ tasks:
       Register and start the virtualbmc servers. Requires that the virtual machines exist.
     vars:
       VBMC_NAME:
-        sh: yq e '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq e '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - ./scripts/virtualbmc.sh {{.STATE_FILE_FQ_PATH}}
     status:
@@ -55,7 +66,7 @@ tasks:
       Update the state file with the virtual bmc server information.
     vars:
       VBMC_CONTAINER_NAME:
-        sh: yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}
+        sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - vbmc_ip=$(docker inspect -f '{{`{{ .NetworkSettings.Networks.kind.IPAddress }}`}}' {{.VBMC_CONTAINER_NAME}}); yq e -i '.virtualBMC.ip = "'$vbmc_ip'"' {{.STATE_FILE_FQ_PATH}}
     status:
