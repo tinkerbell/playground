@@ -28,7 +28,7 @@ spec:
               FS_TYPE: ext4
               CHROOT: y
               DEFAULT_INTERPRETER: "/bin/sh -c"
-              CMD_LINE: "growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}"
+              CMD_LINE: "sleep 5 && growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ formatPartition ( index .Hardware.Disks 0 ) 1 }}"
           - name: "install openssl"
             image: quay.io/tinkerbell/actions/cexec:latest
             timeout: 90

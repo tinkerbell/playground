@@ -1,6 +1,10 @@
+merge_queue:
+  max_parallel_checks: 1
 queue_rules:
   - name: default
+    batch_size: 1
     queue_conditions:
+      - -draft
       - base=main
       - or:
           - "#approved-reviews-by>=1"
@@ -23,16 +27,13 @@ queue_rules:
       - check-success=build
       - label!=do-not-merge
       - label=ready-to-merge
+      # This extra condition forces draft PR mode (prevents in-place checks)
+      - queue-position>=0
     commit_message_template: |
       {{ title }} (#{{ number }})
 
       {{ body }}
     merge_method: merge
 
-pull_request_rules:
-  - name: Automatic merge on approval
-    conditions: []
-    actions:
-      queue:
 merge_protections_settings:
   reporting_method: check-runs
