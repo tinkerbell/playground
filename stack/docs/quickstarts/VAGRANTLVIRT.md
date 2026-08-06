@@ -424,6 +424,21 @@ This option will also create a VM and provision an OS onto it.
 
    </details>
 
+1. (Optional) Open the Tinkerbell UI
+
+   The Helm chart deploys a web UI that gives a visual view of the
+   Hardware, Templates, and Workflows in the cluster. The playground enables
+   auto-login, so no credentials are required. It is served on the load
+   balancer IP (`LOADBALANCER_IP` in `stack/vagrant/.env`, `192.168.56.40` by
+   default) on the `http` port:
+
+   ```
+   http://192.168.56.40:7080
+   ```
+
+   Leave it open while you provision `machine1` in the next steps to watch the
+   Workflow progress in real time.
+
 1. Start the machine to be provisioned
 
    ```bash

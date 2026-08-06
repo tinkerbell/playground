@@ -33,6 +33,17 @@ You will need to bring your own hardware (machine) for this guide.
    kubectl get svc -n tinkerbell # Verify the tink-stack service has the IP you specified with $LB_IP under the EXTERNAL-IP column
    ```
 
+1. (Optional) Open the Tinkerbell UI
+
+   The Helm chart deploys a web UI that gives a visual view of the Hardware,
+   Templates, and Workflows in the cluster. It is served on the `tinkerbell`
+   load balancer service under the `http` port (7080), reachable at the IP you
+   specified with `$LB_IP`:
+
+   ```
+   http://$LB_IP:7080
+   ```
+
 1. Download and convert a cloud image to a raw image
 
    ```bash
