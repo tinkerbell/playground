@@ -9,6 +9,8 @@ OVMF_CODE_PATHS = [
   "/usr/share/edk2/ovmf/OVMF_CODE.fd",
   "/usr/share/edk2-ovmf/x64/OVMF_CODE.fd",
   "/usr/share/qemu/ovmf-x86_64-code.bin",
+  # NixOS exposes firmware from the nix store here (libvirtd.qemu.ovmf).
+  "/run/libvirt/nix-ovmf/edk2-x86_64-code.fd",
 ].freeze
 
 OVMF_VARS_PATHS = [
@@ -17,10 +19,27 @@ OVMF_VARS_PATHS = [
   "/usr/share/edk2/ovmf/OVMF_VARS.fd",
   "/usr/share/edk2-ovmf/x64/OVMF_VARS.fd",
   "/usr/share/qemu/ovmf-x86_64-vars.bin",
+  # NixOS ships only the i386 vars template; it is the writable pair for the
+  # x86_64 OVMF code above.
+  "/run/libvirt/nix-ovmf/edk2-i386-vars.fd",
 ].freeze
 
 def find_ovmf(candidates)
   candidates.find { |p| File.exist?(p) }
+end
+
+# QEMU opens the UEFI vars store read-write, but the discovered vars file is a
+# read-only template (on NixOS it lives in the read-only /nix/store). Copy it to
+# a writable, per-machine path so each domain gets its own variable store.
+def writable_nvram(template, name)
+  dir = File.expand_path("../.vagrant/#{name}", __FILE__)
+  FileUtils.mkdir_p(dir)
+  dest = File.join(dir, "OVMF_VARS.fd")
+  unless File.exist?(dest)
+    FileUtils.cp(template, dest)
+    FileUtils.chmod(0o644, dest)
+  end
+  dest
 end
 
 open(".env", "r").readlines.each {
@@ -75,7 +94,7 @@ Vagrant.configure("2") do |config|
       ovmf_vars = find_ovmf(OVMF_VARS_PATHS)
       if ovmf_code && ovmf_vars
         l.loader = ovmf_code
-        l.nvram = ovmf_vars
+        l.nvram = writable_nvram(ovmf_vars, "stack")
       else
         $stderr.puts "WARNING: OVMF not found; install ovmf (Debian/Ubuntu) or edk2-ovmf (Fedora/Arch) for UEFI boot"
       end
@@ -117,7 +136,7 @@ Vagrant.configure("2") do |config|
       ovmf_vars = find_ovmf(OVMF_VARS_PATHS)
       if ovmf_code && ovmf_vars
         v.loader = ovmf_code
-        v.nvram = ovmf_vars
+        v.nvram = writable_nvram(ovmf_vars, "machine1")
       end
       v.graphics_ip = "0.0.0.0"
     end
