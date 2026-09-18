@@ -1,8 +1,10 @@
 // Hardware CRs, one per VM in values.vm.details.
 //
-// outHardware is a map keyed by node name; the Taskfile iterates over the
-// keys and runs `cue export -e outHardware.<name> --out yaml` once per node
-// so each Hardware CR lands in its own output/hardware-<name>.yaml file.
+// outHardware is a map keyed by node name; the Taskfile iterates over the keys
+// and runs `cue export -e 'outHardware["<name>"]' --out yaml` once per node so
+// each Hardware CR lands in its own output/hardware-<name>.yaml file. The
+// index form is required: node names carry the instance id, and a hyphen in a
+// dotted selector parses as subtraction.
 package infra
 
 #hardware: {
@@ -36,15 +38,20 @@ package infra
 				ip: {
 					address: _ip
 					gateway: _gateway
-					netmask: "255.255.0.0"
+					// Smee rejects a netmask alongside an IPv6 address
+					// ("netmask is not applicable for IPv6 addresses"), so it is
+					// only emitted on the IPv4 path.
+					if !c.isV6 {
+						netmask: "255.255.0.0"
+					}
 				}
 				// As DHCP addresses are Reservations in Tinkerbell it doesn't
 				// matter much the value here. We don't want the dhcp client constantly
 				// renewing its address though, so we just use the Max DHCP lease time (uint32 max - 1).
-				lease_time: 4294967294
-				mac:        _mac
-				uefi:       true
-				name_servers: ["8.8.8.8", "1.1.1.1"]
+				lease_time:   4294967294
+				mac:          _mac
+				uefi:         true
+				name_servers: c.nameServers
 			}
 			netboot: {
 				allowPXE:      true

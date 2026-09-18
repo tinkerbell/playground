@@ -6,7 +6,10 @@
 // config.yaml.
 //
 // HTTPS only. The mirror host must present a publicly-trusted CA cert. There
-// are no insecure knobs (no skip_verify, no custom CA).
+// are no insecure knobs (no skip_verify, no custom CA). IPv6-only playgrounds
+// reach an IPv4-only mirror through the NAT64/DNS64 layer
+// (tasks/Taskfile-nat64.yaml), which is transparent to TLS -- the original
+// hostname is preserved end to end, so the cert still validates.
 package mirror
 
 // Public spec consumed by the values and state packages via additive

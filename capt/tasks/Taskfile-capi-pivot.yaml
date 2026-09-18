@@ -4,22 +4,19 @@ includes:
   delete: ./Taskfile-delete.yaml
   helm: ./Taskfile-helm.yaml
 
+# Only vars this Taskfile alone needs. Anything declared here overrides the
+# root Taskfile's global of the same name for every task in the project, so
+# CONFIG_FILE, STATE_FILE and OUTPUT_DIR are deliberately left to the root.
+#
+# Globals are resolved when task starts, including for runs that have nothing
+# to do with pivoting, so these tolerate a state file that does not exist yet.
+# Every task below runs against an already-built playground.
 vars:
-  OUTPUT_DIR:
-    sh: |
-      awk -F: '/^outputDir:/ {gsub(/^[ "]+|[ "]+$/, "", $2); print $2}' {{.ROOT_DIR}}/config.yaml
-  STATE_FILE: ".state"
-  STATE_FILE_FQ_PATH:
-    sh: echo {{joinPath .ROOT_DIR .STATE_FILE}}
-  CONFIG_FILE_FQ_PATH:
-    sh: echo {{joinPath .ROOT_DIR "config.yaml"}}
   CLUSTER_NAME:
-    sh: |
-      awk -F: '/^clusterName:/ {gsub(/^[ "]+|[ "]+$/, "", $2); print $2}' {{.ROOT_DIR}}/config.yaml
-  MGMT_KUBECONFIG:
-    sh: echo {{list .CLUSTER_NAME "kubeconfig" | join "." | joinPath .ROOT_DIR .OUTPUT_DIR}}
+    sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true"
+  MGMT_KUBECONFIG: "{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig"
   KIND_KUBECONFIG:
-    sh: echo {{ joinPath .ROOT_DIR .OUTPUT_DIR "kind.kubeconfig"}}
+    sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true"
 
 tasks:
   ordered:
@@ -67,8 +64,6 @@ tasks:
       XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
       XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
     vars:
-      OUTPUT_DIR:
-        sh: "echo $(yq eval '.outputDir' config.yaml)"
       KIND_GATEWAY_IP:
         sh: "yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG: "{{.MGMT_KUBECONFIG}}"
@@ -92,8 +87,6 @@ tasks:
       XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
       XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
     vars:
-      OUTPUT_DIR:
-        sh: "echo $(yq eval '.outputDir' config.yaml)"
       NAMESPACE:
         sh: "yq eval '.namespace' {{.STATE_FILE_FQ_PATH}}"
     cmds:

@@ -1,0 +1,72 @@
+[
+  {
+    "SpecReports": [
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning"
+        ],
+        "LeafNodeText": "completes all workflows successfully",
+        "LeafNodeType": "It",
+        "RunTime": 460647886822,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning"
+        ],
+        "LeafNodeText": "has a reachable workload API server",
+        "LeafNodeType": "It",
+        "RunTime": 68702876,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning"
+        ],
+        "LeafNodeText": "deploys CNI to the workload cluster",
+        "LeafNodeType": "It",
+        "RunTime": 14090323603,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning"
+        ],
+        "LeafNodeText": "has all nodes Ready after CNI deployment",
+        "LeafNodeType": "It",
+        "RunTime": 80208181078,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning",
+          "cluster health"
+        ],
+        "LeafNodeText": "reports all CAPI and CAPT objects ready",
+        "LeafNodeType": "It",
+        "RunTime": 135332839,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning",
+          "cluster health"
+        ],
+        "LeafNodeText": "has all workload cluster pods healthy",
+        "LeafNodeType": "It",
+        "RunTime": 17639703,
+        "State": "passed"
+      },
+      {
+        "ContainerHierarchyTexts": [
+          "Workload cluster provisioning",
+          "cluster health"
+        ],
+        "LeafNodeText": "has every required workload component running",
+        "LeafNodeType": "It",
+        "RunTime": 65020492,
+        "State": "passed"
+      }
+    ]
+  }
+]

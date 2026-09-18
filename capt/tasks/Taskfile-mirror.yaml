@@ -34,13 +34,15 @@ version: "3"
 #
 # Invariants:
 #   - HTTPS only. No insecure knobs anywhere.
-#   - When the mirror is disabled, the render task is a strict no-op and
-#     writes no file. When enabled, the render runs each invocation
-#     (sub-second cue export); we accept that over the alternative of
-#     writing a stale file when the feature is off.
+#   - When the mirror is disabled the render task writes no files, unless the
+#     playground is IPv6 (the kind config carries the v6 networking too).
 
 tasks:
   render-kind-config:
+    # Gate in `if:`, not `status:`. `status:` entries are ANDed and mean
+    # "already done", so a feature gate there is false on every enabled run and
+    # defeats the sources/generates fingerprinting below.
+    if: '{{or (eq .ENABLED "true") (eq .IP_FAMILY "ipv6")}}'
     summary: |
       Render output/kind-config.yaml from cue/kind AND the per-upstream
       hosts.toml tree under output/certs.d/<u>/hosts.toml from cue/mirror.
@@ -53,17 +55,19 @@ tasks:
       Strict no-op when the mirror is disabled — neither the kind-config
       nor the certs.d tree is written, kind-cluster's KIND_CONFIG_FLAG is
       empty, and `kind create` runs without `--config`.
-
-      We deliberately use `status:` rather than go-task's
-      `sources:`/`generates:` fingerprinting: when `status:` returns
-      non-zero (i.e. mirror enabled) go-task ignores any sources/generates
-      entries and always runs the cmds, so the two are mutually exclusive.
-      The cue renders are sub-second, and the user-experience win of
-      "no files when feature is off" outweighs skipping a fast cue
-      invocation when it's on.
+    sources:
+      - "{{.STATE_FILE_FQ_PATH}}"
+      - cue/kind/*.cue
+      - cue/mirror/*.cue
+      - cue/values/*.cue
+    generates:
+      - "{{.OUTPUT_DIR}}/kind-config.yaml"
+      - "{{.OUTPUT_DIR}}/certs.d/**/*"
     vars:
       ENABLED:
         sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
       KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
       CERTS_DIR: "{{.OUTPUT_DIR}}/certs.d"
     cmds:
@@ -82,5 +86,3 @@ tasks:
           mkdir -p "{{.CERTS_DIR}}/$(dirname "$path")"
           yq -p json -r ".[$i].content" <<<"$manifest" > "{{.CERTS_DIR}}/$path"
         done
-    status:
-      - '[[ "{{.ENABLED}}" != "true" ]]'

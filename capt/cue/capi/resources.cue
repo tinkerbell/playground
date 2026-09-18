@@ -21,6 +21,33 @@ _mirrorRender: (mirror & {"values": values}).cloudInitFiles
 _mirrorFiles:  _mirrorRender
 _mirrorPreCmds: [if len(_mirrorRender) > 0 {"systemctl restart containerd"}]
 
+// kubeadm's preflight fails an IPv6 cluster unless IPv6 forwarding is on, and
+// the node image only ships the IPv4 equivalent. A drop-in (rather than a bare
+// `sysctl -w`) keeps it set across reboots, which the CNI also relies on.
+_ipv6Files: [if c.isV6 {{
+	path:        "/etc/sysctl.d/99-k8s-ipv6-forwarding.conf"
+	owner:       "root:root"
+	permissions: "0644"
+	content: """
+		net.ipv6.conf.all.forwarding=1
+		net.ipv6.conf.default.forwarding=1
+		"""
+}}]
+_ipv6PreCmds: [if c.isV6 {"sysctl --system"}]
+
+// With no --node-ip, kubelet derives the node address from the default-route
+// interface. kube-vip adds the control-plane VIP to that same interface, and on
+// IPv6 it can win the selection -- leaving the node's InternalIP tied to VIP
+// ownership rather than to the node. Pinned here, in a preKubeadmCommand, which
+// is the last point at which the real address is unambiguous: the VIP does not
+// exist until kubelet starts kube-vip's static pod during kubeadm init. Only
+// control planes run kube-vip, so workers need nothing.
+_nodeIPCmds: [if c.isV6 {#"mkdir -p /etc/default && printf 'KUBELET_EXTRA_ARGS=--node-ip=%s\n' "$(ip -6 -j addr show dev $(ip -6 -j route list default | jq -r .[0].dev) scope global | jq -r '.[0].addr_info[0].local')" > /etc/default/kubelet"#}]
+
+// Shared by the control-plane (KCP) and worker (KCT) bootstrap configs.
+_bootstrapFiles:   list.Concat([_mirrorFiles, _ipv6Files])
+_bootstrapPreCmds: list.Concat([_mirrorPreCmds, _ipv6PreCmds])
+
 // Top-level injected by the task pipeline:
 //   cue export ./cue/capi yaml: .state -l 'values:' -t mode=<bootMode> -e out --out text
 values: v.#Config
@@ -40,7 +67,7 @@ _cluster: {
 	spec: {
 		clusterNetwork: {
 			pods: cidrBlocks: [values.cluster.podCIDR]
-			services: cidrBlocks: ["172.26.0.0/16"]
+			services: cidrBlocks: [c.serviceCIDR]
 		}
 		controlPlaneEndpoint: {
 			host: values.cluster.controlPlane.vip
@@ -95,9 +122,9 @@ _kcp: {
 				kubeletExtraArgs: [{name: "provider-id", value: "PROVIDER_ID"}]
 			}
 			// Mirror restart must run before kubeadm so the drop-in is loaded.
-			preKubeadmCommands: list.Concat([_mirrorPreCmds, [c.kubeVipCmd]])
-			if len(_mirrorFiles) > 0 {
-				files: _mirrorFiles
+			preKubeadmCommands: list.Concat([_bootstrapPreCmds, _nodeIPCmds, [c.kubeVipCmd]])
+			if len(_bootstrapFiles) > 0 {
+				files: _bootstrapFiles
 			}
 			users: c.users
 		}
@@ -154,9 +181,11 @@ _kct: {
 	}
 	spec: template: spec: {
 		joinConfiguration: nodeRegistration: kubeletExtraArgs: [{name: "provider-id", value: "PROVIDER_ID"}]
-		if len(_mirrorFiles) > 0 {
-			files:               _mirrorFiles
-			preKubeadmCommands:  _mirrorPreCmds
+		if len(_bootstrapFiles) > 0 {
+			files: _bootstrapFiles
+		}
+		if len(_bootstrapPreCmds) > 0 {
+			preKubeadmCommands: _bootstrapPreCmds
 		}
 		users: c.users
 	}

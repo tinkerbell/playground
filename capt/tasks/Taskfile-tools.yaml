@@ -28,6 +28,7 @@ tasks:
       - test -d {{.ROOT_DIR}}/bin
 
   install-binaries:
+    if: '{{ne (env "USE_PATH_BINARIES") "true"}}'
     deps: [ensure-bin-dir]
     dir: "{{.ROOT_DIR}}/bin"
     summary: |
@@ -35,6 +36,7 @@ tasks:
       into ./bin from each project's upstream release artifacts. Idempotent:
       each tool is reinstalled only if missing or its version output does not
       match the pin.
+      Set USE_PATH_BINARIES=true to use tools already available in PATH.
     cmds:
       - task: install-binary-cue
       - task: install-binary-helm

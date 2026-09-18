@@ -4,17 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	tinkv1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // WaitForWorkflowsSuccess polls Workflow CRs until all reach SUCCESS state.
-// Fails fast if any workflow reaches FAILED or TIMEOUT.
+// FAILED and TIMEOUT are terminal: the controller will not revisit them, so
+// polling one to the timeout only delays the report.
 func WaitForWorkflowsSuccess(ctx context.Context, c client.Client, ns string, expectedCount int, timeout, interval time.Duration) {
 	By(fmt.Sprintf("Waiting for %d workflow(s) in %s to reach SUCCESS (timeout %s)", expectedCount, ns, timeout))
 
@@ -29,14 +32,40 @@ func WaitForWorkflowsSuccess(ctx context.Context, c client.Client, ns string, ex
 		for _, wf := range wfList.Items {
 			state := wf.Status.State
 			GinkgoWriter.Printf("  workflow/%s state=%s\n", wf.Name, state)
-			g.Expect(state).ToNot(Equal(tinkv1.WorkflowStateFailed),
-				"workflow %s failed", wf.Name)
-			g.Expect(state).ToNot(Equal(tinkv1.WorkflowStateTimeout),
-				"workflow %s timed out", wf.Name)
+
+			if isTerminalWorkflowState(state) {
+				StopTrying(fmt.Sprintf("workflow %s is %s and will not recover%s",
+					wf.Name, state, workflowFailureDetail(wf))).Now()
+			}
+
 			g.Expect(state).To(Equal(tinkv1.WorkflowStateSuccess),
 				"workflow %s in state %s, want SUCCESS", wf.Name, state)
 		}
 	}).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+}
+
+// isTerminalWorkflowState reports whether the controller has finished with a
+// workflow. Polling one of these to the timeout only delays the report.
+func isTerminalWorkflowState(state tinkv1.WorkflowState) bool {
+	return state == tinkv1.WorkflowStateFailed || state == tinkv1.WorkflowStateTimeout
+}
+
+// workflowFailureDetail summarises why a workflow ended, so the failure does
+// not require going back to the cluster to interpret.
+func workflowFailureDetail(wf tinkv1.Workflow) string {
+	var detail strings.Builder
+
+	if current := wf.Status.CurrentState; current != nil {
+		fmt.Fprintf(&detail, "\n  last action: %s/%s (%s)",
+			current.TaskName, current.ActionName, current.State)
+	}
+	for _, cond := range wf.Status.Conditions {
+		if cond.Status == metav1.ConditionTrue && strings.Contains(string(cond.Type), "Failed") {
+			fmt.Fprintf(&detail, "\n  condition %s: %s", cond.Type, cond.Message)
+		}
+	}
+
+	return detail.String()
 }
 
 // WaitForAllNodesReady waits for the expected number of nodes to be Ready
@@ -79,12 +108,15 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout, 
 }
 
 // DeployCNI applies kube-router to the workload cluster so nodes can reach Ready.
-func DeployCNI(ctx context.Context, kubeconfigPath string) {
+// Shares scripts/deploy_cni.sh with the playground so the IPv6 argument handling
+// lives in exactly one place; the path is passed in because the suite is given
+// no directory it could reliably derive it from.
+func DeployCNI(ctx context.Context, scriptPath, stateFilePath, kubeconfigPath string) {
 	By("Deploying kube-router CNI")
-	cmd := exec.CommandContext(ctx,
-		"kubectl", "--kubeconfig", kubeconfigPath,
-		"apply", "-f", "https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml",
-	)
+	Expect(scriptPath).ToNot(BeEmpty(), "pass -e2e.cni-script or set E2E_CNI_SCRIPT")
+	Expect(scriptPath).To(BeAnExistingFile(), "CNI script not found; pass -e2e.cni-script with the path to the playground's scripts/deploy_cni.sh")
+
+	cmd := exec.CommandContext(ctx, scriptPath, stateFilePath, kubeconfigPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		GinkgoWriter.Printf("CNI apply output:\n%s\n", string(out))

@@ -1,0 +1,225 @@
+version: "3"
+
+# IPv6-to-IPv4 translation layer for the IPv6-only playground.
+#
+# With `ipFamily: ipv6` the libvirt machines are IPv6-only, but the registry
+# mirror (and any upstream that is still reached directly) is IPv4-only. This
+# pair of containers bridges that gap without touching TLS: the original
+# hostname is preserved end to end, so the mirror's publicly-trusted cert
+# still validates and no client needs an insecure flag.
+#
+#   DNS64 (CoreDNS) - answers AAAA for IPv4-only names by embedding the A
+#                     record in the NAT64 prefix. Runs ON the kind bridge with
+#                     a pinned address, because the machines are handed that
+#                     address as their resolver via DHCPv6.
+#   NAT64 (TAYGA)   - translates traffic addressed to the NAT64 prefix into
+#                     IPv4. Runs in the HOST network namespace, like radvd:
+#                     the machines' default route already points at the host,
+#                     so the host is where the prefix has to be routed.
+#
+# The NAT64 prefix is a ULA-based Network-Specific Prefix (see cue/state):
+# neither the RFC 6052 well-known prefix nor RFC 8215's local-use one work
+# here, because TAYGA refuses to translate RFC1918 destinations under either
+# and a self-hosted mirror usually has one.
+#
+# All tasks self-gate on `.ipFamily == ipv6` and are strict no-ops otherwise.
+#
+# Nothing here needs sudo. Everything that touches the host network namespace
+# is done from a privileged container that shares it. The flip side is that
+# those changes OUTLIVE the container -- `tayga --mktun` creates a persistent
+# TUN device and the masquerade rule lands in the host's nat table -- so
+# `delete` has to undo them explicitly rather than relying on `docker rm`.
+
+vars:
+  # DNS64 is per playground: it sits on that playground's own network at an
+  # address derived from its subnet, so its name comes from the state file.
+  # NAT64 is shared -- one translator in the host network namespace serves
+  # every playground -- so its name and TUN device are fixed.
+  NAT64_CONTAINER: nat64
+  # Persistent TUN device created in the HOST namespace by tayga --mktun.
+  TUN_DEV: nat64
+  # Debian rather than Alpine: alpine only carries tayga in edge/testing,
+  # which cannot be pinned alongside a stable base tag.
+  NET_IMAGE: docker.io/library/debian:stable-slim
+  COREDNS_IMAGE: docker.io/coredns/coredns:1.14.7
+  CLEANUP_IMAGE: docker.io/library/alpine:3.22
+  # Link-scoped to the translator; never appears on the wire beyond the
+  # masquerade, so it only has to avoid colliding with the host's LAN.
+  TAYGA_POOL: "192.168.255.0/24"
+  TAYGA_IPV4: "192.168.255.1"
+
+tasks:
+  forwarding:
+    run: once
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    summary: |
+      Turn on host IP forwarding for both families.
+
+      Needed by NAT64 (bridge <-> TUN) and by radvd, which only emits Router
+      Advertisements for interfaces the kernel treats as forwarding. Done from
+      a privileged container sharing the host network namespace so the
+      playground never has to prompt for sudo.
+
+      Deliberately NOT reverted on delete: ip_forward is required by docker
+      itself, and turning it off would break unrelated containers.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+    cmds:
+      - >-
+        docker run --rm --network host --privileged --entrypoint /bin/sh
+        {{.NET_IMAGE}}
+        -c 'echo 1 > /proc/sys/net/ipv6/conf/all/forwarding;
+        echo 1 > /proc/sys/net/ipv4/ip_forward'
+    status:
+      - '[[ "$(cat /proc/sys/net/ipv6/conf/all/forwarding)" == "1" ]]'
+      - '[[ "$(cat /proc/sys/net/ipv4/ip_forward)" == "1" ]]'
+
+  dns64:
+    run: once
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    summary: |
+      Start the DNS64 resolver on the kind bridge.
+
+      Upstream is the public resolver pair rather than the host's own
+      resolver: the host may point at a loopback stub (systemd-resolved) that
+      is meaningless from inside a container, and the mirror's name resolves
+      publicly anyway.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      CONTAINER_NAME:
+        sh: "yq eval '.names.dns64' {{.STATE_FILE_FQ_PATH}}"
+      IMAGE: "{{.COREDNS_IMAGE}}"
+      DNS64_IP:
+        sh: 'yq eval ''.nat64.dns64IP // ""'' {{.STATE_FILE_FQ_PATH}}'
+      NAT64_PREFIX:
+        sh: 'yq eval ''.nat64.prefix // ""'' {{.STATE_FILE_FQ_PATH}}'
+      OUTPUT_DIR_ABS:
+        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - mkdir -p {{.OUTPUT_DIR}}
+      # `translate_all` forces synthesis even when the name already has a
+      # AAAA. Without it a dual-stack upstream (quay.io, for one) is answered
+      # with its real IPv6 address and the machines try to reach it natively
+      # -- which fails on any host without an IPv6 uplink, and the playground
+      # host usually has none. Routing everything through NAT64 is the only
+      # path that is actually known to work here.
+      - |
+        cat > "{{.OUTPUT_DIR}}/Corefile" <<EOF
+        .:53 {
+            errors
+            dns64 {
+                prefix {{.NAT64_PREFIX}}
+                translate_all
+            }
+            forward . 1.1.1.1 8.8.8.8
+            cache 30
+            log
+        }
+        EOF
+      - docker rm -f {{.CONTAINER_NAME}} 2>/dev/null || true
+      - >-
+        docker run -d --name {{.CONTAINER_NAME}}
+        --network {{.NETWORK_NAME}} --ip6 {{.DNS64_IP}}
+        --restart unless-stopped
+        -v "{{.OUTPUT_DIR_ABS}}/Corefile:/Corefile:ro"
+        {{.IMAGE}}
+        -conf /Corefile
+    status:
+      # State.Status, not State.Running: a crash-looping container reports
+      # Running=true while it is restarting, which would let a broken
+      # resolver pass for a healthy one.
+      - '[[ "$(docker inspect -f "{{`{{.State.Status}}`}}" {{.CONTAINER_NAME}} 2>/dev/null)" == "running" ]]'
+
+  nat64:
+    run: once
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    deps: [forwarding]
+    summary: |
+      Start TAYGA in the host network namespace and route the NAT64 prefix
+      into it, sharing one translator across every IPv6 playground.
+
+      TAYGA is a userspace translator on a TUN device, chosen over Jool so the
+      playground needs no out-of-tree kernel module. It maps each IPv6 source
+      onto an address from its dynamic pool, which is then masqueraded behind
+      the host's own IPv4 address so the far side has a route back.
+
+      See scripts/nat64_ensure.sh for why one translator serves all of them,
+      and for the per-playground bridge address it also repairs.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      CONTAINER_NAME: "{{.NAT64_CONTAINER}}"
+      NAT64_PREFIX:
+        sh: 'yq eval ''.nat64.prefix // ""'' {{.STATE_FILE_FQ_PATH}}'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/nat64_ensure.sh {{.STATE_FILE_FQ_PATH}} {{.NET_IMAGE}} {{.TUN_DEV}} {{.TAYGA_IPV4}} {{.TAYGA_POOL}} {{.CONTAINER_NAME}}"
+    status:
+      - '[[ "$(docker inspect -f "{{`{{.State.Status}}`}}" {{.CONTAINER_NAME}} 2>/dev/null)" == "running" ]]'
+      - ip link show {{.TUN_DEV}} >/dev/null 2>&1
+
+  cluster-dns:
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    summary: |
+      Point a kind cluster's CoreDNS at the DNS64 resolver.
+
+      kind writes the docker bridge's IPv4 resolver into the node's
+      /etc/resolv.conf, and CoreDNS forwards there by default. In an
+      IPv6-only cluster the CoreDNS pods have no IPv4 address at all, so
+      every off-cluster lookup dies with "network is unreachable" and nothing
+      in the cluster can resolve anything -- which surfaces far away from the
+      cause, as image pulls and artifact downloads failing on "bad address".
+
+      The caller supplies KUBECONFIG, so this runs once per kind cluster.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      DNS64_IP:
+        sh: 'yq eval ''.nat64.dns64IP // ""'' {{.STATE_FILE_FQ_PATH}}'
+    cmds:
+      # Patch only the Corefile key so the ConfigMap's labels survive. The
+      # address is deliberately NOT bracketed: CoreDNS's forward plugin wants
+      # a bare IP unless a port is given, and rejects "[addr]" outright.
+      - |
+        corefile=$(KUBECONFIG="{{.KUBECONFIG}}" kubectl -n kube-system get cm coredns \
+          -o jsonpath='{.data.Corefile}' \
+          | sed 's#forward \. /etc/resolv\.conf#forward . {{.DNS64_IP}}#')
+        COREFILE="$corefile" yq -n -o json '{"data":{"Corefile": strenv(COREFILE)}}' \
+          | KUBECONFIG="{{.KUBECONFIG}}" kubectl -n kube-system patch cm coredns --type merge -p "$(cat)"
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl -n kube-system rollout restart deployment coredns
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl -n kube-system rollout status deployment coredns --timeout=120s
+    status:
+      - KUBECONFIG="{{.KUBECONFIG}}" kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' 2>/dev/null | grep -q 'forward \. {{.DNS64_IP}}'
+
+  start:
+    summary: |
+      Bring up the whole translation layer.
+    cmds:
+      - task: dns64
+      - task: nat64
+
+  delete:
+    summary: |
+      Remove the translation layer and everything it left in the host network
+      namespace.
+
+      This playground's DNS64 always goes. The NAT64 translator is shared, so
+      it only goes once no other IPv6 playground is left; scripts/
+      nat64_release.sh explains how that is decided without a registry.
+
+      The bridge address is not touched: it belongs to the playground's own
+      docker network, which network:delete removes wholesale.
+
+      Deliberately NOT gated on ipFamily: switching a playground back to ipv4
+      and deleting it must still clean up what an earlier ipv6 run created.
+      Forwarding sysctls are left on -- see the `forwarding` task.
+    vars:
+      DNS64_CONTAINER:
+        sh: 'yq eval ''.names.dns64 // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/nat64_release.sh {{.STATE_FILE_FQ_PATH}} {{.CLEANUP_IMAGE}} {{.TUN_DEV}} {{.TAYGA_POOL}} {{.NAT64_CONTAINER}}"
+    status:
+      # Only this playground's DNS64 is asserted gone: the translator may
+      # legitimately still be running for someone else.
+      - '[[ -z "{{.DNS64_CONTAINER}}" ]] || [[ -z "$(docker ps -aq -f name=^{{.DNS64_CONTAINER}}$)" ]]'

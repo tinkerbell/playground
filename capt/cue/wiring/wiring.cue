@@ -31,6 +31,10 @@ _sentinel: {
 	_valuesHasRegistryMirror: values.#Config.registryMirror | *null
 	// From cue/state/mirror_extension.cue:
 	_stateHasRegistryMirror: state.#ConfigInput.registryMirror | *null
+	// From cue/values/mirror_extension.cue: cue/capi reads every action image
+	// from here, so losing it breaks workflow rendering rather than silently
+	// falling back to upstream hostnames.
+	_valuesHasActionImages: values.#Config.actionImages | *null
 	// From cue/mirror/schema.cue:
 	_mirrorSpec: mirror.#Spec
 	// From cue/mirror/files.cue:

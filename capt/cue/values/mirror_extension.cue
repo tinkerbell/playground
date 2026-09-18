@@ -9,5 +9,10 @@ import "tinkerbell.org/capt-playground/cue/mirror"
 
 #Config: {
 	registryMirror?: mirror.#Spec
+	// Rewritten workflow action image refs. Supplied by
+	// cue/state/mirror_extension.cue and read by cue/capi.
+	actionImages: [string]: string
+	// Rewritten tink-agent image, passed to the chart as deployment.agentImage.
+	agentImage: string
 	...
 }

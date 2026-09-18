@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,8 +23,8 @@ import (
 
 // E2EConfig holds test intervals and variables loaded from the e2e config YAML.
 type E2EConfig struct {
-	Intervals map[string][]string   `yaml:"intervals"`
-	Variables map[string]string     `yaml:"variables"`
+	Intervals map[string][]string `yaml:"intervals"`
+	Variables map[string]string   `yaml:"variables"`
 }
 
 // GetInterval returns parsed timeout and polling durations for a key.
@@ -44,6 +45,23 @@ func (c *E2EConfig) GetInterval(key string) (timeout, interval time.Duration) {
 	return t, i
 }
 
+// GetVariableInt returns an integer variable from the config, or def when the key
+// is missing or unparseable.
+func (c *E2EConfig) GetVariableInt(key string, def int) int {
+	if c == nil {
+		return def
+	}
+	v, ok := c.Variables[key]
+	if !ok {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
 var (
 	e2eConfigPath string
 	artifactsDir  string
@@ -52,6 +70,8 @@ var (
 	tinkKubeconfig     string
 	workloadKubeconfig string
 	namespace          string
+	stateFile          string
+	cniScript          string
 
 	e2eConfig *E2EConfig
 
@@ -67,6 +87,8 @@ func init() {
 	flag.StringVar(&tinkKubeconfig, "e2e.tink-kubeconfig", os.Getenv("E2E_TINK_KUBECONFIG"), "Tinkerbell cluster kubeconfig (external mode)")
 	flag.StringVar(&workloadKubeconfig, "e2e.workload-kubeconfig", os.Getenv("E2E_WORKLOAD_KUBECONFIG"), "Workload cluster kubeconfig")
 	flag.StringVar(&namespace, "e2e.namespace", os.Getenv("E2E_NAMESPACE"), "Namespace for Tinkerbell resources")
+	flag.StringVar(&stateFile, "e2e.state-file", os.Getenv("E2E_STATE_FILE"), "Playground .state file")
+	flag.StringVar(&cniScript, "e2e.cni-script", os.Getenv("E2E_CNI_SCRIPT"), "Path to the playground's scripts/deploy_cni.sh")
 }
 
 func TestE2E(t *testing.T) {

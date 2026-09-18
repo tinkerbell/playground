@@ -1,73 +1,95 @@
 version: "3"
 
-tasks:
-  prepare:
-    run: once
-    summary: |
-      Prepare the virtualbmc server.
-    vars:
-      VBMC_CONTAINER_IMAGE:
-        sh: "yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}"
-      USERNAME:
-        sh: "yq eval '.virtualBMC.user' {{.STATE_FILE_FQ_PATH}}"
-      PASSWORD:
-        sh: "yq eval '.virtualBMC.pass' {{.STATE_FILE_FQ_PATH}}"
-      # Absolute path is required for `docker -v` bind mounts (relative paths
-      # are interpreted as named volumes). state.cue resolves outputDir to an
-      # absolute path when generating .state.
-      OUTPUT_DIR_ABS:
-        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
-    cmds:
-      - mkdir -p {{.OUTPUT_DIR}}
-      # Pass the password via stdin (-i) instead of argv (-b) so it does not
-      # appear in `ps`/`docker ps --no-trunc` while htpasswd runs.
-      - printf '%s' "{{.PASSWORD}}" | docker run -i --rm --entrypoint htpasswd {{.VBMC_CONTAINER_IMAGE}} -niB "{{.USERNAME}}" > {{.OUTPUT_DIR}}/htpasswd
-      - docker run -it --rm --entrypoint openssl -v {{.OUTPUT_DIR_ABS}}:/scripts {{.VBMC_CONTAINER_IMAGE}} req -x509 -newkey rsa:2048 -keyout /scripts/sushy.key -out /scripts/sushy.cert -days 365 -nodes -subj "/C=US/ST=CA/L=Los Angeles/O=Engineering/OU=Engineering/CN=tinkerbell.org"
-    status:
-      - test -f {{.OUTPUT_DIR}}/htpasswd
-      - test -f {{.OUTPUT_DIR}}/sushy.key
-      - test -f {{.OUTPUT_DIR}}/sushy.cert
+# One vBMC container serves every playground on the host.
+#
+# sushy-tools drives libvirt, which is per host, so a container per playground
+# would be N copies of the same thing competing for the same domains. Instead
+# it is created once and joined to each playground's docker network as that
+# playground appears, which also makes the count of attached networks the
+# reference count for tearing it down. See scripts/vbmc_ensure.sh.
 
-  start-server:
+tasks:
+  ensure:
     run: once
-    deps: [prepare]
     summary: |
-      Start the virtualbmc server. Requires the "kind" docker network to exist.
+      Create the shared vBMC if it is not already running, and attach this
+      playground's network to it. Requires the playground's network to exist.
     vars:
       VBMC_CONTAINER_NAME:
         sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
-      VBMC_CONTAINER_IMAGE:
-        sh: "yq eval '.virtualBMC.image' {{.STATE_FILE_FQ_PATH}}"
-      # Absolute path required for `docker -v` bind mounts (see prepare).
-      OUTPUT_DIR_ABS:
-        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - docker run -d --privileged --rm --network kind -e SUSHY_EMULATOR_CONFIG=/etc/sushy/sushy-emulator.conf -v /var/run/libvirt:/var/run/libvirt -v "{{.OUTPUT_DIR_ABS}}/sushy.key:/etc/sushy/sushy.key" -v "{{.OUTPUT_DIR_ABS}}/sushy.cert:/etc/sushy/sushy.cert" -v "${PWD}/scripts/sushy-tools.conf:/etc/sushy/sushy-emulator.conf" -v "{{.OUTPUT_DIR_ABS}}/htpasswd:/etc/sushy/htpasswd" --name {{.VBMC_CONTAINER_NAME}} {{.VBMC_CONTAINER_IMAGE}}
+      - "{{.ROOT_DIR}}/scripts/vbmc_ensure.sh {{.STATE_FILE_FQ_PATH}}"
     status:
-      - docker ps | grep -q {{.VBMC_CONTAINER_NAME}}
+      - docker inspect {{.VBMC_CONTAINER_NAME}} >/dev/null 2>&1
+      - docker inspect {{.VBMC_CONTAINER_NAME}} -f '{{`{{range $net, $_ := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}`}}' | grep -qxF '{{.NETWORK_NAME}}'
+
+  allocate-ports:
+    run: once
+    deps: [ensure]
+    summary: |
+      Assign BMC ports no other playground in the shared container is using,
+      and write them to the state file.
+
+      Runs before the BMC Machine CRs are rendered, because they carry the
+      ports. It cannot be folded into registration: `vbmc add` rejects a
+      domain that does not exist, and the VMs are built later.
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/vbmc_ports.sh {{.STATE_FILE_FQ_PATH}}"
+    status:
+      # Rewriting the state file with the ports it already holds would make
+      # every task that reads it as a source re-run on the next create.
+      - "{{.ROOT_DIR}}/scripts/vbmc_ports.sh {{.STATE_FILE_FQ_PATH}} --check"
 
   start-vbmcs:
     run: once
-    deps: [start-server]
+    deps: [ensure]
     summary: |
-      Register and start the virtualbmc servers. Requires that the virtual machines exist.
+      Register and start this playground's VMs in the shared vBMC. Requires
+      that the virtual machines exist.
     vars:
       VBMC_NAME:
         sh: "yq e '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - ./scripts/virtualbmc.sh {{.STATE_FILE_FQ_PATH}}
+      - "{{.ROOT_DIR}}/scripts/virtualbmc.sh {{.STATE_FILE_FQ_PATH}}"
     status:
-      - expected=$(yq e '.totalNodes' {{.STATE_FILE_FQ_PATH}}); got=$(docker exec {{.VBMC_NAME}} vbmc list | grep -c "running" || :); [[ "$got" == "$expected" ]]
+      # Counts only this playground's domains: the container holds every
+      # playground's, so a bare count of "running" would pass on someone
+      # else's VMs.
+      - expected=$(yq e '.totalNodes' {{.STATE_FILE_FQ_PATH}}); got=$(yq e '.vm.details | keys | .[]' {{.STATE_FILE_FQ_PATH}} | while read -r n; do docker exec {{.VBMC_NAME}} vbmc list 2>/dev/null | grep -qE "\| *$n +\| *running" && echo x; done | grep -c x || :); [[ "$got" == "$expected" ]]
 
   update-state:
     run: once
-    deps: [start-server]
+    deps: [ensure]
     summary: |
-      Update the state file with the virtual bmc server information.
+      Record the shared vBMC's address on this playground's network.
+
+      Selected by network name rather than ranged over: the container is
+      attached to one network per playground, and `{{`{{range .Networks}}`}}`
+      concatenates them all into one unusable string.
+
+      The address is family-specific on purpose: rufio runs as an IPv6-only
+      pod in IPv6 mode and cannot dial the container's IPv4 address.
     vars:
       VBMC_CONTAINER_NAME:
         sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      VBMC_FIELD: '{{if eq .IP_FAMILY "ipv6"}}GlobalIPv6Address{{else}}IPAddress{{end}}'
+      VBMC_IP:
+        sh: docker inspect -f '{{`{{(index .NetworkSettings.Networks "`}}{{.NETWORK_NAME}}{{`").`}}{{.VBMC_FIELD}}{{`}}`}}' {{.VBMC_CONTAINER_NAME}}
     cmds:
-      - vbmc_ip=$(docker inspect -f '{{`{{ .NetworkSettings.Networks.kind.IPAddress }}`}}' {{.VBMC_CONTAINER_NAME}}); yq e -i '.virtualBMC.ip = "'$vbmc_ip'"' {{.STATE_FILE_FQ_PATH}}
+      - yq e -i '.virtualBMC.ip = "{{.VBMC_IP}}"' {{.STATE_FILE_FQ_PATH}}
     status:
-      - vbmc_ip=$(docker inspect -f '{{`{{ .NetworkSettings.Networks.kind.IPAddress }}`}}' {{.VBMC_CONTAINER_NAME}}); [[ "$(yq eval '.virtualBMC.ip' {{.STATE_FILE_FQ_PATH}})" == "$vbmc_ip" ]]
+      - '[[ "$(yq eval ''.virtualBMC.ip'' {{.STATE_FILE_FQ_PATH}})" == "{{.VBMC_IP}}" ]]'
+
+  release:
+    summary: |
+      Detach this playground from the shared vBMC, removing it once no other
+      playground is attached.
+
+      Must run before the playground's network is deleted: docker refuses to
+      remove a network that still has endpoints.
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/vbmc_release.sh {{.STATE_FILE_FQ_PATH}}"
+    status:
+      - "! docker inspect $(yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}) >/dev/null 2>&1"

@@ -1,0 +1,282 @@
+# Runs the CAPT playground e2e matrix, one combination per runner.
+#
+# Sizing comes from a measured run rather than a guess: a hosted runner
+# completed colocated-ipv4-netboot-direct in 7m05s using 20 GB of the 87 GB
+# free on /, with nested KVM working -- which GitHub documents as unsupported.
+name: e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      # GitHub has no multi-select input, so the dropdown covers "all" and the
+      # single-combination case, and combinations below takes anything else.
+      combination:
+        description: "Combination to run"
+        type: choice
+        default: all
+        options:
+          - all
+          - colocated-ipv4-netboot-direct
+          - colocated-ipv4-isoboot-direct
+          - external-ipv4-netboot-direct
+          - external-ipv4-isoboot-direct
+          - colocated-ipv6-netboot-direct
+          - colocated-ipv6-isoboot-direct
+          - external-ipv6-netboot-direct
+          - external-ipv6-isoboot-direct
+      combinations:
+        description: "Several combinations, comma or space separated (overrides the dropdown)"
+        type: string
+        default: ""
+      tinkerbell_repo:
+        description: "Build Tinkerbell from this git repo (blank = released artifacts)"
+        type: string
+        default: ""
+      tinkerbell_ref:
+        description: "Build Tinkerbell from this branch, tag or commit"
+        type: string
+        default: ""
+      chart_version:
+        description: "Tinkerbell Helm chart version (blank = whatever latest points at)"
+        type: string
+        default: ""
+      probes:
+        description: "Report KVM and libvirt diagnostics before running"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Fails in seconds on a bad name, rather than on one runner per combination
+  # that has already installed a hypervisor.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      combinations: ${{ steps.resolve.outputs.combinations }}
+    steps:
+      - name: Resolve the combination list
+        id: resolve
+        env:
+          CHOICE: ${{ inputs.combination }}
+          CUSTOM: ${{ inputs.combinations }}
+        run: |
+          # Deliberately a subset of `e2e list`: the -mirror combinations are
+          # excluded because they need a reachable pull-through mirror that a
+          # hosted runner does not have. The IPv6 combinations need no mirror --
+          # DNS64 and NAT64 carry the upstream pulls -- so they run direct.
+          all="colocated-ipv4-netboot-direct colocated-ipv4-isoboot-direct"
+          all="$all external-ipv4-netboot-direct external-ipv4-isoboot-direct"
+          all="$all colocated-ipv6-netboot-direct colocated-ipv6-isoboot-direct"
+          all="$all external-ipv6-netboot-direct external-ipv6-isoboot-direct"
+
+          if [ -n "$CUSTOM" ]; then
+            requested=$(echo "$CUSTOM" | tr ',' ' ')
+          elif [ "$CHOICE" = "all" ]; then
+            requested="$all"
+          else
+            requested="$CHOICE"
+          fi
+
+          for c in $requested; do
+            case " $all " in
+              *" $c "*) ;;
+              *) echo "::error::unknown combination '$c'; choose from: $all"; exit 1 ;;
+            esac
+          done
+
+          echo "combinations=$(printf '%s\n' $requested | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+          echo "will run:"; printf '  %s\n' $requested
+
+  e2e:
+    needs: plan
+    runs-on: ubuntu-latest
+    # 6x the measured 7m05s, which leaves room for isoboot (BMC virtual media)
+    # and the external combinations (a second kind cluster) without letting a
+    # hung run sit for hours.
+    timeout-minutes: 45
+    strategy:
+      # One broken combination should not cancel the rest; the point of
+      # the matrix is to learn about all of them in one dispatch.
+      fail-fast: false
+      matrix:
+        combination: ${{ fromJSON(needs.plan.outputs.combinations) }}
+    defaults:
+      run:
+        working-directory: capt
+    env:
+      # Skips `task install-binaries`; the flox environment supplies those tools.
+      USE_PATH_BINARIES: "true"
+      COMBO: ${{ matrix.combination }}
+      # flox reads any config option from FLOX_<SCREAMING_SNAKE_CASE>, which
+      # outranks both flox.toml files. auth_notifications quiets the FloxHub
+      # login advisory; it does not suppress authentication errors.
+      FLOX_DISABLE_METRICS: "true"
+      FLOX_AUTH_NOTIFICATIONS: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # libvirtd is a system daemon that wants /dev/kvm, an AppArmor profile and
+      # firmware descriptors it reads itself, so it comes from apt rather than
+      # flox. flox covers the playground's own tooling, which is userspace.
+      #
+      # qemu-utils supplies qemu-img. Nothing in the playground calls it, but
+      # libvirtd does, to create the qcow2 volumes virt-install asks for -- and
+      # it looks on its own PATH, so a flox-provided one would not be found.
+      # Without it: "creation of non-raw file images is not supported".
+      - name: Install the virtualization stack
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qemu-kvm qemu-utils libvirt-daemon-system libvirt-clients virtinst ovmf
+
+      # Group membership needs a new login session, which a workflow step is
+      # not, so the socket is opened up instead. Fine on a throwaway VM.
+      - name: Enable KVM and libvirt access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          sudo usermod -aG kvm,libvirt "$USER" || true
+          sudo systemctl enable --now libvirtd || true
+          sudo chmod 666 /var/run/libvirt/libvirt-sock || true
+
+      # Off by default: nested virtualization is unsupported by GitHub, so when
+      # provisioning fails for no obvious reason this is the first thing to
+      # check, and it is cheaper to re-run with it than to guess.
+      - name: Probe KVM and libvirt
+        if: ${{ inputs.probes }}
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y --no-install-recommends cpu-checker
+          kvm_ok=no; libvirt_ok=no
+          [ -e /dev/kvm ] && [ -r /dev/kvm ] && [ -w /dev/kvm ] && kvm_ok=yes
+          virsh -c qemu:///system version >/dev/null 2>&1 && libvirt_ok=yes
+          {
+            echo "## KVM / libvirt probe -- $COMBO"
+            echo '```'
+            ls -l /dev/kvm 2>&1 || echo "/dev/kvm absent"
+            kvm-ok 2>&1 || true
+            echo
+            # The IOMMU, secure-guest and cgroup-devices warnings are expected
+            # here and irrelevant: no device passthrough, no confidential VMs.
+            virt-host-validate qemu 2>&1 | grep -Ev '^\s*$' || true
+            echo '```'
+            echo "- /dev/kvm usable: **$kvm_ok**"
+            echo "- libvirtd reachable: **$libvirt_ok**"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install flox
+        uses: flox/install-flox-action@v2
+
+      # Built here rather than inside the activate command so the inputs stay in
+      # environment variables instead of being interpolated into a shell string.
+      - name: Compose runner arguments
+        env:
+          TINKERBELL_REPO: ${{ inputs.tinkerbell_repo }}
+          TINKERBELL_REF: ${{ inputs.tinkerbell_ref }}
+          CHART_VERSION: ${{ inputs.chart_version }}
+        run: |
+          args="$COMBO --plain"
+          [ -n "$TINKERBELL_REPO" ] && args="$args --tinkerbell-repo $TINKERBELL_REPO"
+          [ -n "$TINKERBELL_REF" ] && args="$args --tinkerbell-ref $TINKERBELL_REF"
+          [ -n "$CHART_VERSION" ] && args="$args --chart-version $CHART_VERSION"
+          echo "E2E_ARGS=$args" >> "$GITHUB_ENV"
+          date +%s > /tmp/run-start
+
+      # activate-action runs its command via `flox activate -c '<command>'`, so
+      # nothing here may contain a single quote, and it does not inherit
+      # defaults.run.working-directory -- hence the explicit cd.
+      - name: Run ${{ matrix.combination }}
+        id: run
+        continue-on-error: true
+        uses: flox/activate-action@v1
+        with:
+          command: cd capt && ./e2e/run.sh $E2E_ARGS
+
+      # Written into the artifact so the summary job can tabulate what happened
+      # without re-deriving it from every combination's logs.
+      - name: Record the result
+        if: always()
+        run: |
+          secs=$(( $(date +%s) - $(cat /tmp/run-start) ))
+          mkdir -p "e2e/artifacts/$COMBO"
+          printf '%s\t%s\t%dm %02ds\n' \
+            "$COMBO" "${{ steps.run.outcome }}" "$(( secs / 60 ))" "$(( secs % 60 ))" \
+            > "e2e/artifacts/$COMBO/result.tsv"
+          cat "e2e/artifacts/$COMBO/result.tsv"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-${{ matrix.combination }}
+          path: capt/e2e/artifacts/${{ matrix.combination }}/
+          if-no-files-found: warn
+          retention-days: 7
+
+      # The runner tears down on its own unless it was killed; this catches the
+      # cancelled case. The VM is discarded either way, but a teardown that
+      # fails here is worth seeing, because the same code runs on a developer's
+      # machine where it would leak.
+      - name: Is there a playground to remove?
+        if: always()
+        id: leftover
+        working-directory: .
+        run: |
+          dir="capt/e2e/artifacts/$COMBO"
+          if [ -f "$dir/config.yaml" ] && [ -f "$dir/state.yaml" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "no config/state pair under $dir; nothing to remove"
+          fi
+
+      - name: Teardown
+        if: always() && steps.leftover.outputs.found == 'true'
+        continue-on-error: true
+        uses: flox/activate-action@v1
+        with:
+          command: cd capt && task delete-playground CONFIG_FILE=$PWD/e2e/artifacts/$COMBO/config.yaml STATE_FILE=$PWD/e2e/artifacts/$COMBO/state.yaml
+
+      # The matrix job itself must fail when the combination did, which
+      # continue-on-error above deliberately suppressed so that the artifacts
+      # and teardown steps still ran.
+      - name: Fail if the combination failed
+        if: steps.run.outcome != 'success'
+        run: |
+          echo "::error title=$COMBO::combination failed; see the uploaded artifacts"
+          exit 1
+
+  summary:
+    needs: [plan, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # First, and sparse: checkout cleans the workspace, which would take the
+      # downloaded artifacts with it.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Collect results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-*
+          path: artifacts
+
+      # The per-spec detail comes from the report.json ginkgo already writes into
+      # every artifact, so the matrix jobs produce nothing extra to feed this.
+      - name: Report
+        env:
+          COMBINATIONS: ${{ needs.plan.outputs.combinations }}
+          REQUESTED: ${{ inputs.combinations || inputs.combination }}
+          TINKERBELL_REPO: ${{ inputs.tinkerbell_repo }}
+          TINKERBELL_REF: ${{ inputs.tinkerbell_ref }}
+          CHART_VERSION: ${{ inputs.chart_version }}
+        run: .github/scripts/e2e-summary.sh artifacts | tee -a "$GITHUB_STEP_SUMMARY"

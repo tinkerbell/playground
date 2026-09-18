@@ -12,6 +12,14 @@ function main() {
 	declare MEM="$(yq eval '.vm.memInMBPerVM' "$STATE_FILE")"
 	declare DISK_SIZE="$(yq eval '.vm.diskSizeInGBPerVM' "$STATE_FILE")"
 	declare DISK_PATH="$(yq eval '.vm.diskPath' "$STATE_FILE")"
+	declare IP_FAMILY="$(yq eval '.ipFamily' "$STATE_FILE")"
+
+	# OVMF always tries IPv4 PXE first; on an IPv6 playground that is minutes of
+	# DHCP retries per boot before it falls through to the IPv6 attempt.
+	declare -a FIRMWARE_ARGS=()
+	if [ "$IP_FAMILY" = "ipv6" ]; then
+		FIRMWARE_ARGS+=(--qemu-commandline='-fw_cfg name=opt/org.tianocore/IPv4PXESupport,string=false')
+	fi
 
 	while IFS=$',' read -r name mac; do
 		# create the VM
@@ -27,6 +35,7 @@ function main() {
 			--connect "qemu:///system" \
 			--name "$name" \
 			--disk "path=$DISK_PATH/$name-disk.img,bus=virtio,size=10,sparse=yes" \
+			"${FIRMWARE_ARGS[@]}" \
 			--network "bridge:$BRIDGE_NAME,mac=$mac"
 	done < <(yq e '.vm.details.[] | [key, .mac] | @csv' "$STATE_FILE")
 }

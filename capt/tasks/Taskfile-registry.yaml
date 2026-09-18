@@ -1,0 +1,73 @@
+version: "3"
+
+# One registry serves every playground on the host.
+#
+# It exists because the agent image has no other way in: CaptainOS pulls
+# tink_worker_image at boot with its own containerd, which cannot be handed a
+# file. Like the vBMC it is created once and joined to each playground's network
+# as that playground appears, which makes the count of attached networks the
+# reference count. See scripts/registry_ensure.sh.
+#
+# Every task here is a no-op unless the playground is built from source.
+
+tasks:
+  ensure:
+    run: once
+    summary: |
+      Start the shared registry if it is not already running, attach this
+      playground's network to it, and make sure a buildx builder exists that can
+      reach it. Requires the playground's network to exist.
+    vars:
+      SOURCE_REPO:
+        sh: 'yq eval ''.source.repo // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+      REGISTRY_CONTAINER:
+        sh: 'yq eval ''.source.registryContainer // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    if: '{{ne .SOURCE_REPO ""}}'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/registry_ensure.sh {{.STATE_FILE_FQ_PATH}} {{.REGISTRY_IMAGE}} {{.REGISTRY_PORT}}"
+    status:
+      - docker inspect {{.REGISTRY_CONTAINER}} >/dev/null 2>&1
+      - docker inspect {{.REGISTRY_CONTAINER}} -f '{{`{{range $net, $_ := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}`}}' | grep -qxF '{{.NETWORK_NAME}}'
+      - docker buildx inspect capt-playground >/dev/null 2>&1
+
+  update-state:
+    run: once
+    deps: [ensure]
+    summary: |
+      Record the registry's address on this playground's network, and point the
+      chart and the agent image at it.
+    vars:
+      SOURCE_REPO:
+        sh: 'yq eval ''.source.repo // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    if: '{{ne .SOURCE_REPO ""}}'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/registry_update_state.sh {{.STATE_FILE_FQ_PATH}} {{.REGISTRY_CONTAINER_PORT}}"
+    status:
+      # Rewriting the state file with what it already holds would make every
+      # task that reads it as a source re-run on the next create.
+      - "{{.ROOT_DIR}}/scripts/registry_update_state.sh {{.STATE_FILE_FQ_PATH}} {{.REGISTRY_CONTAINER_PORT}} --check"
+
+  release:
+    summary: |
+      Detach this playground from the shared registry, removing it once no other
+      playground is attached.
+
+      Must run before the playground's network is deleted: docker refuses to
+      remove a network that still has endpoints.
+
+      The image volume and the buildx builder are left behind on purpose. The
+      volume is what lets a later run find its build already published, and the
+      builder holds the layer cache that makes a rebuild bearable.
+    vars:
+      REGISTRY_CONTAINER:
+        sh: 'yq eval ''.source.registryContainer // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/registry_release.sh {{.STATE_FILE_FQ_PATH}}"
+    status:
+      # Nothing to detach once this playground's network is off the container --
+      # which is also the case for every playground not built from source.
+      #
+      # Written as an empty-output test rather than `! docker ... | grep`:
+      # negating a *pipeline* does not survive this Taskfile's errexit+pipefail,
+      # so the guard read as false and the task ran every time.
+      - test -z "$(docker inspect {{.REGISTRY_CONTAINER}} -f '{{`{{range $net, $_ := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}`}}' 2>/dev/null | grep -xF '{{.NETWORK_NAME}}' || true)"

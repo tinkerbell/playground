@@ -8,11 +8,34 @@ import (
 
 _spares: int | *0 @tag(spares,type=int)
 
+// No default: the runner passes whatever `latest` resolves to, and a pin here
+// could only go stale behind it.
+_chartVersion: string @tag(chartVersion)
+
+// Build Tinkerbell from a git repo rather than using released artifacts. Absent
+// unless the runner asks for it, and then it supplies the chart and both images,
+// so versions.chart and chart.location stop applying.
+_sourceRepo: string | *"" @tag(sourceRepo)
+_sourceRef:  string | *"" @tag(sourceRef)
+
+_sourceRequested: _sourceRepo != "" || _sourceRef != ""
+
+// The runner points this at the combo's artifact directory so parallel or
+// successive combos never share generated kubeconfigs and certs.d trees.
+_outputDir: string | *"output" @tag(outputDir)
+
 base: state.#ConfigInput & {
 	clusterName: "e2e-test"
-	outputDir:   "output"
+	outputDir:   _outputDir
 	namespace:   "tinkerbell"
 	arch:        "amd64"
+
+	if _sourceRequested {
+		source: {
+			repo: _sourceRepo
+			ref:  _sourceRef
+		}
+	}
 
 	counts: {
 		controlPlanes: 1
@@ -22,10 +45,18 @@ base: state.#ConfigInput & {
 
 	versions: {
 		capt:    "v0.7.0"
-		chart:   "v0.23.1-23da0880"
 		kube:    "v1.35.2"
 		os:      2404
 		kubevip: "1.1.2"
+
+		// A source build overwrites this with the version it produced, and helm
+		// ignores --version for the chart it packages, so nothing pulls it.
+		if _sourceRequested {
+			chart: "source"
+		}
+		if !_sourceRequested {
+			chart: _chartVersion
+		}
 	}
 
 	capt: providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
@@ -50,10 +81,7 @@ base: state.#ConfigInput & {
 	}
 
 	virtualBMC: {
-		containerName: "virtualbmc"
-		image:         "ghcr.io/jacobweinstock/virtualbmc:latest"
-		user:          "root"
-		pass:          "calvin"
+		image: "ghcr.io/jacobweinstock/virtualbmc:latest"
 	}
 
 	captainos: kernelVersion: "6.18.16"

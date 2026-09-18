@@ -1,0 +1,133 @@
+version: "3"
+
+# Router Advertisement daemon for the IPv6-only playground.
+#
+# Tinkerbell never sends Router Advertisements (see
+# tinkerbell/docs/technical/DHCP_BOOT_MODES.md) and neither does the docker
+# bridge, so without this nothing on the `kind` network learns a default route
+# and systemd-networkd never starts its DHCPv6 client — networkd only does so
+# after seeing an RA with the M or O flag set. That makes radvd a hard
+# prerequisite for Smee's DHCPv6 server to ever be spoken to.
+#
+# radvd runs in the HOST network namespace, bound to the docker bridge, rather
+# than in a container on that bridge. The RA source address must be the
+# link-local of the real router for the advertised default route to be usable;
+# a sidecar container would advertise itself and then have to forward.
+#
+# AdvManagedFlag (M=1) and AdvOtherConfigFlag (O=1) tell clients to use DHCPv6
+# for both, so DHCPv6 assigns the machines their addresses and DNS.
+#
+# The prefix is advertised with BOTH AdvOnLink and AdvAutonomous OFF, which
+# looks odd but is deliberate. The Tinkerbell pod's `broadcast-interface` init
+# container attaches a macvlan to this bridge so Smee can receive link-local
+# DHCPv6 multicast, and that interface also processes these RAs. Anything that
+# gives macvlan0 a route or an address pulls the pod's unicast traffic onto it
+# and breaks a different thing each time:
+#   A=0, L=1 -> on-link route but no address: replies leave macvlan0 sourced
+#               from the pod's eth0 address, so the virtual BMC is unreachable.
+#   A=1, L=1 -> macvlan0 gets a SLAAC address: BMC works, but TFTP replies now
+#               come from that address instead of the load balancer VIP the
+#               client contacted, so netboot dies at "NBP filesize is 0 Bytes".
+#   A=0, L=0 -> macvlan0 gets neither, all pod unicast stays on eth0 and is
+#               NATed to the VIP as normal. Multicast reception is unaffected,
+#               because joining ff02::1:2 needs no address or route.
+# Machines are unaffected: they get an address and DNS from DHCPv6 and a
+# default route from the RA itself, and reach the bridge through that router.
+#
+# All tasks self-gate on `.ipFamily == ipv6` and are strict no-ops otherwise.
+
+includes:
+  nat64: ./Taskfile-nat64.yaml
+
+tasks:
+  render-config:
+    run: once
+    # The family gate lives in `if:`, not `status:`. `status:` entries are ANDed
+    # and mean "already done", so a gate there is false on every ipv6 run and
+    # forces the task to re-run regardless of the real check.
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    summary: |
+      Render output/radvd.conf for the kind bridge and its /64.
+    sources:
+      - "{{.STATE_FILE_FQ_PATH}}"
+    generates:
+      - "{{.OUTPUT_DIR}}/radvd.conf"
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      BRIDGE_NAME:
+        sh: "yq eval '.kind.bridgeName' {{.STATE_FILE_FQ_PATH}}"
+      SUBNET6:
+        sh: 'yq eval ''.kind.subnet6 // ""'' {{.STATE_FILE_FQ_PATH}}'
+    cmds:
+      - |
+        cat > "{{.OUTPUT_DIR}}/radvd.conf" <<EOF
+        interface {{.BRIDGE_NAME}}
+        {
+            AdvSendAdvert on;
+            AdvManagedFlag on;
+            AdvOtherConfigFlag on;
+            MinRtrAdvInterval 3;
+            MaxRtrAdvInterval 10;
+            prefix {{.SUBNET6}}
+            {
+                AdvOnLink off;
+                AdvAutonomous off;
+                AdvRouterAddr on;
+            };
+        };
+        EOF
+
+  start:
+    run: once
+    if: '{{eq .IP_FAMILY "ipv6"}}'
+    deps: [render-config, nat64:forwarding]
+    summary: |
+      Start radvd in the host network namespace on the kind bridge.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      CONTAINER_NAME:
+        sh: "yq eval '.names.radvd' {{.STATE_FILE_FQ_PATH}}"
+      # Same base image as the NAT64 tasks. The previously used
+      # docker.io/gists/radvd no longer exists on Docker Hub.
+      IMAGE: docker.io/library/debian:stable-slim
+      # Absolute path is required for `docker -v` bind mounts; a relative path
+      # is interpreted as a named volume. state.cue resolves outputDir to an
+      # absolute path when generating .state.
+      OUTPUT_DIR_ABS:
+        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      # Router Advertisements are only emitted for interfaces the kernel
+      # treats as forwarding; docker leaves this off on user-defined bridges.
+      # nat64:forwarding turns it on without sudo.
+      - docker rm -f {{.CONTAINER_NAME}} 2>/dev/null || true
+      - >-
+        docker run -d --name {{.CONTAINER_NAME}}
+        --network host
+        --cap-add NET_ADMIN --cap-add NET_RAW
+        --restart unless-stopped
+        -v "{{.OUTPUT_DIR_ABS}}/radvd.conf:/etc/radvd.conf:ro"
+        --entrypoint /bin/sh
+        {{.IMAGE}}
+        -c 'set -e;
+        export DEBIAN_FRONTEND=noninteractive;
+        apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends radvd >/dev/null 2>&1;
+        exec radvd --nodaemon --logmethod stderr --config /etc/radvd.conf'
+    status:
+      # Without this the container is torn down and recreated on every run.
+      - '[[ "$(docker inspect -f "{{`{{.State.Status}}`}}" {{.CONTAINER_NAME}} 2>/dev/null)" == "running" ]]'
+      # radvd reads its config once at startup, so a config rendered after the
+      # container started is not in effect until it restarts.
+      - '[[ -z "$(find "{{.OUTPUT_DIR}}/radvd.conf" -newermt "$(docker inspect -f "{{`{{.State.StartedAt}}`}}" {{.CONTAINER_NAME}} 2>/dev/null)" 2>/dev/null)" ]]'
+
+  delete:
+    summary: |
+      Remove the radvd container.
+    vars:
+      CONTAINER_NAME:
+        sh: "yq eval '.names.radvd' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - docker rm -f {{.CONTAINER_NAME}} 2>/dev/null || true
+    status:
+      - '[[ -z "$(docker ps -aq -f name=^{{.CONTAINER_NAME}}$)" ]]'

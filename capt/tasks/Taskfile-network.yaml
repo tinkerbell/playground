@@ -1,0 +1,55 @@
+version: "3"
+
+# The playground's own docker network.
+#
+# kind would otherwise create and share a network literally named `kind`,
+# which is a problem on any machine that runs other kind clusters: the
+# playground cannot delete it on teardown (someone else's clusters are
+# attached), its subnets are whatever the first creator picked, and any
+# repair the playground makes to it is felt by unrelated containers.
+#
+# Owning a separate network makes it ephemeral -- created on
+# `task create-playground`, removed on `task delete-playground` -- and means
+# every address the playground derives from its subnets is reproducible.
+# kind is pointed at it via KIND_EXPERIMENTAL_DOCKER_NETWORK (set in
+# ../Taskfile.yaml), which both the management and Tinkerbell clusters honour.
+#
+# The IPv6 subnet is allocated per playground rather than fixed, so several can
+# run at once; scripts/network_create.sh explains how without coordinating.
+
+tasks:
+  create:
+    run: once
+    summary: |
+      Create the playground's docker network if it does not already exist,
+      on an IPv6 /64 no other network is using.
+    vars:
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      # Empty unless built from source. Recorded on the network so `task
+      # instances` can say which checkout a playground is running without
+      # knowing where its state file lives.
+      SOURCE_DIR:
+        sh: 'yq eval ''.source.dir // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/network_create.sh {{.NETWORK_NAME}} {{.INSTANCE_ID}} {{.IP_FAMILY}} '{{.SOURCE_DIR}}'"
+    status:
+      - docker network inspect {{.NETWORK_NAME}} >/dev/null 2>&1
+
+  delete:
+    summary: |
+      Remove the playground's docker network.
+
+      Runs last in the delete flow: docker refuses to remove a network that
+      still has endpoints, so every cluster, VM and helper container has to be
+      gone first. Tolerated rather than fatal, so a partial teardown does not
+      abort the rest.
+    vars:
+      # From the state file, not the global (which parses config.yaml): the
+      # network to remove is the one the playground was built on.
+      NETWORK_NAME:
+        sh: "yq eval '.names.network' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - docker network rm {{.NETWORK_NAME}} >/dev/null 2>&1 || true
+    status:
+      - "! docker network inspect {{.NETWORK_NAME}} >/dev/null 2>&1"

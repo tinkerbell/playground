@@ -15,8 +15,6 @@ tasks:
       Render clusterctl config from the cue/clusterctl subpackage. Replaces
       the previous envsubst pipeline against templates/clusterctl.tmpl.
     vars:
-      OUTPUT_DIR:
-        sh: "echo $(yq eval '.outputDir' config.yaml)"
       CAPT_VERSION:
         sh: "yq eval '.versions.capt' {{.STATE_FILE_FQ_PATH}}"
     sources:
@@ -48,8 +46,6 @@ tasks:
       XDG_DATA_HOME: "{{.OUTPUT_DIR}}/xdg"
       XDG_DATA_DIRS: "{{.OUTPUT_DIR}}/xdg"
     vars:
-      OUTPUT_DIR:
-        sh: "echo $(yq eval '.outputDir' config.yaml)"
       KIND_GATEWAY_IP:
         sh: "yq eval '.kind.gatewayIP' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
@@ -69,8 +65,6 @@ tasks:
     vars:
       CLUSTER_NAME:
         sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
-      OUTPUT_DIR:
-        sh: "yq eval '.outputDir' config.yaml"
       BOOTMODE:
         sh: "yq eval '.bootMode' {{.STATE_FILE_FQ_PATH}}"
     sources:

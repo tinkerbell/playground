@@ -21,8 +21,24 @@ import "strings"
 	clusterName: string & !=""
 	namespace:   string & !=""
 	outputDir:   string & !=""
+	// instance + names are added by cue/state/state.cue: the identity that
+	// keeps concurrent playgrounds apart, and the host-global names derived
+	// from it.
+	instance?: string
+	names?: close({
+		network:     string & !=""
+		kindCluster: string & !=""
+		tinkCluster: string & !=""
+		radvd:       string & !=""
+		dns64:       string & !=""
+	})
 	arch:        "amd64" | "arm64"
 	bootMode:    "netboot" | "isoboot"
+	ipFamily:    "ipv4" | *"ipv4" | "ipv6"
+	// Subnet prefix length and resolvers served to nodes; both are family
+	// dependent and computed in cue/state.
+	nodePrefix?: string & !=""
+	nameServers?: [...string]
 
 	// externalTinkerbell + totalNodes are added by cue/state/state.cue.
 	externalTinkerbell?: bool
@@ -64,7 +80,8 @@ import "strings"
 		controlPlane: close({
 			vip: string & !=""
 		})
-		podCIDR?: string
+		podCIDR?:     string
+		serviceCIDR?: string
 	})
 	counts: close({
 		controlPlanes: int & >=1
@@ -108,6 +125,8 @@ import "strings"
 		gatewayIP?:  string & !=""
 		nodeIPBase?: string & !=""
 		bridgeName?: string & !=""
+		gatewayIP6?: string & !=""
+		subnet6?:    string & !=""
 		tinkerbell?: close({
 			clusterName: string & !=""
 			kubeconfig:  string & !=""
@@ -123,6 +142,38 @@ import "strings"
 #Computed: {
 	values: #Config
 	mode:   "netboot" | "isoboot"
+
+	isV6: values.ipFamily == "ipv6"
+
+	// IPv6 literals must be bracketed anywhere they appear in a URL or an
+	// address:port pair. Applied to every such use below.
+	#hostPort: {
+		_addr: string
+		out: [
+			if isV6 {"[\(_addr)]"},
+			_addr,
+		][0]
+	}
+
+	tinkerbellHost: (#hostPort & {_addr: values.tinkerbell.vip}).out
+	hookosHost:     (#hostPort & {_addr: values.tinkerbell.hookosVip}).out
+
+	// Defaults keep the pre-IPv6 behaviour for a .state rendered before
+	// cue/state started emitting these fields.
+	nameServers: [
+		if values.nameServers != _|_ {values.nameServers},
+		["8.8.8.8", "1.1.1.1"],
+	][0]
+
+	nodePrefix: [
+		if values.nodePrefix != _|_ {values.nodePrefix},
+		"16",
+	][0]
+
+	serviceCIDR: [
+		if values.cluster.serviceCIDR != _|_ {values.cluster.serviceCIDR},
+		"172.26.0.0/16",
+	][0]
 
 	// Replace dots in the kube version so it can suffix CR names without
 	// violating DNS subdomain rules. e.g. v1.35.2 -> v1-35-2.
@@ -157,7 +208,15 @@ import "strings"
 
 	imgURL: "\(values.os.registry):\(normalizedOSVersion)-\(values.versions.kube)-\(values.arch).gz"
 
-	metadataURL: "http://\(values.tinkerbell.vip):7080"
+	metadataURL: "http://\(tinkerbellHost):7080"
+
+	// kube-vip advertises the control-plane VIP with ARP on IPv4 and NDP on
+	// IPv6, and the default-route lookup must query the matching family to
+	// find the interface to advertise on.
+	_defaultRouteDev: [
+		if isV6 {"$(ip -6 -j route list default | jq -r .[0].dev)"},
+		"$(ip -4 -j route list default | jq -r .[0].dev)",
+	][0]
 
 	// kube-vip preKubeadmCommand. Single string (one entry in preKubeadmCommands).
 	// k8s v1.29+ uses super-admin.conf; the if/else guards older clusters.
@@ -165,6 +224,6 @@ import "strings"
 		"if [ $(cat /etc/kubernetes-version | awk -F. '{print $2}') -ge 29 ] && [ -f /run/kubeadm/kubeadm.yaml ]; then export KUBE_FILE=/etc/kubernetes/super-admin.conf; else export KUBE_FILE=/etc/kubernetes/admin.conf; fi",
 		"mkdir -p /etc/kubernetes/manifests",
 		"ctr images pull ghcr.io/kube-vip/kube-vip:v\(values.versions.kubevip)",
-		"ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v\(values.versions.kubevip) vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address \(values.cluster.controlPlane.vip) --controlplane --leaderElection --k8sConfigPath $KUBE_FILE > /etc/kubernetes/manifests/kube-vip.yaml",
+		"ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v\(values.versions.kubevip) vip /kube-vip manifest pod --arp --interface \(_defaultRouteDev) --address \(values.cluster.controlPlane.vip) --controlplane --leaderElection --k8sConfigPath $KUBE_FILE > /etc/kubernetes/manifests/kube-vip.yaml",
 	], " && ")
 }

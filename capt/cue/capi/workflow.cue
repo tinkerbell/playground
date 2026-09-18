@@ -23,8 +23,14 @@ _workflow: {
 _commonActionsHead: [
 	{
 		name:    "stream image"
-		image:   "quay.io/tinkerbell/actions/oci2disk"
+		image:   values.actionImages.oci2disk
 		timeout: 1200
+		// The only action that pulls over the network from inside the
+		// container. tink-agent's default isolated netns is an IPv4-only CNI
+		// bridge, which on an IPv6-only machine has no route anywhere and no
+		// view of the DNS64 resolver. Sharing the host netns gives it the
+		// machine's own resolver and NAT64 route.
+		namespaces: network: "host"
 		environment: {
 			IMG_URL:    c.imgURL
 			DEST_DISK:  "{{ index .Hardware.Disks 0 }}"
@@ -33,7 +39,7 @@ _commonActionsHead: [
 	},
 	{
 		name:    "add tink cloud-init config"
-		image:   "quay.io/tinkerbell/actions/writefile"
+		image:   values.actionImages.writefile
 		timeout: 90
 		environment: {
 			DEST_DISK: "{{ formatPartition ( index .Hardware.Disks 0 ) 3 }}"
@@ -66,7 +72,7 @@ _commonActionsHead: [
 _commonActionsTail: [
 	{
 		name:    "add tink cloud-init ds-config"
-		image:   "quay.io/tinkerbell/actions/writefile"
+		image:   values.actionImages.writefile
 		timeout: 90
 		environment: {
 			DEST_DISK: "{{ formatPartition ( index .Hardware.Disks 0 ) 3 }}"
@@ -81,13 +87,13 @@ _commonActionsTail: [
 	},
 	{
 		name:    "kexec image"
-		image:   "ghcr.io/jacobweinstock/waitdaemon:latest"
+		image:   values.actionImages.waitdaemon
 		timeout: 90
 		pid:     "host"
 		environment: {
 			BLOCK_DEVICE:  "{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}"
 			FS_TYPE:       "vfat"
-			IMAGE:         "quay.io/tinkerbell/actions/kexec"
+			IMAGE:         values.actionImages.kexec
 			GRUBCFG_PATH:  "/grub/grub.cfg"
 			WAIT_SECONDS: 10
 		}

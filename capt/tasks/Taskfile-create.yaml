@@ -2,9 +2,13 @@ version: "3"
 
 includes:
   vbmc: ./Taskfile-vbmc.yaml
+  radvd: ./Taskfile-radvd.yaml
   capi: ./Taskfile-capi.yaml
   mirror: ./Taskfile-mirror.yaml
   helm: ./Taskfile-helm.yaml
+  nat64: ./Taskfile-nat64.yaml
+  source: ./Taskfile-source.yaml
+  registry: ./Taskfile-registry.yaml
 
 tasks:
   playground-ordered:
@@ -12,13 +16,40 @@ tasks:
     summary: |
       Create the CAPT playground.
     cmds:
+      # Everything that writes .state runs first, before anything reads it as
+      # a fingerprint source. A write that lands afterwards leaves those
+      # readers stale, and the next create redoes them for nothing -- which
+      # for radvd means restarting it on a playground that was already up.
+      #
+      # None of these needs a cluster: update-state reads the docker network,
+      # and the vBMC is reached over that same network.
+      - task: update-state
+      # Also state writers, and both no-ops unless the playground is built from
+      # source. registry:update-state records where the machines reach the
+      # registry, which is only knowable once the network exists.
+      - task: registry:ensure
+      - task: registry:update-state
+      - task: vbmc:ensure
+      - task: vbmc:update-state
+      - task: vbmc:allocate-ports
+      # Everything below reads .state. The build comes first among them because
+      # the chart and the images it produces are what the helm install deploys.
+      - task: source:publish
       - task: kind-cluster
       - task: tinkerbell-kind-cluster
-      - task: update-state
+      # Needs the cluster to exist, and has to precede the helm install that
+      # references the image.
+      - task: source:load-image
+      # Must precede the VMs so an RA is already on the wire when they PXE.
+      - task: radvd:start
+      # Same: the machines get the DNS64 resolver via DHCPv6 and need the
+      # NAT64 route to exist the first time they resolve the mirror.
+      - task: nat64:start
+      # Must precede the helm install: IPv6-only pods cannot use the node's
+      # IPv4 resolver, so nothing in-cluster resolves until CoreDNS is
+      # repointed at DNS64.
+      - task: cluster-dns
       - task: deploy-tinkerbell-helm-chart
-      - task: vbmc:prepare
-      - task: vbmc:start-server
-      - task: vbmc:update-state
       - task: hardware-cr
       - task: bmc-machine-cr
       - task: bmc-secret
@@ -48,12 +79,14 @@ tasks:
     vars:
       ENABLED:
         sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
       CLUSTER_NAME:
-        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
+        sh: "yq eval '.names.kindCluster' {{.STATE_FILE_FQ_PATH}}"
       KUBECONFIG:
         sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
       KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
-      KIND_CONFIG_FLAG: '{{if eq .ENABLED "true"}}--config {{.KIND_CONFIG}}{{end}}'
+      KIND_CONFIG_FLAG: '{{if or (eq .ENABLED "true") (eq .IP_FAMILY "ipv6")}}--config {{.KIND_CONFIG}}{{end}}'
     cmds:
       - kind create cluster --name {{.CLUSTER_NAME}} --kubeconfig "{{.KUBECONFIG}}" {{.KIND_CONFIG_FLAG}}
       - until KUBECONFIG="{{.KUBECONFIG}}" kubectl wait --for=condition=ready node --all --timeout=5m; do echo "Waiting for nodes to be ready..."; sleep 1; done
@@ -72,6 +105,8 @@ tasks:
     vars:
       ENABLED:
         sh: "yq eval '.registryMirror.enabled // false' {{.STATE_FILE_FQ_PATH}}"
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
       EXTERNAL_TINKERBELL:
         sh: "yq eval '.externalTinkerbell // false' {{.STATE_FILE_FQ_PATH}}"
       TINK_CLUSTER_NAME:
@@ -79,7 +114,7 @@ tasks:
       TINK_KUBECONFIG:
         sh: 'yq eval ''.kind.tinkerbell.kubeconfig // ""'' {{.STATE_FILE_FQ_PATH}}'
       KIND_CONFIG: "{{.OUTPUT_DIR}}/kind-config.yaml"
-      KIND_CONFIG_FLAG: '{{if eq .ENABLED "true"}}--config {{.KIND_CONFIG}}{{end}}'
+      KIND_CONFIG_FLAG: '{{if or (eq .ENABLED "true") (eq .IP_FAMILY "ipv6")}}--config {{.KIND_CONFIG}}{{end}}'
     cmds:
       - kind create cluster --name "{{.TINK_CLUSTER_NAME}}" --kubeconfig "{{.TINK_KUBECONFIG}}" {{.KIND_CONFIG_FLAG}}
       - until KUBECONFIG="{{.TINK_KUBECONFIG}}" kubectl wait --for=condition=ready node --all --timeout=5m; do echo "Waiting for Tinkerbell cluster nodes to be ready..."; sleep 1; done
@@ -88,24 +123,37 @@ tasks:
 
   update-state:
     run: once
-    deps: [kind-cluster, tinkerbell-kind-cluster]
     summary: |
-      Re-render .state with KinD-derived values (gateway IP, bridge name)
-      via the cue/state package.
+      Re-render .state with the values only the docker network can supply --
+      gateway addresses, the /64 it was allocated, and its bridge -- via the
+      cue/state package.
+
+      No dependency on the KinD clusters: every value here comes from
+      `docker network inspect`, and the network exists from network:create.
+      It needed one when the playground used the network KinD creates for
+      itself, which did not exist until KinD ran.
     vars:
-      CLUSTER_NAME:
-        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
+      # Selected with yq rather than a docker `-f` template: the docker CLI
+      # has no `contains` template function, so filtering the IPAM entries by
+      # address family has to happen outside the template.
+      NET_IPAM: "docker network inspect {{.NETWORK_NAME}} -f '{{`{{json .IPAM.Config}}`}}'"
       GATEWAY_IP:
-        sh: "docker inspect -f '{{`{{ .NetworkSettings.Networks.kind.Gateway }}`}}' {{.CLUSTER_NAME}}-control-plane"
+        sh: '{{.NET_IPAM}} | yq -p json -r ''[.[] | select(.Subnet | test(":") | not)] | .[0].Gateway // ""'''
+      GATEWAY_IP6:
+        sh: '{{.NET_IPAM}} | yq -p json -r ''[.[] | select(.Subnet | test(":"))] | .[0].Gateway // ""'''
+      # The bridge /64 that radvd advertises and that every playground IPv6
+      # address is built from.
+      SUBNET6:
+        sh: '{{.NET_IPAM}} | yq -p json -r ''[.[] | select(.Subnet | test(":"))] | .[0].Subnet // ""'''
       NETWORK_ID:
-        sh: "docker network inspect -f '{{`{{.Id}}`}}' kind"
+        sh: "docker network inspect -f '{{`{{.Id}}`}}' {{.NETWORK_NAME}}"
       BRIDGE_NAME: "br-{{substr 0 12 .NETWORK_ID}}"
     cmds:
       - >-
-        cue export ./cue/state yaml: config.yaml -l 'config:'
-        -t cwd="$PWD"
-        -t sshPubKey="$(tr -d '\n' < {{.OUTPUT_DIR}}/capt-ssh-key.pub)"
+        cue export ./cue/state yaml: {{.CONFIG_FILE_FQ_PATH}} -l 'config:' {{.STATE_TAGS}}
         -t gatewayIP="{{.GATEWAY_IP}}"
+        -t gatewayIP6="{{.GATEWAY_IP6}}"
+        -t subnet6="{{.SUBNET6}}"
         -t bridgeName="{{.BRIDGE_NAME}}"
         -e out --out yaml > {{.STATE_FILE_FQ_PATH}}
     status:
@@ -129,11 +177,11 @@ tasks:
       - rm -f {{.OUTPUT_DIR}}/hardware-*.yaml
       - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
       - for: { var: NAMES }
-        cmd: "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outHardware.{{.ITEM}} --out yaml > {{.OUTPUT_DIR}}/hardware-{{.ITEM}}.yaml"
+        cmd: 'cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l ''values:'' -e ''outHardware["{{.ITEM}}"]'' --out yaml > {{.OUTPUT_DIR}}/hardware-{{.ITEM}}.yaml'
 
   bmc-machine-cr:
     run: once
-    deps: [vbmc:update-state]
+    deps: [vbmc:allocate-ports]
     summary: |
       Render BMC Machine CRs (one per VM) from cue/infra.
     sources:
@@ -149,7 +197,7 @@ tasks:
       - rm -f {{.OUTPUT_DIR}}/bmc-machine-*.yaml
       - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
       - for: { var: NAMES }
-        cmd: "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outBmcMachines.{{.ITEM}} --out yaml > {{.OUTPUT_DIR}}/bmc-machine-{{.ITEM}}.yaml"
+        cmd: 'cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l ''values:'' -e ''outBmcMachines["{{.ITEM}}"]'' --out yaml > {{.OUTPUT_DIR}}/bmc-machine-{{.ITEM}}.yaml'
 
   bmc-secret:
     run: once
@@ -165,6 +213,25 @@ tasks:
     cmds:
       - "cue vet ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:'"
       - "cue export ./cue/infra yaml: {{.STATE_FILE_FQ_PATH}} -l 'values:' -e outBmcSecret --out yaml > {{.OUTPUT_DIR}}/bmc-secret.yaml"
+
+  cluster-dns:
+    run: once
+    deps: [kind-cluster, tinkerbell-kind-cluster, update-state]
+    summary: |
+      Repoint CoreDNS at the DNS64 resolver in every kind cluster the
+      playground owns. No-op outside IPv6 mode.
+    vars:
+      TINK_KUBECONFIG:
+        sh: 'yq eval ''.kind.tinkerbell.kubeconfig // ""'' {{.STATE_FILE_FQ_PATH}}'
+      KUBECONFIG:
+        sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
+    cmds:
+      - task: nat64:cluster-dns
+        vars:
+          KUBECONFIG: "{{.KUBECONFIG}}"
+      - task: nat64:cluster-dns
+        vars:
+          KUBECONFIG: "{{if .TINK_KUBECONFIG}}{{.TINK_KUBECONFIG}}{{else}}{{.KUBECONFIG}}{{end}}"
 
   deploy-tinkerbell-helm-chart:
     run: once
@@ -182,7 +249,7 @@ tasks:
 
   vms:
     run: once
-    deps: [update-state, vbmc:update-state]
+    deps: [update-state, vbmc:allocate-ports]
     summary: |
       Create Libvirt VMs.
     vars:
@@ -313,12 +380,19 @@ tasks:
 
   default-storage-pool:
     summary: |
-      Create the default storage pool for the redfish emulator to work properly.
+      Create the storage pool the redfish emulator attaches virtual media
+      from. Shared by every playground on the host, like the emulator itself,
+      and removed by delete only once the last one goes.
+
+      The name is not ours to choose: sushy-tools hardcodes `default` in its
+      libvirt driver. Since that is also libvirt's conventional pool, the
+      playground marks the one it creates so teardown can tell its own from
+      one that was already here.
     cmds:
-      - virsh --connect qemu:///system pool-define-as --name default --type dir --target /tmp/iso
-      - virsh --connect qemu:///system pool-start --build default
+      - virsh --connect qemu:///system pool-define-as --name {{.STORAGE_POOL}} --type dir --target {{.STORAGE_POOL_DIR}}
+      - virsh --connect qemu:///system pool-start --build {{.STORAGE_POOL}}
     status:
-      - virsh --connect qemu:///system pool-info default
+      - virsh --connect qemu:///system pool-info {{.STORAGE_POOL}}
 
   create-external-kubeconfig-secret:
     if: '{{eq .EXTERNAL_TINKERBELL "true"}}'
@@ -334,11 +408,9 @@ tasks:
     vars:
       EXTERNAL_TINKERBELL:
         sh: "yq eval '.externalTinkerbell // false' {{.STATE_FILE_FQ_PATH}}"
-      TINK_CLUSTER_NAME:
-        sh: 'yq eval ''.kind.tinkerbell.clusterName // ""'' {{.STATE_FILE_FQ_PATH}}'
       MGMT_KUBECONFIG:
         sh: "yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}"
     cmds:
-      - ./scripts/create_external_kubeconfig_secret.sh "{{.TINK_CLUSTER_NAME}}" "{{.MGMT_KUBECONFIG}}"
+      - ./scripts/create_external_kubeconfig_secret.sh "{{.STATE_FILE_FQ_PATH}}"
     status:
       - 'KUBECONFIG="{{.MGMT_KUBECONFIG}}" kubectl get secret external-tinkerbell-kubeconfig -n capt-system >/dev/null 2>&1'

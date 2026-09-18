@@ -1,23 +1,69 @@
 version: "3"
 
+includes:
+  radvd: ./Taskfile-radvd.yaml
+  nat64: ./Taskfile-nat64.yaml
+  network: ./Taskfile-network.yaml
+  vbmc: ./Taskfile-vbmc.yaml
+  registry: ./Taskfile-registry.yaml
+
 tasks:
   playground:
     summary: |
       Delete the CAPT playground.
+    # The state file is the record of what was actually created, so it is what
+    # every task below reads -- including the output directory and the docker
+    # network, which the config could answer but only for the playground it
+    # currently describes, not the one that exists.
+    preconditions:
+      - sh: test -f {{.STATE_FILE_FQ_PATH}}
+        msg: |
+          No state file at {{.STATE_FILE_FQ_PATH}}
+
+          The state file is written by `task generate-state` early in
+          create-playground, and records what that run actually built: the
+          cluster names, the VM names, the BMC container and the output
+          directory. Deleting reads it rather than config.yaml, because
+          config.yaml only says what a playground WOULD be built from -- edit
+          it after creating, and it no longer describes what is running.
+
+          Without the state file there is no record of what exists, so there
+          is nothing safe to delete: guessing from config.yaml would delete
+          the wrong cluster, or silently delete nothing and leave kind
+          clusters and VMs running.
+
+          If create-playground failed before generate-state ran, the only
+          resource it got as far as making is the docker network, and its
+          name comes from config.yaml. Remove it by hand:
+
+            docker network rm {{.NETWORK_NAME}}
+
+          If the playground was created with a different config and state,
+          point this at them instead:
+
+            task delete-playground CONFIG_FILE=<path> STATE_FILE=<path>
     cmds:
       - task: kind-cluster
       - task: tinkerbell-kind-cluster
-      - task: vbmc-container
+      # Before network:delete: docker refuses to remove a network that still
+      # has endpoints, and the shared vBMC is attached to this one.
+      - task: vbmc:release
+      # Same, for the shared registry when this playground was built from source.
+      - task: registry:release
+      - task: radvd:delete
+      - task: nat64:delete
       - task: vms
       - task: default-storage-pool
       - task: output-dir
+      # Last: docker refuses to remove a network that still has endpoints.
+      - task: network:delete
 
   kind-cluster:
     summary: |
       Delete the KinD cluster.
     vars:
       CLUSTER_NAME:
-        sh: "yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}"
+        sh: "yq eval '.names.kindCluster' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - kind delete cluster --name {{.CLUSTER_NAME}}
     status:
@@ -55,45 +101,28 @@ tasks:
           virsh --connect qemu:///system undefine --nvram --remove-all-storage {{.ITEM}}
     status:
       # Same shape as kind-cluster's status (line 26). grep -xE = whole-line
-      # ERE match, so 'node1|node2|node3' only matches those exact names —
+      # ERE match, so 'node1|node2|node3' only matches those exact names --
       # not 'nod', not 'nodeeee', not unrelated host VMs like 'virtual'.
-      - "virsh --connect qemu:///system list --all --name 2>/dev/null | grep -qxE '{{.VM_NAMES_RE}}' && exit 1 || exit 0"
+      # An empty ERE would match every line, hence the guard.
+      - 'if [ -z "{{.VM_NAMES_RE}}" ]; then exit 0; fi; virsh --connect qemu:///system list --all --name 2>/dev/null | grep -qxE ''{{.VM_NAMES_RE}}'' && exit 1 || exit 0'
 
   default-storage-pool:
     summary: |
-      Delete the default storage pool.
+      Remove the shared storage pool, once no other playground is using it and
+      only if this playground created it.
     cmds:
-      - for vol in $(virsh --connect qemu:///system -q vol-list default | xargs | cut -d " " -f1,3,5,7,9); do virsh --connect qemu:///system vol-delete --pool default $vol; done
-      - virsh --connect qemu:///system pool-destroy default || true
-      - virsh --connect qemu:///system pool-undefine default
+      - "{{.ROOT_DIR}}/scripts/pool_release.sh {{.STATE_FILE_FQ_PATH}} {{.STORAGE_POOL}} {{.STORAGE_POOL_DIR}}"
     status:
-      - virsh --connect qemu:///system pool-info default && exit 1 || exit 0
-
-  vbmc-container:
-    summary: |
-      Delete the Virtual BMC container.
-    vars:
-      VBMC_CONTAINER_NAME:
-        sh: "yq eval '.virtualBMC.containerName' {{.STATE_FILE_FQ_PATH}}"
-    cmds:
-      - docker rm -f {{.VBMC_CONTAINER_NAME}}
-    status:
-      - docker inspect {{.VBMC_CONTAINER_NAME}} >/dev/null 2>&1 && exit 1 || exit 0
-
-  vbmc-generated-files:
-    summary: |
-      Delete the Virtual BMC generated files. Kept for standalone invocation;
-      the playground delete flow relies on `output-dir` to wipe these.
-    cmds:
-      - rm -f {{.OUTPUT_DIR}}/htpasswd {{.OUTPUT_DIR}}/sushy.key {{.OUTPUT_DIR}}/sushy.cert
-    status:
-      - test ! -f {{.OUTPUT_DIR}}/htpasswd
-      - test ! -f {{.OUTPUT_DIR}}/sushy.key
-      - test ! -f {{.OUTPUT_DIR}}/sushy.cert
+      - "! virsh --connect qemu:///system pool-info {{.STORAGE_POOL}} >/dev/null 2>&1"
 
   output-dir:
     summary: |
       Delete the output directory.
+    vars:
+      # From the state file, not the global (which parses config.yaml): the
+      # directory to remove is the one the playground was built with.
+      OUTPUT_DIR:
+        sh: "yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}"
     cmds:
       - rm -rf {{.OUTPUT_DIR}}
     status:

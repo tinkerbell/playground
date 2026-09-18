@@ -3,6 +3,16 @@ package infra
 
 import "encoding/base64"
 
+// bmclib does not normalise IPv6 hosts: redfishwrapper builds its endpoint as
+// `host + ":" + port` and the ipmitool provider hands `host:port` to
+// net.SplitHostPort, so a bare address yields `https://fd00::3:443` and an
+// unparseable IPMI target. Bracketing satisfies both -- SplitHostPort strips
+// the brackets again for the ipmitool argv.
+_bmcHost: [
+	if c.isV6 {"[\(values.virtualBMC.ip)]"},
+	values.virtualBMC.ip,
+][0]
+
 #bmcMachine: {
 	_name: string
 	_port: int
@@ -17,7 +27,7 @@ import "encoding/base64"
 			name:      "bmc-creds"
 			namespace: c.namespace
 		}
-		host:        values.virtualBMC.ip
+		host:        _bmcHost
 		insecureTLS: true
 		port:        _port
 		providerOptions: {

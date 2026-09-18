@@ -13,23 +13,82 @@ includes:
   capi-pivot: ./tasks/Taskfile-capi-pivot.yaml
   helm: ./tasks/Taskfile-helm.yaml
   tools: ./tasks/Taskfile-tools.yaml
+  nat64: ./tasks/Taskfile-nat64.yaml
+  network: ./tasks/Taskfile-network.yaml
+  source: ./tasks/Taskfile-source.yaml
+  registry: ./tasks/Taskfile-registry.yaml
 
 env:
-  # Prepend ./bin to PATH so all pinned tools (yq, helm, kind, kubectl,
-  # clusterctl, cue) resolve as bare command names — both in `cmds:` and
-  # in `vars: sh:` blocks. Requires the TASK_X_ENV_PRECEDENCE=1 experiment
-  # (set in .env) so the Task `env:` value wins over the OS PATH.
-  PATH: '{{.ROOT_DIR}}/bin:{{env "PATH"}}'
+  # By default, prepend ./bin so the pinned downloaded tools resolve as bare
+  # command names. USE_PATH_BINARIES=true retains PATH and skips those
+  # downloads in tools:install-binaries.
+  # TASK_X_ENV_PRECEDENCE=1 (set in .env) lets this override the OS PATH.
+  PATH: '{{if eq (env "USE_PATH_BINARIES") "true"}}{{env "PATH"}}{{else}}{{.ROOT_DIR}}/bin:{{env "PATH"}}{{end}}'
+  # Puts both kind clusters on the playground's own network instead of the
+  # shared one named `kind`, so it can be torn down with everything else.
+  KIND_EXPERIMENTAL_DOCKER_NETWORK: "{{.NETWORK_NAME}}"
 
 vars:
-  OUTPUT_DIR:
-    sh: |
-      awk -F: '/^outputDir:/ {gsub(/^[ "]+|[ "]+$/, "", $2); print $2}' {{.ROOT_DIR}}/config.yaml
+  # Paths to the playground's config and state file. Both are overridable so a
+  # caller can drive a playground from its own pair of files rather than the
+  # ones at the repo root, which every invocation would otherwise share: the
+  # e2e runner gives each combo a config and state of its own. A relative
+  # value resolves against the Taskfile directory.
+  CONFIG_FILE: "config.yaml"
+  CONFIG_FILE_FQ_PATH: '{{if hasPrefix "/" .CONFIG_FILE}}{{.CONFIG_FILE}}{{else}}{{joinPath .ROOT_DIR .CONFIG_FILE}}{{end}}'
   STATE_FILE: ".state"
-  STATE_FILE_FQ_PATH:
-    sh: echo {{joinPath .ROOT_DIR .STATE_FILE}}
-  CONFIG_FILE_FQ_PATH:
-    sh: echo {{joinPath .ROOT_DIR "config.yaml"}}
+  STATE_FILE_FQ_PATH: '{{if hasPrefix "/" .STATE_FILE}}{{.STATE_FILE}}{{else}}{{joinPath .ROOT_DIR .STATE_FILE}}{{end}}'
+  # Identifies this playground among however many share the host, so their
+  # docker networks, KinD clusters and libvirt domains stay distinct. Hashing
+  # the state file's path means the identity needs no registry and no
+  # allocation: it is stable across re-runs because the path is, and distinct
+  # because two playgrounds already need two state files. -m resolves a path
+  # that does not exist yet, which is the case on the first create.
+  INSTANCE_ID:
+    sh: printf '%s' "$(realpath -m {{.STATE_FILE_FQ_PATH}})" | sha256sum | cut -c1-8
+  # Resolved once, when task starts -- so on a first create these cannot read
+  # .state, which does not exist yet. scripts/state_value.sh reads it when it
+  # is there and asks cue for the same field when it is not.
+  OUTPUT_DIR:
+    sh: "{{.ROOT_DIR}}/scripts/state_value.sh {{.CONFIG_FILE_FQ_PATH}} {{.STATE_FILE_FQ_PATH}} {{.INSTANCE_ID}} outputDir"
+  NETWORK_NAME:
+    sh: "{{.ROOT_DIR}}/scripts/state_value.sh {{.CONFIG_FILE_FQ_PATH}} {{.STATE_FILE_FQ_PATH}} {{.INSTANCE_ID}} names.network"
+  # Tags every `cue export ./cue/state` needs, wherever it runs. The state file
+  # is rendered twice -- once before the network exists and again with what it
+  # supplies -- and the second render replaces the first, so a tag missing from
+  # either one silently empties whatever it fed.
+  #
+  # The command substitutions are not run when this is resolved: it is a plain
+  # template, and the shell expands them when the command runs. That is what
+  # lets it read files a task's deps create.
+  STATE_TAGS: >-
+    -t cwd="$PWD"
+    -t instanceID="{{.INSTANCE_ID}}"
+    -t sshPubKey="$(tr -d '\n' < {{.OUTPUT_DIR}}/capt-ssh-key.pub)"
+    -t sourceRepo="$(yq eval '.repo // ""' {{.OUTPUT_DIR}}/source.yaml 2>/dev/null || true)"
+    -t sourceDir="$(yq eval '.dir // ""' {{.OUTPUT_DIR}}/source.yaml 2>/dev/null || true)"
+    -t sourceCommit="$(yq eval '.commit // ""' {{.OUTPUT_DIR}}/source.yaml 2>/dev/null || true)"
+    -t sourceVersion="$(yq eval '.version // ""' {{.OUTPUT_DIR}}/source.yaml 2>/dev/null || true)"
+    -t sourceDirty="$(yq eval '.dirty // false' {{.OUTPUT_DIR}}/source.yaml 2>/dev/null || echo false)"
+  # sushy-tools attaches virtual media from a libvirt pool whose name is a
+  # class attribute in its libvirt driver -- STORAGE_POOL = 'default', with no
+  # config key to override it. So the playground has to use libvirt's
+  # conventional pool, and must be careful with it: pool_release.sh only
+  # removes it once no playground is left, and only if the playground created
+  # it, because on a machine that uses libvirt for anything else this is
+  # somebody's real pool.
+  STORAGE_POOL: default
+  STORAGE_POOL_DIR: /tmp/capt-playground-iso
+  # Carries locally built images when a playground is built from source. Two
+  # addresses for the one registry: pushes go to the published host port, which
+  # is the same wherever the build runs and which docker and buildkit both treat
+  # as insecure without configuration; pulls use its address on each
+  # playground's network, which is the only one the machines can reach. The
+  # repository path is the same either way, so nothing is retagged.
+  REGISTRY_IMAGE: docker.io/library/registry:3
+  REGISTRY_PORT: "5010"
+  REGISTRY_CONTAINER_PORT: "5000"
+  REGISTRY_ENDPOINT: "127.0.0.1:{{.REGISTRY_PORT}}"
   # Pinned tool versions for binaries downloaded into ./bin from each upstream
   # project's release artifacts. Bump these to upgrade tooling; the
   # install-binaries task is idempotent on the version string.
@@ -57,8 +116,10 @@ tasks:
       - task: system-deps-warnings
       - task: tools:validate-binaries
       - task: tools:install-binaries
-      - task: ensure-output-dir
+      # Before network:create: the network's name comes from the state file,
+      # and generate-state needs nothing the network provides.
       - task: generate-state
+      - task: network:create
       - task: create:playground-ordered
       - task: next-steps
 
@@ -70,6 +131,16 @@ tasks:
       - task: tools:validate-binaries
       - task: tools:install-binaries
       - task: delete:playground
+
+  instances:
+    silent: true
+    summary: |
+      List the playgrounds running on this host, and the services they share.
+
+      Read back off the docker networks' labels, so it is right even for a
+      playground whose state file was lost.
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/instances.sh"
 
   system-deps-warnings:
     summary: |
@@ -107,30 +178,32 @@ tasks:
 
   generate-state:
     summary: |
-      Populate the state file from config.yaml using the cue/state package.
-      Reads the SSH public key generated by generate-ssh-key.
-    deps: [generate-ssh-key]
+      Populate the state file from the config using the cue/state package.
+      Reads the SSH public key generated by generate-ssh-key, and the resolved
+      commit written by source:prepare when building from source.
+    deps: [generate-ssh-key, source:prepare]
     sources:
-      - config.yaml
+      - "{{.CONFIG_FILE_FQ_PATH}}"
       - cue/state/*.cue
       - cue/values/*.cue
       - cue/mirror/*.cue
       - "{{.OUTPUT_DIR}}/capt-ssh-key.pub"
+      # A moving ref resolves to a new commit without anything else changing,
+      # and the state file has to follow it.
+      - "{{.OUTPUT_DIR}}/source.yaml"
     generates:
-      - .state
+      - "{{.STATE_FILE_FQ_PATH}}"
     cmds:
-      # Validate config.yaml against the cue/state schema (and transitively
+      # Validate the config against the cue/state schema (and transitively
       # cue/values + cue/mirror) before exporting. Surfaces schema errors
       # before they appear as confusing yaml-export failures.
       # Folded scalar (>-) is required because the bare `yaml:` token would
       # otherwise be parsed as a YAML mapping key.
       - >-
-        cue vet ./cue/state yaml: config.yaml -l 'config:'
+        cue vet ./cue/state yaml: {{.CONFIG_FILE_FQ_PATH}} -l 'config:' {{.STATE_TAGS}}
       - >-
-        cue export ./cue/state yaml: config.yaml -l 'config:'
-        -t cwd="$PWD"
-        -t sshPubKey="$(tr -d '\n' < {{.OUTPUT_DIR}}/capt-ssh-key.pub)"
-        -e out --out yaml > .state
+        cue export ./cue/state yaml: {{.CONFIG_FILE_FQ_PATH}} -l 'config:' {{.STATE_TAGS}}
+        -e out --out yaml > {{.STATE_FILE_FQ_PATH}}
 
   next-steps:
     silent: true
@@ -143,6 +216,13 @@ tasks:
         sh: yq eval '.vm.baseName' {{.STATE_FILE_FQ_PATH}}
       CLUSTER_NAME:
         sh: yq eval '.clusterName' {{.STATE_FILE_FQ_PATH}}
+      # state.cue resolves outputDir to an absolute path, so the commands
+      # printed below do not depend on where the reader runs them -- and do
+      # not need ROOT_DIR glued on, which doubled the prefix whenever
+      # config.yaml already held an absolute outputDir.
+      OUTPUT_DIR_ABS:
+        sh: yq eval '.outputDir' {{.STATE_FILE_FQ_PATH}}
+      WORKLOAD_KUBECONFIG: "{{.OUTPUT_DIR_ABS}}/{{.CLUSTER_NAME}}.kubeconfig"
       KIND_KUBECONFIG:
         sh: yq eval '.kind.kubeconfig' {{.STATE_FILE_FQ_PATH}}
       EXTERNAL_TINKERBELL:
@@ -159,7 +239,7 @@ tasks:
         echo The Tinkerbell cluster kubeconfig is located at: {{.TINK_KUBECONFIG}}
         echo "NOTE: External Tinkerbell mode is enabled. Tinkerbell resources (Hardware, Workflows, BMC) are in the Tinkerbell cluster."
         {{- end }}
-        echo The workload cluster kubeconfig is located at: {{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig
+        echo The workload cluster kubeconfig is located at: {{.WORKLOAD_KUBECONFIG}}
         echo
         echo 1. Watch and wait for the first control plane node to be provisioned successfully: STATE_SUCCESS
         {{- if eq .EXTERNAL_TINKERBELL "true" }}
@@ -170,19 +250,19 @@ tasks:
         echo
         echo
         echo 2. Watch and wait for the Kubernetes API server to be ready and responding:
-        echo "until KUBECONFIG={{.ROOT_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
+        echo "until KUBECONFIG={{.WORKLOAD_KUBECONFIG}} kubectl get node; do echo 'Waiting for Kube API server to respond...'; sleep 5; done"
         echo
         echo 3. Deploy a CNI
         echo Cilium
-        echo "KUBECONFIG={{.ROOT_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig cilium install"
+        echo "KUBECONFIG={{.WORKLOAD_KUBECONFIG}} cilium install"
         echo or KUBEROUTER
-        echo "KUBECONFIG={{.ROOT_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl apply -f https://raw.githubusercontent.com/cloudnativelabs/kube-router/master/daemonset/kubeadm-kuberouter.yaml"
+        echo "{{.ROOT_DIR}}/scripts/deploy_cni.sh {{.STATE_FILE_FQ_PATH}} {{.WORKLOAD_KUBECONFIG}}"
         echo
         echo 4. Watch and wait for all nodes to join the cluster and be ready:
-        echo "KUBECONFIG={{.ROOT_DIR}}/{{.OUTPUT_DIR}}/{{.CLUSTER_NAME}}.kubeconfig kubectl get nodes -w"
-      - touch {{.OUTPUT_DIR}}/.next-steps-displayed
+        echo "KUBECONFIG={{.WORKLOAD_KUBECONFIG}} kubectl get nodes -w"
+      - touch {{.OUTPUT_DIR_ABS}}/.next-steps-displayed
     status:
-      - echo ;[ -f {{.OUTPUT_DIR}}/.next-steps-displayed ]
+      - echo ;[ -f {{.OUTPUT_DIR_ABS}}/.next-steps-displayed ]
 
   pivot:
     silent: true

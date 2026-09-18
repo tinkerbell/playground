@@ -1,0 +1,102 @@
+schema-version = "1.15.0"
+
+[options]
+systems = ["aarch64-linux", "x86_64-linux"]
+
+[install]
+gnumake.pkg-path = "gnumake"
+git.pkg-path = "git"
+go.pkg-path = "go"
+
+[install.bash]
+pkg-path = "bash"
+version = "5.3p15"
+
+[install.coreutils]
+pkg-path = "coreutils"
+version = "9.11"
+
+[install.curl]
+pkg-path = "curl"
+version = "8.21.0"
+
+[install.docker]
+pkg-path = "docker"
+version = "29.7.2"
+
+[install.findutils]
+pkg-path = "findutils"
+version = "4.11.0"
+
+[install.gawk]
+pkg-path = "gawk"
+version = "5.4.1"
+
+[install.gnugrep]
+pkg-path = "gnugrep"
+version = "3.12"
+
+[install.gnused]
+pkg-path = "gnused"
+version = "4.10"
+
+[install.gnutar]
+pkg-path = "gnutar"
+version = "1.35"
+
+[install.go-task]
+pkg-path = "go-task"
+version = "3.53.1"
+
+[install.jq]
+pkg-path = "jq"
+version = "1.8.2"
+
+[install.libvirt]
+pkg-path = "libvirt"
+version = "12.7.0"
+
+[install.openssh]
+pkg-path = "openssh"
+version = "10.5p1"
+
+[install.ovmf]
+pkg-path = "OVMF"
+version = "202608"
+
+[install.virt-manager]
+pkg-path = "virt-manager"
+version = "5.1.0"
+
+# These are normally downloaded into capt/bin by `task install-binaries`.
+[install.clusterctl]
+pkg-path = "clusterctl"
+version = "1.13.4"
+
+[install.cue]
+pkg-path = "cue"
+version = "0.17.1"
+
+[install.kubernetes-helm]
+pkg-path = "kubernetes-helm"
+version = "4.2.4"
+
+[install.kind]
+pkg-path = "kind"
+version = "0.32.0"
+
+[install.kubectl]
+pkg-path = "kubectl"
+version = "1.37.0"
+
+[install.yq-go]
+pkg-path = "yq-go"
+version = "4.53.3"
+
+# Docker and libvirtd are host services. Ensure they are running before
+# creating a playground; entering this environment supplies their CLIs only.
+# flock, for scripts/source_prepare.sh. Priority is above coreutils' default 5
+# so coreutils keeps `kill`, which both packages provide.
+[install.util-linux]
+pkg-path = "util-linux"
+priority = 6

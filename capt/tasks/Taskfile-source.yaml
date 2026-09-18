@@ -1,0 +1,98 @@
+version: "3"
+
+# Building Tinkerbell from a git repo rather than using released artifacts.
+#
+# Entirely driven by the optional `source` block in config.yaml, so a playground
+# created by hand gets this the same way an e2e run does. With no such block
+# every task here is a no-op and the playground uses the released chart and
+# images as before.
+
+tasks:
+  validate-binaries:
+    run: once
+    summary: |
+      Check the binaries a source build needs on top of the playground's usual
+      ones. Kept out of tools:validate-binaries because a playground that uses
+      released artifacts needs none of them.
+    vars:
+      # flock is util-linux: present on any Linux, absent on a stock macOS.
+      REQUIRED_SOURCE_BINS: "git flock make go"
+    cmds:
+      - for: { var: REQUIRED_SOURCE_BINS, split: " " }
+        cmd: 'command -v {{ .ITEM }} >/dev/null || { echo "''{{ .ITEM }}'' not found in $PATH; it is needed to build Tinkerbell from source"; exit 1; }'
+    status:
+      - for bin in {{.REQUIRED_SOURCE_BINS}}; do command -v "$bin" >/dev/null || exit 1; done
+
+  prepare:
+    run: once
+    deps: [":ensure-output-dir", validate-binaries]
+    summary: |
+      Work out which commit the configured repo and ref resolve to, and record
+      it for generate-state to read.
+
+      Runs before the state file exists, because the state file is built from
+      what this produces.
+    vars:
+      # Gated on the block holding something, not on repo being set. Gating on
+      # repo would make a half-filled `source:` silently skip the build, and the
+      # first sign of it would be cue rejecting an empty commit three steps
+      # later. A key written with no value parses as null and means absent,
+      # which is how cue reads it too, so has() alone is not enough.
+      SOURCE_PRESENT:
+        sh: 'yq eval ''has("source") and .source != null'' {{.CONFIG_FILE_FQ_PATH}}'
+      REPO:
+        sh: 'yq eval ''.source.repo // ""'' {{.CONFIG_FILE_FQ_PATH}}'
+      REF:
+        sh: 'yq eval ''.source.ref // ""'' {{.CONFIG_FILE_FQ_PATH}}'
+    if: '{{eq .SOURCE_PRESENT "true"}}'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/source_prepare.sh '{{.REPO}}' '{{.REF}}' {{.OUTPUT_DIR}}/source.yaml"
+    status:
+      # Resolved once per playground rather than on every run. A branch that has
+      # moved since is deliberately not picked up: re-resolving would rewrite
+      # the state file underneath a playground that is already built from the
+      # commit it records. Tear down and create again to follow a branch.
+      - test -f {{.OUTPUT_DIR}}/source.yaml
+  load-image:
+    run: once
+    summary: |
+      Put the locally built Tinkerbell image into the kind cluster's image
+      store. Nothing pulls it over the network, so the playground needs no
+      registry configuration on the node -- which kind's containerd would
+      ignore anyway, having no `config_path` set.
+
+      Runs after the cluster exists and before the chart is deployed.
+    vars:
+      IMAGE:
+        sh: 'yq eval ''.source.tinkerbellImage // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+      VERSION:
+        sh: 'yq eval ''.source.version // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+      # Must resolve to whatever cluster the chart is deployed to, the same way
+      # create:deploy-tinkerbell-helm-chart picks its kubeconfig.
+      CLUSTER_NAME:
+        sh: "yq eval '(.kind.tinkerbell.clusterName // .names.kindCluster)' {{.STATE_FILE_FQ_PATH}}"
+    if: '{{ne .IMAGE ""}}'
+    cmds:
+      - kind load docker-image "{{.IMAGE}}:{{.VERSION}}" --name {{.CLUSTER_NAME}}
+    status:
+      # containerd namespaces the image and qualifies the bare name with
+      # docker.io, so the reference here is not the one kind was given.
+      - docker exec {{.CLUSTER_NAME}}-control-plane ctr -n k8s.io images ls -q | grep -qxF 'docker.io/{{.IMAGE}}:{{.VERSION}}'
+
+  publish:
+    run: once
+    summary: |
+      Build the Tinkerbell image, the Tink Agent image and the Helm chart, and
+      put the images in the shared registry.
+
+      Skipped when the registry already carries this commit, which is why the
+      images are tagged with it. A dirty working tree is always rebuilt: its
+      contents can change without its version changing.
+    vars:
+      SOURCE_REPO:
+        sh: 'yq eval ''.source.repo // ""'' {{.STATE_FILE_FQ_PATH}} 2>/dev/null || true'
+    if: '{{ne .SOURCE_REPO ""}}'
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/source_publish.sh {{.STATE_FILE_FQ_PATH}} {{.REGISTRY_ENDPOINT}}"
+    status:
+      - "{{.ROOT_DIR}}/scripts/source_publish.sh {{.STATE_FILE_FQ_PATH}} {{.REGISTRY_ENDPOINT}} --check"

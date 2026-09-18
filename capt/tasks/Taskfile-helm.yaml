@@ -39,14 +39,81 @@ tasks:
         sh: "yq eval '.arch' {{.STATE_FILE_FQ_PATH}} | sed 's/amd64/x86_64/;s/arm64/aarch64/'"
       KERNEL_VER:
         sh: 'yq eval ''.captainos.kernelVersion // ""'' {{.STATE_FILE_FQ_PATH}}'
+      IP_FAMILY:
+        sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
+      # IPv6 literals must be bracketed everywhere they appear in a URL or an
+      # address:port pair.
+      LB_HOST2: '{{if eq .IP_FAMILY "ipv6"}}[{{.LB_IP2}}]{{else}}{{.LB_IP2}}{{end}}'
+      SUBNET6:
+        sh: 'yq eval ''.kind.subnet6 // ""'' {{.STATE_FILE_FQ_PATH}}'
+      NAME_SERVERS:
+        sh: 'printf ''{%s}'' "$(yq eval ''.nameServers | join(",")'' {{.STATE_FILE_FQ_PATH}})"'
+      AGENT_IMAGE:
+        sh: "yq eval '.agentImage' {{.STATE_FILE_FQ_PATH}}"
+      # Empty unless this playground was built from source. The registry is only
+      # ever reached by the machine, so this is the one address it needs.
+      SOURCE_REGISTRY:
+        sh: 'yq eval ''.source.registry // ""'' {{.STATE_FILE_FQ_PATH}}'
+      # A local image name with no registry in it: it is loaded into kind rather
+      # than pulled.
+      SOURCE_IMAGE:
+        sh: 'yq eval ''.source.tinkerbellImage // ""'' {{.STATE_FILE_FQ_PATH}}'
       GLOBAL_VARS:
         - trustedProxies={"{{.TRUSTED_PROXIES}}"}
-        - publicIP={{.LB_IP}}
-        - artifactsFileServer=http://{{.LB_IP2}}:7173
         - optional.captainos.enabled=true
+        # Set unconditionally because .agentImage already carries whatever is
+        # right: the chart's own default normally, the mirror host when one is
+        # configured, the local registry when built from source. Smee bakes it
+        # into the iPXE cmdline as tink_worker_image, and the OSIE that pulls it
+        # has no certs.d tree of its own, so unlike every other image it cannot
+        # be redirected at pull time and the host has to be in the string.
+        - deployment.agentImage={{.AGENT_IMAGE}}
+      # The agent image is handled above for every playground; these two are
+      # only meaningful when there is a local build to point at. The registry
+      # serves plain HTTP, which CaptainOS accepts only for hosts named in
+      # insecure_registries -- it writes them a certs.d entry before pulling.
+      SOURCE_VARS:
+        - deployment.image={{.SOURCE_IMAGE}}
+        - deployment.envs.smee.ipxeHttpScriptExtraKernelArgs={insecure_registries={{.SOURCE_REGISTRY}}}
+      IPV4_VARS:
+        - publicIP={{.LB_IP}}
+        - artifactsFileServer=http://{{.LB_HOST2}}:7173
+      # Smee has no IPv4 endpoints to advertise here, so DHCPv4 is switched off
+      # entirely and every boot endpoint is published through the dhcpv6*
+      # settings. Addresses come from `derived` mode: a stable address hashed
+      # from the client MAC into the bridge /64, unless the Hardware CR carries
+      # a reserved IPv6 address, which it does here.
+      IPV6_VARS:
+        # The chart validates these per family: artifactsFileServer rejects an
+        # IPv6 literal and artifactsFileServerV6 rejects an IPv4 one.
+        - publicIPv6={{.LB_IP}}
+        - artifactsFileServerV6=http://{{.LB_HOST2}}:7173
+        - service.ipFamilies={IPv6}
+        - deployment.envs.smee.dhcpEnabled=false
+        - deployment.envs.smee.dhcpv6Enabled=true
+        - deployment.envs.smee.dhcpv6Mode=derived
+        - deployment.envs.smee.dhcpv6DerivedDirectAddressPool={{.SUBNET6}}
+        # Smee derives the v6 TFTP/syslog IPs, both iPXE HTTP hosts and the Tink
+        # server addr:port from publicIPv6, exactly as it does from publicIP for
+        # v4, so none of those are set here. The OSIE URL likewise comes from
+        # artifactsFileServerV6.
+        - deployment.envs.smee.dhcpv6DefaultNameServers={{.NAME_SERVERS}}
+        # A DHCPv6 server only receives client solicits if it joins the
+        # ff02::1:2 multicast group on an interface. Left empty, Smee binds a
+        # wildcard [::]:547 socket, joins nothing, and every machine fails
+        # netboot with "PXE-E16: No valid offer received". macvlan0 is the
+        # interface the chart's broadcast-interface init container attaches to
+        # the machine network (deployment.init.interfaceMode: macvlan).
+        - deployment.envs.smee.dhcpv6BindInterface=macvlan0
       ISO_VARS:
         - deployment.envs.smee.dhcpEnabled=false
-        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_IP2}}:7173/captainos-{{.KERNEL_VER}}-{{.OSIE_ARCH}}.iso
+        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_HOST2}}:7173/captainos-{{.KERNEL_VER}}-{{.OSIE_ARCH}}.iso
+      # Smee's static IPAM patching is IPv4-only, and the chart defaults it on.
+      # Left enabled, every /iso6/ request is answered with HTTP 400 and the BMC
+      # never mounts the media. The machine has DHCPv6 to get its address from,
+      # so nothing is lost by turning it off.
+      ISO6_VARS:
+        - deployment.envs.smee.isoStaticIPAMEnabled=false
       NETBOOT_VARS:
         - deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-{{.KERNEL_VER}}
         - deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-{{.KERNEL_VER}}
@@ -56,8 +123,11 @@ tasks:
       - >-
         KUBECONFIG="{{.KUBECONFIG}}" helm upgrade --install {{.CHART_NAME}} {{.LOCATION}} --version "{{.STACK_CHART_VERSION}}" --create-namespace --namespace {{.NAMESPACE}} --wait
         {{range .GLOBAL_VARS}}--set "{{.}}" {{end}}
+        {{- if .SOURCE_REGISTRY }} {{- range .SOURCE_VARS }}--set "{{.}}" {{ end }} {{ end }}
+        {{- if eq .IP_FAMILY "ipv6" }} {{- range .IPV6_VARS }}--set "{{.}}" {{ end }} {{ else }} {{- range .IPV4_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if eq .BOOTMODE "netboot" }} {{- range .NETBOOT_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }}
+        {{- if and (eq .BOOTMODE "isoboot") (eq .IP_FAMILY "ipv6") }} {{- range .ISO6_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
     status:
       - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]

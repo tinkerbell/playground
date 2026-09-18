@@ -22,6 +22,23 @@ values: {
 	...
 }
 
+// Upstream fallback endpoint for a given namespace. containerd uses `server`
+// when the mirror misses, so it has to be a real registry API.
+//
+// docker.io is NOT one: https://docker.io/v2/... redirects to
+// https://www.docker.com/, which answers 200 text/html, and containerd then
+// fails with "unexpected media type text/html" while trying to parse the
+// marketing page as a manifest. The v2 API lives on registry-1.docker.io.
+// The certs.d directory keeps the docker.io name either way -- that is the
+// namespace containerd looks up, not the endpoint it dials.
+#serverURL: {
+	upstream: string
+	out: [
+		if upstream == "docker.io" {"https://registry-1.docker.io"},
+		"https://\(upstream)",
+	][0]
+}
+
 // Per-upstream hosts.toml body. Map shape: { "<upstream>": "<toml body>" }.
 // Empty when the feature is off or no upstreams are configured.
 //
@@ -30,7 +47,7 @@ values: {
 HostsTomlByUpstream: {
 	if values.registryMirror.enabled for u in values.registryMirror.upstreams {
 		"\(u)": """
-			server = "https://\(u)"
+			server = "\((#serverURL & {upstream: u}).out)"
 
 			[host."https://\(values.registryMirror.host)"]
 			  capabilities = ["pull", "resolve"]

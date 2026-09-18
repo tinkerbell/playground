@@ -47,6 +47,12 @@ _hostCertsDir: "\(values.outputDir)/certs.d"
 out: {
 	kind:       "Cluster"
 	apiVersion: "kind.x-k8s.io/v1alpha4"
+	// An ipv6 kind cluster keeps IPv4 on the node containers (the docker `kind`
+	// network is dual-stack), so image pulls still work while every Kubernetes
+	// address -- apiserver, node IPs, pod and service CIDRs -- is IPv6.
+	if values.ipFamily == "ipv6" {
+		networking: ipFamily: "ipv6"
+	}
 	if _mirrorEnabled {
 		nodes: [{
 			role: "control-plane"
