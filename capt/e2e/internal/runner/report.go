@@ -22,21 +22,21 @@ type Result struct {
 	Status      Status
 	Duration    time.Duration
 	Detail      string
-	Specs       int
-	SpecsFailed int
+	Tests       int
+	TestsFailed int
 }
 
 // testSummary describes the test tally, e.g. "7 tests" or "1 of 7 tests failed".
 func (r Result) testSummary() string {
 	switch {
-	case r.Specs == 0:
+	case r.Tests == 0:
 		return ""
-	case r.SpecsFailed > 0:
-		return fmt.Sprintf("%d of %d tests failed", r.SpecsFailed, r.Specs)
-	case r.Specs == 1:
+	case r.TestsFailed > 0:
+		return fmt.Sprintf("%d of %d tests failed", r.TestsFailed, r.Tests)
+	case r.Tests == 1:
 		return "1 test"
 	default:
-		return fmt.Sprintf("%d tests", r.Specs)
+		return fmt.Sprintf("%d tests", r.Tests)
 	}
 }
 

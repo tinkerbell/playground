@@ -34,7 +34,7 @@ const (
 	fallbackHeight  = 24
 )
 
-// Outcome is how a step or spec finished.
+// Outcome is how a step or test finished.
 type Outcome int
 
 const (
@@ -221,8 +221,8 @@ func (u *UI) Total(text string, d time.Duration) {
 	u.Info("%s", rowString(padRight("", statusWidth), styleBold.Render(text), FormatDuration(d)))
 }
 
-// SpecGroup names the container hierarchy shared by the specs that follow.
-func (u *UI) SpecGroup(name string) {
+// TestGroup names the container hierarchy shared by the tests that follow.
+func (u *UI) TestGroup(name string) {
 	if name == "" {
 		return
 	}
@@ -230,11 +230,11 @@ func (u *UI) SpecGroup(name string) {
 	u.Log("       %s", styleDim.Render(name))
 }
 
-// SpecLine reports a single spec beneath its group. A spec that neither passed
+// TestLine reports a single test beneath its group. A test that neither passed
 // nor failed shows its state where its duration would go: the number is
-// meaningless for a spec that never ran, and appending it to the name pushed
+// meaningless for a test that never ran, and appending it to the name pushed
 // the column out of alignment.
-func (u *UI) SpecLine(text string, outcome Outcome, note string, d time.Duration) {
+func (u *UI) TestLine(text string, outcome Outcome, note string, d time.Duration) {
 	right := FormatDuration(d)
 	if note != "" {
 		right = note
@@ -262,7 +262,7 @@ func rowString(prefix, label, value string) string {
 }
 
 // Verdict is the final line for a combo: the one thing to read if nothing else.
-// The duration lands in the same column as every step and spec above it.
+// The duration lands in the same column as every step and test above it.
 func (u *UI) Verdict(status Status, text string, d time.Duration) {
 	style := styleOK
 	if status == StatusFail {
