@@ -34,7 +34,7 @@ func TestFormatDuration(t *testing.T) {
 	}
 }
 
-// Style.Width wraps content wider than the field, which would break long spec
+// Style.Width wraps content wider than the field, which would break long test
 // names; the padding helpers must leave them alone.
 func TestPaddingDoesNotWrap(t *testing.T) {
 	long := strings.Repeat("x", 80)
@@ -81,32 +81,32 @@ func TestJoinFallsBackToASCII(t *testing.T) {
 	}
 }
 
-func TestReadSpecResults(t *testing.T) {
-	specs, err := readSpecResults("testdata/report.json")
+func TestReadTestResults(t *testing.T) {
+	tests, err := readTestResults("testdata/report.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(specs) != 7 {
-		t.Fatalf("got %d specs, want 7", len(specs))
+	if len(tests) != 7 {
+		t.Fatalf("got %d tests, want 7", len(tests))
 	}
 
-	first := specs[0]
+	first := tests[0]
 	if first.Text != "completes all workflows successfully" {
-		t.Errorf("first spec text = %q", first.Text)
+		t.Errorf("first test text = %q", first.Text)
 	}
 	if got := FormatDuration(first.Duration); got != "7m40s" {
-		t.Errorf("first spec duration = %q", got)
+		t.Errorf("first test duration = %q", got)
 	}
 
-	// The health specs sit one container deeper, which is what drives grouping.
+	// The health tests sit one container deeper, which is what drives grouping.
 	ui := &UI{unicode: false}
-	last := specs[len(specs)-1]
+	last := tests[len(tests)-1]
 	if got := last.Group(ui); got != "Workload cluster provisioning | cluster health" {
-		t.Errorf("last spec group = %q", got)
+		t.Errorf("last test group = %q", got)
 	}
 }
 
-func TestSpecOutcome(t *testing.T) {
+func TestResultOutcome(t *testing.T) {
 	for _, tc := range []struct {
 		state types.SpecState
 		want  Outcome
@@ -118,7 +118,7 @@ func TestSpecOutcome(t *testing.T) {
 		{types.SpecStateSkipped, OutcomeOther},
 		{types.SpecStatePending, OutcomeOther},
 	} {
-		got, _ := SpecResult{State: tc.state}.outcome()
+		got, _ := TestResult{State: tc.state}.outcome()
 		if got != tc.want {
 			t.Errorf("outcome(%s) = %v, want %v", tc.state, got, tc.want)
 		}

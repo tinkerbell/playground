@@ -119,9 +119,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # libvirtd is a system daemon that wants /dev/kvm, an AppArmor profile and
-      # firmware descriptors it reads itself, so it comes from apt rather than
-      # flox. flox covers the playground's own tooling, which is userspace.
+      # libvirtd is a system daemon that wants /dev/kvm and an AppArmor profile,
+      # so it comes from apt rather than flox. flox covers the playground's own
+      # tooling, which is userspace -- including OVMF, which is passed to
+      # virt-install as an explicit path and so needs no distro package.
       #
       # qemu-utils supplies qemu-img. Nothing in the playground calls it, but
       # libvirtd does, to create the qcow2 volumes virt-install asks for -- and
@@ -131,7 +132,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            qemu-kvm qemu-utils libvirt-daemon-system libvirt-clients virtinst ovmf
+            qemu-kvm qemu-utils libvirt-daemon-system libvirt-clients virtinst
 
       # Group membership needs a new login session, which a workflow step is
       # not, so the socket is opened up instead. Fine on a throwaway VM.

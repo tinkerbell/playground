@@ -162,10 +162,10 @@ comboNames: list.SortStrings([for name, _ in _overrides {name}])
 // Sorted list of combos that need a registry mirror host supplied.
 mirrorCombos: list.SortStrings([for name, ovr in _overrides if ovr.registryMirror.enabled {name}])
 
-// Ginkgo --label-filter per combo. A spec that only applies to one value of an
+// Ginkgo --label-filter per combo. A test that only applies to one value of an
 // axis carries that value as a Ginkgo label (e.g. Label("provisioning",
 // "ipv6")); the filter below excludes every axis value this combo does not
-// exercise, so unlabelled specs run everywhere and labelled ones run only
+// exercise, so unlabelled tests run everywhere and labelled ones run only
 // where they apply. The label vocabulary is the combo name's segments.
 comboLabels: {
 	for name, cfg in combos {
