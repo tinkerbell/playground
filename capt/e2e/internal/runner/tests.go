@@ -63,7 +63,7 @@ func (r *Runner) ginkgoArgs(labels, artifacts string, state State) []string {
 }
 
 // runGinkgo runs the suite against the current playground. Full output goes to
-// the combo's ginkgo.log; per-spec results come from report.json.
+// the combo's ginkgo.log; per-test results come from report.json.
 func (r *Runner) runGinkgo(labels, artifacts string, state State, sink io.Writer) error {
 	logFile, err := os.Create(filepath.Join(artifacts, "ginkgo.log"))
 	if err != nil {
@@ -79,22 +79,22 @@ func (r *Runner) runGinkgo(labels, artifacts string, state State, sink io.Writer
 	return run(filepath.Join(r.Paths.E2E, "test"), w, r.ginkgo, r.ginkgoArgs(labels, artifacts, state)...)
 }
 
-// SpecResult is one Ginkgo It, flattened for reporting.
-type SpecResult struct {
+// TestResult is one Ginkgo It, flattened for reporting.
+type TestResult struct {
 	Containers []string
 	Text       string
 	State      types.SpecState
 	Duration   time.Duration
 }
 
-// Group is the container hierarchy the spec sits in.
-func (s SpecResult) Group(ui *UI) string {
+// Group is the container hierarchy the test sits in.
+func (s TestResult) Group(ui *UI) string {
 	return ui.Join(s.Containers...)
 }
 
 // outcome maps a Ginkgo state onto a marker, with a note for anything that is
 // neither a pass nor a failure.
-func (s SpecResult) outcome() (Outcome, string) {
+func (s TestResult) outcome() (Outcome, string) {
 	switch s.State {
 	case types.SpecStatePassed:
 		return OutcomeOK, ""
@@ -105,8 +105,8 @@ func (s SpecResult) outcome() (Outcome, string) {
 	}
 }
 
-// readSpecResults flattens a Ginkgo JSON report into the It specs it contains.
-func readSpecResults(path string) ([]SpecResult, error) {
+// readTestResults flattens a Ginkgo JSON report into the It tests it contains.
+func readTestResults(path string) ([]TestResult, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -117,53 +117,53 @@ func readSpecResults(path string) ([]SpecResult, error) {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 
-	var specs []SpecResult
+	var tests []TestResult
 	for _, report := range reports {
-		for _, spec := range report.SpecReports {
-			if spec.LeafNodeType != types.NodeTypeIt {
+		for _, test := range report.SpecReports {
+			if test.LeafNodeType != types.NodeTypeIt {
 				continue
 			}
-			specs = append(specs, SpecResult{
-				Containers: spec.ContainerHierarchyTexts,
-				Text:       spec.LeafNodeText,
-				State:      spec.State,
-				Duration:   spec.RunTime,
+			tests = append(tests, TestResult{
+				Containers: test.ContainerHierarchyTexts,
+				Text:       test.LeafNodeText,
+				State:      test.State,
+				Duration:   test.RunTime,
 			})
 		}
 	}
-	return specs, nil
+	return tests, nil
 }
 
-// printSpecResults lists every spec the suite ran, grouped by the container
-// hierarchy so the shared prefix is stated once. Ginkgo's own per-spec output
+// printTestResults lists every test the suite ran, grouped by the container
+// hierarchy so the shared prefix is stated once. Ginkgo's own per-test output
 // goes to ginkgo.log, which is not shown while the matrix runs. It returns the
-// number of specs and how many of them failed.
-func (r *Runner) printSpecResults(reportPath string) (total, failed int) {
-	specs, err := readSpecResults(reportPath)
+// number of tests and how many of them failed.
+func (r *Runner) printTestResults(reportPath string) (total, failed int) {
+	tests, err := readTestResults(reportPath)
 	if err != nil {
 		r.UI.Log("")
-		r.UI.Log("       (no spec results: %v)", err)
+		r.UI.Log("       (no test results: %v)", err)
 		return 0, 0
 	}
-	if len(specs) == 0 {
+	if len(tests) == 0 {
 		r.UI.Log("")
-		r.UI.Log("       (no specs ran)")
+		r.UI.Log("       (no tests ran)")
 		return 0, 0
 	}
 
 	lastGroup := "\x00"
-	for _, spec := range specs {
-		if group := spec.Group(r.UI); group != lastGroup {
-			r.UI.SpecGroup(group)
+	for _, test := range tests {
+		if group := test.Group(r.UI); group != lastGroup {
+			r.UI.TestGroup(group)
 			lastGroup = group
 		}
-		outcome, note := spec.outcome()
+		outcome, note := test.outcome()
 		if outcome == OutcomeFail {
 			failed++
 		}
-		r.UI.SpecLine(spec.Text, outcome, note, spec.Duration)
+		r.UI.TestLine(test.Text, outcome, note, test.Duration)
 	}
 	r.UI.Log("")
 
-	return len(specs), failed
+	return len(tests), failed
 }

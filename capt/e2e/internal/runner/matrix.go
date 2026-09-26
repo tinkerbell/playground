@@ -431,7 +431,7 @@ func (r *Runner) runTests(combo, artifacts, labels string) Result {
 	})
 
 	result := Result{Status: StatusPass}
-	result.Specs, result.SpecsFailed = r.printSpecResults(filepath.Join(artifacts, "report.json"))
+	result.Tests, result.TestsFailed = r.printTestResults(filepath.Join(artifacts, "report.json"))
 
 	if testErr != nil {
 		result.Status = StatusFail

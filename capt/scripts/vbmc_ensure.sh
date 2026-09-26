@@ -20,6 +20,9 @@ declare -r ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 declare -r SHARED_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/capt-playground/vbmc"
 
 # shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib_ovmf.sh"
+
+# shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/lib_state.sh"
 
 function ensure_credentials() {
@@ -51,10 +54,18 @@ function ensure_container() {
 		return 0
 	fi
 
+	# Without the pinned firmware sushy-tools keeps its own default, which is
+	# whatever the distro ships.
+	declare -a firmware_env=()
+	if ovmf_pinned; then
+		firmware_env+=(-e "OVMF_CODE=$(ovmf_code_path)" -e "OVMF_VARS=$(ovmf_vars_path)")
+	fi
+
 	docker run -d --privileged \
 		--network "$network" \
 		--restart unless-stopped \
 		-e SUSHY_EMULATOR_CONFIG=/etc/sushy/sushy-emulator.conf \
+		"${firmware_env[@]}" \
 		-v /var/run/libvirt:/var/run/libvirt \
 		-v "${SHARED_DIR}/sushy.key:/etc/sushy/sushy.key" \
 		-v "${SHARED_DIR}/sushy.cert:/etc/sushy/sushy.cert" \

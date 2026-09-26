@@ -8,6 +8,8 @@ The CAPT playground is a tool that will create a local CAPT deployment and a sin
 
 Start by reviewing and installing the [prerequisites](#prerequisites) and understanding and customizing the [configuration file](./config.yaml) as needed.
 
+For how the pieces fit together, see [docs/](./docs/README.md): architecture diagrams for [IPv4](./docs/architecture-playground-ipv4.md) and [IPv6](./docs/architecture-playground-ipv6.md), and [how the e2e tests work](./docs/explanation-e2e.md).
+
 ## Prerequisites
 
 ### Operating System
@@ -45,13 +47,41 @@ USE_PATH_BINARIES=true task create-playground
 Flox supplies both the system dependencies and the tools in the list above.
 Docker and libvirtd must still be running as host services.
 
-### Packages
+### Firmware
 
-The `ovmf` package is required for the libvirt VMs to run properly. OVMF is a port of Intel's tianocore firmware to the qemu virtual machine. Install it with the following command.
+The VMs boot UEFI, which needs OVMF — a port of Intel's tianocore firmware to
+qemu. The Flox environment pins it, and [`scripts/lib_ovmf.sh`](./scripts/lib_ovmf.sh)
+hands that path to both `virt-install` and the Virtual BMC, so nothing has to
+be installed system-wide:
 
 ```bash
-sudo apt install ovmf
+flox activate
+task create-playground
 ```
+
+Without Flox, libvirt picks the host's firmware and the distro package is
+required:
+
+```bash
+sudo apt install ovmf   # Debian/Ubuntu; edk2-ovmf on Fedora/Arch
+```
+
+**An IPv6 playground needs a recent OVMF, so Flox is effectively required for
+it.** Ubuntu 22.04 ships 2022.02, on which an IPv6 machine hangs immediately
+after iPXE starts: iPXE 2.0.0 stopped vetoing edk2's `Dhcp6Dxe` driver, which
+exposes an edk2 bug where `EfiDhcp6Stop()` never returns
+([tianocore/edk2#10506](https://github.com/tianocore/edk2/issues/10506)). The
+pinned firmware carries the fix. IPv4 playgrounds are unaffected.
+
+Two consequences worth knowing when changing firmware:
+
+- The paths are resolved through to `/nix/store` rather than left pointing at
+  the Flox environment, because qemu runs as `libvirt-qemu` and cannot traverse
+  your home directory.
+- The Virtual BMC receives them as environment variables, so an already-running
+  container keeps the old ones — `docker rm -f capt-vbmc` to pick up a change.
+  It rewrites each domain's firmware on every UEFI boot, so a stale container
+  will undo edits made with `virsh`.
 
 ### Hardware
 

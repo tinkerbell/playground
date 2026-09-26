@@ -4,7 +4,7 @@
 # Usage: e2e-summary.sh <artifacts-dir>
 #
 # The artifacts directory holds one e2e-<combination>/ per matrix job, as
-# download-artifact lays them out. Per-spec detail comes from the report.json
+# download-artifact lays them out. Per-test detail comes from the report.json
 # ginkgo already writes into every artifact, so the matrix jobs upload nothing
 # for the sake of this summary.
 #
@@ -18,13 +18,16 @@
 
 set -euo pipefail
 
-# A report node counts as a spec when it is an It; anything else is only
+# A report node counts as a test when it is an It; anything else is only
 # interesting when it failed, which is how a BeforeSuite blowup gets reported
 # instead of vanishing from the table.
+#
+# The suite-level fields are defaulted because a run killed mid-write leaves
+# them null, and this summary is the one thing that still has to render.
 readonly JQ_LIB='
   def icon: {passed:"✅",failed:"❌",panicked:"💥",skipped:"⏭️",pending:"⏸️",aborted:"🛑",interrupted:"🛑"}[.] // "❔";
   def bad: .State | IN("failed","panicked","aborted","interrupted");
-  def dur: . as $ns | ($ns/1000000000) as $s
+  def dur: (. // 0) as $ns | ($ns/1000000000) as $s
     | if $ns <= 0 then "—"
       elif $s >= 60 then "\(($s/60)|floor)m \(($s - 60*(($s/60)|floor))|floor)s"
       elif $s >= 1 then "\((($s*10)|round)/10)s"
@@ -33,24 +36,24 @@ readonly JQ_LIB='
     | map(select(. != "")) | join(" › ") | if . == "" then "suite setup" else . end;
   def labels: ((((.ContainerHierarchyLabels // []) | flatten) + (.LeafNodeLabels // []))
     | unique | map("`\(.)`") | join(" "));
-  def specs: .[0].SpecReports | map(select(.LeafNodeType == "It" or bad));
+  def tests: (.[0].SpecReports // []) | map(select(.LeafNodeType == "It" or bad));
 '
 
 # passed, failed, skipped, pending, suite runtime in ns, suite runtime for humans
 readonly JQ_STATS=$JQ_LIB'
-  specs as $x
+  tests as $x
   | [ ($x | map(select(.State == "passed")) | length),
       ($x | map(select(bad)) | length),
       ($x | map(select(.State == "skipped")) | length),
       ($x | map(select(.State == "pending")) | length),
-      .[0].RunTime,
+      (.[0].RunTime // 0),
       (.[0].RunTime | dur) ] | @tsv'
 
-readonly JQ_FAILED_NAMES=$JQ_LIB'specs | map(select(bad) | name) | .[]'
+readonly JQ_FAILED_NAMES=$JQ_LIB'tests | map(select(bad) | name) | .[]'
 
 readonly JQ_TABLE=$JQ_LIB'
-  specs as $x
-  | ["| | spec | labels | time |", "|---|---|---|---|"]
+  tests as $x
+  | ["| | test | labels | time |", "|---|---|---|---|"]
     + ($x | map("| \(.State | icon) | \(if bad then "**" + name + "**" else name end) | \(labels) | \(.RunTime | dur) |"))
     + (if (.[0].SuiteConfig.LabelFilter // "") == "" then []
        else ["", "Label filter: `\(.[0].SuiteConfig.LabelFilter)`"] end)
@@ -96,7 +99,7 @@ function source_cell() {
 	esac
 }
 
-function spec_counts() {
+function test_counts() {
 	local p="$1" f="$2" s="$3" pend="$4" cell=""
 
 	if [ "$p" -gt 0 ]; then cell="$cell $p ✅"; fi
@@ -159,9 +162,9 @@ function main() {
 			IFS=$'\t' read -r _ outcome job <"$dir/result.tsv"
 		fi
 
-		local p=0 f=0 s=0 pend=0 ns=0 spec="—"
+		local p=0 f=0 s=0 pend=0 ns=0 runtime="—"
 		if [ -f "$dir/report.json" ]; then
-			IFS=$'\t' read -r p f s pend ns spec < <(jq -r "$JQ_STATS" "$dir/report.json")
+			IFS=$'\t' read -r p f s pend ns runtime < <(jq -r "$JQ_STATS" "$dir/report.json")
 		fi
 		ns=${ns%%.*}
 		pass_total=$((pass_total + p))
@@ -187,16 +190,16 @@ function main() {
 		esac
 
 		local counts tinkerbell
-		counts=$(spec_counts "$p" "$f" "$s" "$pend")
+		counts=$(test_counts "$p" "$f" "$s" "$pend")
 		tinkerbell=$(combo_tinkerbell "$dir")
 		if [ -n "$tinkerbell" ]; then echo "$tinkerbell" >>"$VERSIONS"; fi
 
 		printf '| [%s](#%s) | %s | %s | %s | %s |\n' \
-			"$combo" "$combo" "$mark" "$job" "${counts:-—}" "$spec" >>"$ROWS"
+			"$combo" "$combo" "$mark" "$job" "${counts:-—}" "$runtime" >>"$ROWS"
 
 		if [ -f "$dir/report.json" ]; then
-			while IFS= read -r spec_name; do
-				printf -- '- [%s](#%s) — `%s`\n' "$combo" "$combo" "$spec_name" >>"$FAILS"
+			while IFS= read -r test_name; do
+				printf -- '- [%s](#%s) — `%s`\n' "$combo" "$combo" "$test_name" >>"$FAILS"
 			done < <(jq -r "$JQ_FAILED_NAMES" "$dir/report.json")
 		fi
 
@@ -214,7 +217,7 @@ function main() {
 				echo
 			fi
 			if [ -f "$dir/report.json" ]; then
-				echo "<details$open><summary>$mark · ${counts:-no specs} · $spec</summary>"
+				echo "<details$open><summary>$mark · ${counts:-no tests} · $runtime</summary>"
 				echo
 				jq -r "$JQ_TABLE" "$dir/report.json"
 				echo
@@ -236,10 +239,10 @@ function main() {
 	combo_line="$combo_line of $total"
 
 	local secs=$((ns_total / 1000000000))
-	local spec_line="$pass_total passed"
-	if [ "$fail_total" -gt 0 ]; then spec_line="$spec_line · $fail_total failed"; fi
-	if [ "$skip_total" -gt 0 ]; then spec_line="$spec_line · $skip_total skipped"; fi
-	spec_line="$spec_line — $((secs / 60))m $((secs % 60))s in specs"
+	local test_line="$pass_total passed"
+	if [ "$fail_total" -gt 0 ]; then test_line="$test_line · $fail_total failed"; fi
+	if [ "$skip_total" -gt 0 ]; then test_line="$test_line · $skip_total skipped"; fi
+	test_line="$test_line — $((secs / 60))m $((secs % 60))s in tests"
 
 	# Read back from the artifacts when every combination agrees, because that
 	# names the exact version rather than the dispatch's intent.
@@ -261,7 +264,7 @@ function main() {
 	echo "| **Playground** | [\`$GITHUB_REF_NAME\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$GITHUB_REF_NAME) (\`${GITHUB_SHA:0:7}\`) |"
 	echo "| **Requested** | \`${REQUESTED:-all}\` |"
 	echo "| **Combinations** | $combo_line |"
-	echo "| **Specs** | $spec_line |"
+	echo "| **Tests** | $test_line |"
 
 	if [ -s "$FAILS" ]; then
 		echo
@@ -277,7 +280,7 @@ function main() {
 		echo "No combinations ran."
 		return
 	fi
-	echo "| combination | result | job | specs | spec time |"
+	echo "| combination | result | job | tests | test time |"
 	echo "|---|---|---|---|---|"
 	cat "$ROWS"
 	cat "$DETAIL"
