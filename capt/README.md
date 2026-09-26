@@ -8,6 +8,8 @@ The CAPT playground is a tool that will create a local CAPT deployment and a sin
 
 Start by reviewing and installing the [prerequisites](#prerequisites) and understanding and customizing the [configuration file](./config.yaml) as needed.
 
+For how the pieces fit together, see [docs/](./docs/README.md): architecture diagrams for [IPv4](./docs/architecture-playground-ipv4.md) and [IPv6](./docs/architecture-playground-ipv6.md), and [how the e2e tests work](./docs/explanation-e2e.md).
+
 ## Prerequisites
 
 ### Operating System
