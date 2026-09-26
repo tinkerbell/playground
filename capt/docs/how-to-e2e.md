@@ -10,7 +10,7 @@ All commands are run from `capt/`.
 ```bash
 ./e2e/run.sh list                              # every combination and its axes
 ./e2e/run.sh colocated-ipv4-netboot-direct     # run one
-./e2e/run.sh run --all                         # run all sixteen, in turn
+./e2e/run.sh run --all --mirror-host <host>    # run all sixteen, in turn
 ./e2e/run.sh config colocated-ipv6-isoboot-direct   # preview the config.yaml only
 ```
 
@@ -55,7 +55,7 @@ It("reaches the registry through NAT64", Label("ipv6"), func(ctx SpecContext) {
 
 The vocabulary is exactly the combination name's segments: `ipv4`, `ipv6`,
 `netboot`, `isoboot`, `direct`, `mirror`, `colocated`, `external`. Every
-`-ipv4-` combination filters with `!ipv4`, so the test above is skipped there
+`-ipv4-` combination filters with `!ipv6`, so the test above is skipped there
 with no further changes.
 
 Check the filter a combination will use:
@@ -171,7 +171,7 @@ out, so rename or symlink accordingly.
 ```bash
 cd e2e && go test ./... && go vet ./...   # runner unit tests
 cd .. && cue vet ./e2e/cue -c -t chartVersion=v0.0.0 -t mirrorHost=x
-./.github/workflows/ci-non-go.sh          # prettier, shfmt (from the repo root)
+../.github/workflows/ci-non-go.sh         # prettier, shfmt (from the repo root)
 ```
 
 Then run at least one combination end to end. The unit tests cover the runner,

@@ -86,7 +86,10 @@
       },
       "ovmf": {
         "pkg-path": "OVMF",
-        "version": "202608"
+        "version": "202608",
+        "outputs": [
+          "fd"
+        ]
       },
       "util-linux": {
         "pkg-path": "util-linux",

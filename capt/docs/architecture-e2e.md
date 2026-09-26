@@ -144,8 +144,8 @@ sequenceDiagram
         R->>C: cue eval comboLabels["<name>"]
         R->>G: ginkgo --label-filter=<filter>
         G-->>A: ginkgo.log, report.json, junit.xml
-        R->>T: task delete-playground
         R->>R: Read report.json for the verdict
+        R->>T: task delete-playground
     end
     R->>R: Print the summary table
 ```

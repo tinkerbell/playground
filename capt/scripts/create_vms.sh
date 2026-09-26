@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib_ovmf.sh"
+
 # Create VMs
 
 function main() {
@@ -28,7 +31,7 @@ function main() {
 			--ram "$MEM" --vcpus "$CPUS" \
 			--os-variant "ubuntu20.04" \
 			--graphics "vnc" \
-			--boot "uefi,firmware.feature0.name=enrolled-keys,firmware.feature0.enabled=no,firmware.feature1.name=secure-boot,firmware.feature1.enabled=yes" \
+			--boot "$(ovmf_boot_arg)" \
 			--noautoconsole \
 			--noreboot \
 			--import \

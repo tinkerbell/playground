@@ -171,6 +171,7 @@ sequenceDiagram
     participant BMC as Virtual BMC
     participant VM as Node VM
     participant Smee
+    participant Tink as Tink server
     participant Agent as tink-agent
 
     CAPI->>K8s: Create Workflow from the machine template
@@ -182,7 +183,7 @@ sequenceDiagram
     Smee->>K8s: Look up Hardware by MAC
     Smee-->>VM: Address, then iPXE script or ISO
     VM->>VM: Boot CaptainOS into memory
-    Agent->>Smee: Fetch the workflow
+    Agent->>Tink: Ask for the next action
     Agent->>Agent: oci2disk — stream the OS to /dev/vda
     Agent->>Agent: writefile — cloud-init datasource
     Agent->>Agent: kexec — boot the installed OS

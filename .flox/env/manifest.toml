@@ -63,6 +63,9 @@ version = "10.5p1"
 [install.ovmf]
 pkg-path = "OVMF"
 version = "202608"
+# The firmware images are in the "fd" output; the default output holds only
+# build artefacts, so without this nothing can reference OVMF_CODE.fd.
+outputs = ["fd"]
 
 [install.virt-manager]
 pkg-path = "virt-manager"
