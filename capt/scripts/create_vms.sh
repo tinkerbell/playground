@@ -24,6 +24,8 @@ function main() {
 		FIRMWARE_ARGS+=(--qemu-commandline='-fw_cfg name=opt/org.tianocore/IPv4PXESupport,string=false')
 	fi
 
+	# The console log goes next to the disk images: qemu runs as libvirt-qemu,
+	# which cannot write into the artifacts directory under $HOME.
 	while IFS=$',' read -r name mac; do
 		# create the VM
 		virt-install \
@@ -32,6 +34,7 @@ function main() {
 			--os-variant "ubuntu20.04" \
 			--graphics "vnc" \
 			--boot "$(ovmf_boot_arg)" \
+			--serial "file,path=$DISK_PATH/$name-console.log" \
 			--noautoconsole \
 			--noreboot \
 			--import \

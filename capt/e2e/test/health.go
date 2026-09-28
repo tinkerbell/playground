@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -290,6 +291,60 @@ func DumpVirtualBMCLogs(ctx context.Context, dir, container string) {
 	if err := os.WriteFile(filepath.Join(dir, "vbmc.log"), out, 0o600); err != nil {
 		GinkgoWriter.Printf("failed writing vbmc.log: %v\n", err)
 	}
+}
+
+// DumpVMConsoles copies each VM's serial console log into dir. The firmware and
+// iPXE write here before anything in the cluster knows the machine exists, so a
+// machine that never boots leaves no other trace.
+func DumpVMConsoles(dir, stateFilePath string) {
+	if dir == "" {
+		return
+	}
+	diskPath, names := vmConsoleSources(stateFilePath)
+	if diskPath == "" {
+		return
+	}
+	for _, name := range names {
+		src := filepath.Join(diskPath, name+"-console.log")
+		data, err := os.ReadFile(src)
+		if err != nil {
+			GinkgoWriter.Printf("reading %s: %v\n", src, err)
+			continue
+		}
+		dst := filepath.Join(dir, name+"-console.log")
+		if err := os.WriteFile(dst, data, 0o600); err != nil {
+			GinkgoWriter.Printf("failed writing %s: %v\n", dst, err)
+		}
+	}
+}
+
+// vmConsoleSources reads the disk path and VM names out of the playground's
+// state file. Returns empty on any failure so a dump never breaks a teardown.
+func vmConsoleSources(stateFilePath string) (string, []string) {
+	if stateFilePath == "" {
+		return "", nil
+	}
+	data, err := os.ReadFile(stateFilePath)
+	if err != nil {
+		GinkgoWriter.Printf("reading %s for console paths: %v\n", stateFilePath, err)
+		return "", nil
+	}
+	var state struct {
+		VM struct {
+			DiskPath string                 `yaml:"diskPath"`
+			Details  map[string]interface{} `yaml:"details"`
+		} `yaml:"vm"`
+	}
+	if err := yaml.Unmarshal(data, &state); err != nil {
+		GinkgoWriter.Printf("parsing %s for console paths: %v\n", stateFilePath, err)
+		return "", nil
+	}
+	names := make([]string, 0, len(state.VM.Details))
+	for name := range state.VM.Details {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return state.VM.DiskPath, names
 }
 
 func firstNonEmpty(vals ...string) string {

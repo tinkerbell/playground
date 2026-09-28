@@ -53,6 +53,7 @@ var _ = Describe("Workload cluster provisioning", Label("provisioning"), Ordered
 		if CurrentSpecReport().Failed() {
 			DumpClusterState(ctx, artifactsDir, mgmtKubeconfig, tinkKubeconfig, workloadKubeconfig)
 			DumpVirtualBMCLogs(ctx, artifactsDir, virtualBMCContainer(stateFile))
+			DumpVMConsoles(artifactsDir, stateFile)
 		}
 	})
 
