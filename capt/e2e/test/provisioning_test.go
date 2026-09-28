@@ -8,7 +8,9 @@ import (
 
 var _ = Describe("Workload cluster provisioning", Label("provisioning"), Ordered, func() {
 	var (
-		workflowTimeout  = 25 * time.Minute
+		// A machine that fails to provision retries on a fixed cycle, so the
+		// second failed cycle carries no more information than the first.
+		workflowTimeout  = 12 * time.Minute
 		workflowInterval = 10 * time.Second
 		nodeTimeout      = 10 * time.Minute
 		nodeInterval     = 10 * time.Second
@@ -65,7 +67,7 @@ var _ = Describe("Workload cluster provisioning", Label("provisioning"), Ordered
 
 	It("completes all workflows successfully", func(ctx SpecContext) {
 		WaitForWorkflowsSuccess(ctx, tinkClient, namespace, expectedNodes, workflowTimeout, workflowInterval)
-	}, SpecTimeout(30*time.Minute))
+	}, SpecTimeout(15*time.Minute))
 
 	It("has a reachable workload API server", func(ctx SpecContext) {
 		WaitForAPIServerReady(ctx, workloadKubeconfig, nodeTimeout, 10*time.Second)
