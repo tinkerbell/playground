@@ -92,10 +92,10 @@ jobs:
   e2e:
     needs: plan
     runs-on: ubuntu-latest
-    # 6x the measured 7m05s, which leaves room for isoboot (BMC virtual media)
-    # and the external combinations (a second kind cluster) without letting a
-    # hung run sit for hours.
-    timeout-minutes: 45
+    # 4x the measured 7m05s, which leaves room for isoboot (BMC virtual media)
+    # and the external combinations (a second kind cluster) while still capping
+    # a hung run well inside the suite's own timeouts.
+    timeout-minutes: 30
     strategy:
       # One broken combination should not cancel the rest; the point of
       # the matrix is to learn about all of them in one dispatch.

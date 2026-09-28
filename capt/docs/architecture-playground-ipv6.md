@@ -100,6 +100,15 @@ sometimes going native and sometimes through the translator.
 Smee's DHCPv6 runs in `derived` mode: the address comes from hashing the MAC
 into the bridge's `/64`, so it is stable across reboots without any lease state.
 
+## The listener family trap
+
+Addressing every IPv6 setting the chart has still leaves Tinkerbell listening on
+IPv4 alone. The family a listener serves is chosen once, by
+`deployment.envs.globals.listenerFamilies`, and everything belonging to a family
+that is not chosen is discarded without complaint — including DHCPv6, however
+emphatically it was enabled. The chart's install output names the resolved
+choice, so `Listeners serve: ipv4` on an IPv6 playground is the whole diagnosis.
+
 ## The macvlan trap
 
 The chart attaches a `macvlan0` interface to the bridge so Smee can receive
