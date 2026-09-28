@@ -78,18 +78,25 @@ tasks:
       IPV4_VARS:
         - publicIP={{.LB_IP}}
         - artifactsFileServer=http://{{.LB_HOST2}}:7173
-      # Smee has no IPv4 endpoints to advertise here, so DHCPv4 is switched off
-      # entirely and every boot endpoint is published through the dhcpv6*
-      # settings. Addresses come from `derived` mode: a stable address hashed
-      # from the client MAC into the bridge /64, unless the Hardware CR carries
-      # a reserved IPv6 address, which it does here.
+      # Smee has no IPv4 endpoints to advertise here, so every boot endpoint is
+      # published through the dhcpv6* settings. Addresses come from `derived`
+      # mode: a stable address hashed from the client MAC into the bridge /64,
+      # unless the Hardware CR carries a reserved IPv6 address, which it does
+      # here.
       IPV6_VARS:
         # The chart validates these per family: artifactsFileServer rejects an
         # IPv6 literal and artifactsFileServerV6 rejects an IPv4 one.
         - publicIPv6={{.LB_IP}}
         - artifactsFileServerV6=http://{{.LB_HOST2}}:7173
-        - service.ipFamilies={IPv6}
-        - deployment.envs.smee.dhcpEnabled=false
+        # Every listener -- HTTP, TFTP, syslog, gRPC, SSH and DHCP -- is IPv4
+        # only until this says otherwise, no matter what the v6 settings hold.
+        # The chart prints the resolved choice in its NOTES output, so an
+        # install that still reports "Listeners serve: ipv4" has missed it.
+        # Choosing a single family also makes every setting belonging to the
+        # other one a no-op, which is why DHCPv4 needs no switching off.
+        # service.ipFamilies stays unset: the cluster is IPv6-only, so
+        # Kubernetes has no other family to hand the Service.
+        - deployment.envs.globals.listenerFamilies=ipv6
         - deployment.envs.smee.dhcpv6Enabled=true
         - deployment.envs.smee.dhcpv6Mode=derived
         - deployment.envs.smee.dhcpv6DerivedDirectAddressPool={{.SUBNET6}}

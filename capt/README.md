@@ -197,10 +197,10 @@ pivots are not supported in this mode.
 
 ### IPv6 mode
 
-`ipFamily: ipv6` turns off DHCPv4 and drives Smee's DHCPv6 server in `derived`
-mode, makes the KinD and workload clusters IPv6-only, and starts radvd on the
-KinD bridge — Tinkerbell does not send Router Advertisements, and without one
-systemd-networkd never starts its DHCPv6 client.
+`ipFamily: ipv6` puts every Tinkerbell listener on IPv6 only, drives Smee's
+DHCPv6 server in `derived` mode, makes the KinD and workload clusters IPv6-only,
+and starts radvd on the KinD bridge — Tinkerbell does not send Router
+Advertisements, and without one systemd-networkd never starts its DHCPv6 client.
 
 It also starts the NAT64/DNS64 translation layer
 ([tasks/Taskfile-nat64.yaml](./tasks/Taskfile-nat64.yaml)), which is what lets
