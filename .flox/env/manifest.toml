@@ -6,7 +6,11 @@ systems = ["aarch64-linux", "x86_64-linux"]
 [install]
 gnumake.pkg-path = "gnumake"
 git.pkg-path = "git"
-go.pkg-path = "go"
+
+[install.go]
+pkg-path = "go"
+version = "1.26.8"
+pkg-group = "go-toolchain"
 
 [install.bash]
 pkg-path = "bash"
