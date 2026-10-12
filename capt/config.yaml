@@ -5,10 +5,10 @@ capt:
   providerRepository: "https://github.com/tinkerbell/cluster-api-provider-tinkerbell/releases"
   #providerRepository: "/home/tink/repos/tinkerbell/cluster-api-provider-tinkerbell/out/release/infrastructure-tinkerbell"
 captainos:
-  kernelVersion: "6.18.16"
+  flavor: "trixie-slim"
 chart:
   extraVars:
-    - optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-a4be23c
+    - optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ccacb2-trixie-slim
     - deployment.envs.ui.enableAutoLogin=true
   location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
   #location: "/home/tink/repos/tinkerbell/tinkerbell/helm/tinkerbell"
