@@ -65,8 +65,8 @@ base: state.#ConfigInput & {
 		location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
 		extraVars: [
 			"optional.captainos.enabled=true",
-			"optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-a4be23c",
-			"deployment.envs.ui.enableAutoLogin=true",
+			"optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ccacb2-trixie-slim",
+			"deployment.envs.ui.enableAutoLogin=true"
 		]
 	}
 
@@ -84,7 +84,7 @@ base: state.#ConfigInput & {
 		image: "ghcr.io/jacobweinstock/virtualbmc:latest"
 	}
 
-	captainos: kernelVersion: "6.18.16"
+	captainos: flavor: "trixie-slim"
 
 	// registryMirror is set per-combo in matrix.cue (enabled or disabled).
 	// Not defaulted here to avoid CUE unification conflicts.

@@ -10,12 +10,14 @@ tasks:
     run: once
     summary: |
       Deploy the Tinkerbell Helm chart to the cluster identified by
-      KUBECONFIG. When bootMode is isoboot, Captain OS artifact names
-      (ISO, kernel, initrd) are computed from captainos.kernelVersion
-      and arch in .state, matching the upstream naming convention:
-        captainos-<kernelVersion>-<arch>.iso
-        vmlinuz-<kernelVersion>
-        initramfs-<kernelVersion>
+      KUBECONFIG. Captain OS artifact names (ISO, kernel, initrd) are
+      computed from captainos.flavor and arch in .state, matching the
+      upstream naming convention:
+        captainos-<flavor>-<arch>.iso
+        vmlinuz-<flavor>-<arch>
+        initramfs-<flavor>-<arch>
+      Smee appends -<arch> to the kernel and initrd names itself, so only
+      the ISO URL carries it explicitly.
     vars:
       # KUBECONFIG must be supplied by the caller.
       LB_IP:
@@ -37,8 +39,8 @@ tasks:
       # artifact filenames (x86_64/aarch64).
       OSIE_ARCH:
         sh: "yq eval '.arch' {{.STATE_FILE_FQ_PATH}} | sed 's/amd64/x86_64/;s/arm64/aarch64/'"
-      KERNEL_VER:
-        sh: 'yq eval ''.captainos.kernelVersion // ""'' {{.STATE_FILE_FQ_PATH}}'
+      FLAVOR:
+        sh: 'yq eval ''.captainos.flavor // ""'' {{.STATE_FILE_FQ_PATH}}'
       IP_FAMILY:
         sh: 'yq eval ''.ipFamily // "ipv4"'' {{.STATE_FILE_FQ_PATH}}'
       # IPv6 literals must be bracketed everywhere they appear in a URL or an
@@ -114,7 +116,7 @@ tasks:
         - deployment.envs.smee.dhcpv6BindInterface=macvlan0
       ISO_VARS:
         - deployment.envs.smee.dhcpEnabled=false
-        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_HOST2}}:7173/captainos-{{.KERNEL_VER}}-{{.OSIE_ARCH}}.iso
+        - deployment.envs.smee.isoUpstreamURL=http://{{.LB_HOST2}}:7173/captainos-{{.FLAVOR}}-{{.OSIE_ARCH}}.iso
       # Smee's static IPAM patching is IPv4-only, and the chart defaults it on.
       # Left enabled, every /iso6/ request is answered with HTTP 400 and the BMC
       # never mounts the media. The machine has DHCPv6 to get its address from,
@@ -122,8 +124,8 @@ tasks:
       ISO6_VARS:
         - deployment.envs.smee.isoStaticIPAMEnabled=false
       NETBOOT_VARS:
-        - deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-{{.KERNEL_VER}}
-        - deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-{{.KERNEL_VER}}
+        - deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-{{.FLAVOR}}
+        - deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-{{.FLAVOR}}
       EXTRA_VARS:
         sh: "yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs"
     cmds:
@@ -136,5 +138,6 @@ tasks:
         {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if and (eq .BOOTMODE "isoboot") (eq .IP_FAMILY "ipv6") }} {{- range .ISO6_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}
+        --set "deployment.envs.globals.backendKubeRenderingEnabled=true"
     status:
       - helm_status=$(KUBECONFIG="{{.KUBECONFIG}}" helm status -n {{.NAMESPACE}} {{.CHART_NAME}} -o yaml | yq .info.status); [[ "$helm_status" == "deployed" ]]
