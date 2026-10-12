@@ -117,7 +117,7 @@ import "strings"
 		pass:          string & !=""
 	})
 	captainos?: close({
-		kernelVersion: string & !=""
+		flavor: string & !=""
 	})
 	// kind block is populated by state.cue.
 	kind?: close({

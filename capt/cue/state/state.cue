@@ -51,7 +51,7 @@ import (
 		image: string & !=""
 	}
 	captainos?: null | {
-		kernelVersion: string & !=""
+		flavor: string & !=""
 	}
 }
 
