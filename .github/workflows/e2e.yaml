@@ -128,11 +128,15 @@ jobs:
       # libvirtd does, to create the qcow2 volumes virt-install asks for -- and
       # it looks on its own PATH, so a flox-provided one would not be found.
       # Without it: "creation of non-raw file images is not supported".
+      #
+      # qemu-system-x86 rather than qemu-kvm: on Ubuntu 26.04 qemu-kvm is a
+      # virtual package with two providers (qemu-system-x86 and its -hwe
+      # build), and apt-get install won't choose between them.
       - name: Install the virtualization stack
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            qemu-kvm qemu-utils libvirt-daemon-system libvirt-clients virtinst
+            qemu-system-x86 qemu-utils libvirt-daemon-system libvirt-clients virtinst
 
       # Group membership needs a new login session, which a workflow step is
       # not, so the socket is opened up instead. Fine on a throwaway VM.
@@ -203,12 +207,19 @@ jobs:
       # without re-deriving it from every combination's logs.
       - name: Record the result
         if: always()
+        env:
+          # A failed setup step skips the run, which would otherwise read as a
+          # deliberate skip rather than a failure.
+          OUTCOME: ${{ steps.run.outcome == 'skipped' && job.status == 'failure' && 'setup failure' || steps.run.outcome }}
         run: |
-          secs=$(( $(date +%s) - $(cat /tmp/run-start) ))
+          # Missing when a setup step failed before the clock was started.
+          job="—"
+          if [ -s /tmp/run-start ]; then
+            secs=$(( $(date +%s) - $(cat /tmp/run-start) ))
+            job=$(printf '%dm %02ds' "$(( secs / 60 ))" "$(( secs % 60 ))")
+          fi
           mkdir -p "e2e/artifacts/$COMBO"
-          printf '%s\t%s\t%dm %02ds\n' \
-            "$COMBO" "${{ steps.run.outcome }}" "$(( secs / 60 ))" "$(( secs % 60 ))" \
-            > "e2e/artifacts/$COMBO/result.tsv"
+          printf '%s\t%s\t%s\n' "$COMBO" "$OUTCOME" "$job" > "e2e/artifacts/$COMBO/result.tsv"
           cat "e2e/artifacts/$COMBO/result.tsv"
 
       - name: Upload artifacts
