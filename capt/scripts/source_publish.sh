@@ -63,7 +63,7 @@ function run_make() {
 function publish_images() {
 	declare -r dir="$1" endpoint="$2" version="$3" image="$4"
 
-	run_make "$dir" make image IMAGE_NAME="${image}:${version}" VERSION="$version"
+	run_make "$dir" make cross-compile image IMAGE_NAME="${image}:${version}" VERSION="$version"
 
 	run_make "$dir" env BUILDX_BUILDER="$BUILDER" make cross-compile-agent build-push-image-agent \
 		IMAGE_NAME_AGENT="${endpoint}/tink-agent" VERSION="$version"

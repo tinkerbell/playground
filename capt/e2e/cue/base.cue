@@ -64,8 +64,7 @@ base: state.#ConfigInput & {
 	chart: {
 		location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
 		extraVars: [
-			"optional.captainos.enabled=true",
-			"optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ccacb2-trixie-slim",
+			"optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.1.0-slim",
 			"deployment.envs.ui.enableAutoLogin=true"
 		]
 	}
