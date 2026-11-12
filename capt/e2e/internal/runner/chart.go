@@ -24,8 +24,9 @@ const (
 	maxVersionLookups = 50
 )
 
-// Releases are vX.Y.Z; every other push is that plus the short commit.
-var versionTag = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[0-9a-f]{7,40})?$`)
+// Releases are vX.Y.Z; every other push is that plus the short commit, which
+// newer builds prefix with "g" (as git describe does) and older ones did not.
+var versionTag = regexp.MustCompile(`^v\d+\.\d+\.\d+(-g?[0-9a-f]{7,40})?$`)
 
 var manifestAccept = strings.Join([]string{
 	"application/vnd.oci.image.index.v1+json",

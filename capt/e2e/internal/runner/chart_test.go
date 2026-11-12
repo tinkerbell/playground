@@ -51,12 +51,35 @@ func TestLatestChartVersion(t *testing.T) {
 	const newest = "sha256:aaaa"
 
 	tags := map[string][]string{
-		tinkerbellImageRepo: {"v0.25.0", "v0.25.1-733792cc", "latest", "v0.25.1-6e7d2775"},
+		tinkerbellImageRepo: {"v0.25.0", "v0.25.1-733792cc", "latest", "v0.25.1-g6e7d2775"},
+	}
+	digests := map[string]string{
+		tinkerbellImageRepo + ":latest":            newest,
+		tinkerbellImageRepo + ":v0.25.1-g6e7d2775": newest,
+		tinkerbellImageRepo + ":v0.25.1-733792cc":  "sha256:bbbb",
+		tinkerbellImageRepo + ":v0.25.0":           "sha256:cccc",
+		tinkerbellChartRepo + ":v0.25.1-g6e7d2775": "sha256:dddd",
+	}
+
+	got, err := fakeGHCR(t, tags, digests).latestChartVersion(context.Background())
+	if err != nil {
+		t.Fatalf("resolving: %v", err)
+	}
+	if got != "v0.25.1-g6e7d2775" {
+		t.Errorf("version = %q, want v0.25.1-g6e7d2775", got)
+	}
+}
+
+// Tags published before the "g" prefix was added must still resolve.
+func TestLatestChartVersionUnprefixedCommit(t *testing.T) {
+	const newest = "sha256:aaaa"
+
+	tags := map[string][]string{
+		tinkerbellImageRepo: {"v0.25.0", "latest", "v0.25.1-6e7d2775"},
 	}
 	digests := map[string]string{
 		tinkerbellImageRepo + ":latest":           newest,
 		tinkerbellImageRepo + ":v0.25.1-6e7d2775": newest,
-		tinkerbellImageRepo + ":v0.25.1-733792cc": "sha256:bbbb",
 		tinkerbellImageRepo + ":v0.25.0":          "sha256:cccc",
 		tinkerbellChartRepo + ":v0.25.1-6e7d2775": "sha256:dddd",
 	}
