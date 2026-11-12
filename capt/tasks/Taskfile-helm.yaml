@@ -62,7 +62,6 @@ tasks:
         sh: 'yq eval ''.source.tinkerbellImage // ""'' {{.STATE_FILE_FQ_PATH}}'
       GLOBAL_VARS:
         - trustedProxies={"{{.TRUSTED_PROXIES}}"}
-        - optional.captainos.enabled=true
         # Set unconditionally because .agentImage already carries whatever is
         # right: the chart's own default normally, the mirror host when one is
         # configured, the local registry when built from source. Smee bakes it
@@ -114,6 +113,11 @@ tasks:
         # interface the chart's broadcast-interface init container attaches to
         # the machine network (deployment.init.interfaceMode: macvlan).
         - deployment.envs.smee.dhcpv6BindInterface=macvlan0
+      # The chart names the kernel and initrd Smee boots after its own flavor,
+      # not the image tag, so a flavor that disagrees with the image 404s on
+      # the kernel and the machine never leaves iPXE.
+      CAPTAINOS_VARS:
+        - optional.captainos.flavor={{.FLAVOR}}
       ISO_VARS:
         - deployment.envs.smee.dhcpEnabled=false
         - deployment.envs.smee.isoUpstreamURL=http://{{.LB_HOST2}}:7173/captainos-{{.FLAVOR}}-{{.OSIE_ARCH}}.iso
@@ -123,9 +127,6 @@ tasks:
       # so nothing is lost by turning it off.
       ISO6_VARS:
         - deployment.envs.smee.isoStaticIPAMEnabled=false
-      NETBOOT_VARS:
-        - deployment.envs.smee.ipxeHttpScriptKernelName=vmlinuz-{{.FLAVOR}}
-        - deployment.envs.smee.ipxeHttpScriptInitrdName=initramfs-{{.FLAVOR}}
       EXTRA_VARS:
         sh: "yq eval '.chart.extraVars | .[]' {{.STATE_FILE_FQ_PATH}} | xargs"
     cmds:
@@ -134,7 +135,7 @@ tasks:
         {{range .GLOBAL_VARS}}--set "{{.}}" {{end}}
         {{- if .SOURCE_REGISTRY }} {{- range .SOURCE_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if eq .IP_FAMILY "ipv6" }} {{- range .IPV6_VARS }}--set "{{.}}" {{ end }} {{ else }} {{- range .IPV4_VARS }}--set "{{.}}" {{ end }} {{ end }}
-        {{- if eq .BOOTMODE "netboot" }} {{- range .NETBOOT_VARS }}--set "{{.}}" {{ end }} {{ end }}
+        {{- if .FLAVOR }} {{- range .CAPTAINOS_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if eq .BOOTMODE "isoboot" }} {{- range .ISO_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if and (eq .BOOTMODE "isoboot") (eq .IP_FAMILY "ipv6") }} {{- range .ISO6_VARS }}--set "{{.}}" {{ end }} {{ end }}
         {{- if .EXTRA_VARS }} {{- range (splitList " " .EXTRA_VARS ) }}--set "{{.}}" {{ end }} {{ end }}

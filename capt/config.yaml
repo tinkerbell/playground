@@ -8,7 +8,7 @@ captainos:
   flavor: "trixie-slim"
 chart:
   extraVars:
-    - optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.0.0-9ccacb2-trixie-slim
+    - optional.captainos.image=ghcr.io/tinkerbell/captain/artifacts:v0.1.0-slim
     - deployment.envs.ui.enableAutoLogin=true
   location: "oci://ghcr.io/tinkerbell/charts/tinkerbell"
   #location: "/home/tink/repos/tinkerbell/tinkerbell/helm/tinkerbell"
@@ -42,8 +42,8 @@ source:
   #repo: ""
 versions:
   capt: v0.7.0
-  chart: v0.25.1-733792cc
-  kube: v1.35.2
+  chart: v0.25.1-89f675ad
+  kube: v1.36.4
   kubevip: 1.1.2
   os: 2404
 virtualBMC:

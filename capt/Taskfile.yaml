@@ -97,7 +97,7 @@ vars:
   KIND_VERSION: v0.31.0
   # clusterctl version pins to the CAPI core release; must be compatible with
   # the providers `clusterctl init` will install.
-  CLUSTERCTL_VERSION: v1.12.5
+  CLUSTERCTL_VERSION: v1.14.4
   KUBECTL_VERSION: v1.35.4
   YQ_VERSION: v4.53.2
   # Host OS/arch used to construct release download URLs. Override on the
