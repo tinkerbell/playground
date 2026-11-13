@@ -10,6 +10,7 @@ All commands are run from `capt/`.
 ```bash
 ./e2e/run.sh list                              # every combination and its axes
 ./e2e/run.sh colocated-ipv4-netboot-direct     # run one
+./e2e/run.sh '*-direct'                        # run every combination a pattern matches
 ./e2e/run.sh run --all --mirror-host <host>    # run all sixteen, in turn
 ./e2e/run.sh config colocated-ipv6-isoboot-direct   # preview the config.yaml only
 ```

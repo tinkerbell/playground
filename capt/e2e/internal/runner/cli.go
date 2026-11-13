@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -440,6 +441,9 @@ func (r *Runner) Validate() error {
 	if r.Opts.All {
 		r.Opts.Combos = append(r.Opts.Combos, known...)
 	}
+	if r.Opts.Combos, err = expandCombos(r.Opts.Combos, known); err != nil {
+		return fmt.Errorf("%w\nRun '%s list' to see the available combos.", err, r.Opts.Prog)
+	}
 
 	mirrorOnly, err := r.MirrorComboNames()
 	if err != nil {
@@ -483,6 +487,59 @@ func validateCommandNames(combos []string) error {
 		}
 	}
 	return nil
+}
+
+// isComboPattern reports whether a combo argument is a glob pattern rather
+// than a name. No combo name contains a glob metacharacter, so the two cannot
+// be confused.
+func isComboPattern(arg string) bool {
+	return strings.ContainsAny(arg, "*?[")
+}
+
+// checkComboPattern rejects a malformed glob pattern. Match only reports one
+// when it gets as far as the fault, so matching against names alone would let
+// a bad pattern pass whenever there are no names to try it on.
+func checkComboPattern(pattern string) error {
+	if _, err := path.Match(pattern, ""); err != nil {
+		return fmt.Errorf("invalid combo pattern %q: %w", pattern, err)
+	}
+	return nil
+}
+
+// expandCombos replaces each glob pattern with the matrix combos it matches,
+// and drops repeats so a combo named twice — or named alongside --all, or
+// matched by two patterns — runs once, where it was first selected. Names are
+// passed through as given, so an unknown one is still reported as such.
+func expandCombos(requested, known []string) ([]string, error) {
+	var combos []string
+	seen := make(map[string]bool, len(requested))
+	add := func(name string) {
+		if !seen[name] {
+			seen[name] = true
+			combos = append(combos, name)
+		}
+	}
+
+	for _, arg := range requested {
+		if !isComboPattern(arg) {
+			add(arg)
+			continue
+		}
+		if err := checkComboPattern(arg); err != nil {
+			return nil, err
+		}
+		matched := false
+		for _, name := range known {
+			if ok, _ := path.Match(arg, name); ok {
+				add(name)
+				matched = true
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("no combo matches %q", arg)
+		}
+	}
+	return combos, nil
 }
 
 // suggestion offers the closest known name when one is misspelled. A candidate
