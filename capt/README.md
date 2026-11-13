@@ -378,6 +378,20 @@ Run a single combo — `run` may be omitted, so a bare combo name is enough:
 ./e2e/run.sh colocated-ipv4-netboot-direct
 ```
 
+Run every combo a glob pattern matches. Quote the pattern so the shell passes
+it through; `*`, `?` and `[...]` work as they do in the shell:
+
+```bash
+./e2e/run.sh run '*-ipv4-*-direct'                 # both boot modes, both topologies
+./e2e/run.sh run 'colocated-*-direct' --dry-run    # see what a pattern selects
+```
+
+A pattern that matches nothing is an error rather than an empty run. Patterns
+and names can be mixed, and a combo selected more than once — by a name, a
+pattern or `--all` — runs only once, in the position it was first selected.
+`config` takes patterns too, and so does `clean`, where a pattern matches the
+combos with a state file on disk rather than the matrix.
+
 Show the `config.yaml` a combo would run with, without running anything:
 
 ```bash
@@ -400,6 +414,7 @@ behind:
 
 ```bash
 ./e2e/run.sh clean colocated-ipv4-netboot-direct   # one combo
+./e2e/run.sh clean '*-ipv6-*'                      # every IPv6 combo left behind
 ./e2e/run.sh clean --all                           # every combo with a state file
 ./e2e/run.sh clean                                 # the playground capt/.state describes
 ```

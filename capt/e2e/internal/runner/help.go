@@ -55,6 +55,10 @@ A combo selects both the configuration to build and the tests that apply to
 it. Run '%[1]s list' to see them. Each combo is built, tested and
 torn down in turn; full output goes to the artifacts directory either way.
 
+A combo may also be a glob pattern, which selects every combo it matches:
+'*-direct', 'colocated-ipv6-*'. Quote it so the shell leaves it alone. A
+combo selected more than once, by name, pattern or --all, runs once.
+
 Configuration:
       --mirror-host HOST   registry mirror hostname, required by *-mirror
       --config FILE        use FILE instead of rendering the combo's config
@@ -74,6 +78,7 @@ Execution:
 Examples:
   %[1]s colocated-ipv4-netboot-direct
   %[1]s run --mirror-host reg.example.com colocated-ipv6-netboot-mirror
+  %[1]s run '*-ipv4-*-direct'
   %[1]s run --no-teardown --dry-run colocated-ipv4-isoboot-direct
   %[1]s run --config ./my-config.yaml colocated-ipv6-netboot-mirror
   %[1]s run --tinkerbell-ref main colocated-ipv4-netboot-direct
@@ -104,7 +109,8 @@ Usage:
 
 Output is valid YAML, so it can be piped to a file or to diff. Nothing is
 built and the playground's own config.yaml is left alone. More than one combo
-produces a multi-document stream, each preceded by its name.
+produces a multi-document stream, each preceded by its name. A combo may be a
+glob pattern, as with '%[1]s run'.
 
 Flags:
       --mirror-host HOST   registry mirror hostname, required by *-mirror
@@ -119,6 +125,7 @@ Examples:
   %[1]s config colocated-ipv4-netboot-direct
   %[1]s config colocated-ipv4-netboot-direct > my-config.yaml
   %[1]s config colocated-ipv4-netboot-direct | diff - config.yaml
+  %[1]s config 'external-ipv6-*-direct'
 ` + globalFlagsNote
 
 const cleanHelp = `Delete a playground a run left behind.
@@ -135,8 +142,9 @@ so the right resources go even after other combos have run since. With no
 combo named, capt/.state is used instead — that is the playground an
 interactive 'task create-playground' builds.
 
-A combo with no state file never recorded anything and is skipped. Doing this
-with nothing running is not an error.
+A combo may be a glob pattern, which selects every combo with a state file
+whose name it matches. A combo with no state file never recorded anything and
+is skipped. Doing this with nothing running is not an error.
 
 Flags:
   -a, --all                clean every combo with a state file
@@ -146,6 +154,7 @@ Flags:
 Examples:
   %[1]s clean
   %[1]s clean colocated-ipv4-netboot-direct
+  %[1]s clean '*-ipv6-*'
   %[1]s clean --all --dry-run
 ` + globalFlagsNote
 

@@ -363,6 +363,122 @@ func TestSuggestsNearestCombo(t *testing.T) {
 	}
 }
 
+// A pattern stands for the combos it matches, in matrix order, and nothing
+// is selected twice however many times it is named.
+func TestExpandCombos(t *testing.T) {
+	known := []string{
+		"colocated-ipv4-netboot-direct",
+		"colocated-ipv4-netboot-mirror",
+		"colocated-ipv6-netboot-direct",
+		"external-ipv4-netboot-direct",
+	}
+
+	for _, tc := range []struct {
+		name      string
+		requested []string
+		want      []string
+	}{
+		{"names pass through", []string{"external-ipv4-netboot-direct", "colocated-ipv4-netboot-direct"},
+			[]string{"external-ipv4-netboot-direct", "colocated-ipv4-netboot-direct"}},
+		// Reported as unknown later, with a suggestion; not this function's call.
+		{"unknown names pass through", []string{"never-defined"}, []string{"never-defined"}},
+		{"star", []string{"*-direct"},
+			[]string{"colocated-ipv4-netboot-direct", "colocated-ipv6-netboot-direct", "external-ipv4-netboot-direct"}},
+		{"star mid-name", []string{"colocated-*-direct"},
+			[]string{"colocated-ipv4-netboot-direct", "colocated-ipv6-netboot-direct"}},
+		{"question mark", []string{"colocated-ipv?-netboot-direct"},
+			[]string{"colocated-ipv4-netboot-direct", "colocated-ipv6-netboot-direct"}},
+		{"character class", []string{"colocated-ipv[6]-*"}, []string{"colocated-ipv6-netboot-direct"}},
+		{"name repeated", []string{"external-ipv4-netboot-direct", "external-ipv4-netboot-direct"},
+			[]string{"external-ipv4-netboot-direct"}},
+		// The first selection fixes the position.
+		{"name then pattern", []string{"external-ipv4-netboot-direct", "*-direct"},
+			[]string{"external-ipv4-netboot-direct", "colocated-ipv4-netboot-direct", "colocated-ipv6-netboot-direct"}},
+		{"overlapping patterns", []string{"colocated-*", "*-direct"},
+			[]string{"colocated-ipv4-netboot-direct", "colocated-ipv4-netboot-mirror", "colocated-ipv6-netboot-direct", "external-ipv4-netboot-direct"}},
+		// What Validate builds from `run <combo> --all`.
+		{"name and --all", append([]string{"external-ipv4-netboot-direct"}, known...),
+			[]string{"external-ipv4-netboot-direct", "colocated-ipv4-netboot-direct", "colocated-ipv4-netboot-mirror", "colocated-ipv6-netboot-direct"}},
+	} {
+		got, err := expandCombos(tc.requested, known)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+			t.Errorf("%s: expandCombos(%v) = %v, want %v", tc.name, tc.requested, got, tc.want)
+		}
+	}
+}
+
+// A pattern that selects nothing is almost certainly a typo, and running
+// nothing would look like a pass.
+func TestExpandCombosRejectsPatternMatchingNothing(t *testing.T) {
+	_, err := expandCombos([]string{"colocated-*", "*-ipv5-*"}, []string{"colocated-ipv4-netboot-direct"})
+	if err == nil || !strings.Contains(err.Error(), `no combo matches "*-ipv5-*"`) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestExpandCombosRejectsMalformedPattern(t *testing.T) {
+	_, err := expandCombos([]string{"colocated-ipv[4"}, []string{"colocated-ipv4-netboot-direct"})
+	if err == nil || !strings.Contains(err.Error(), "invalid combo pattern") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// A pattern given to clean matches the combos left on disk, like --all, and
+// overlaps with a named combo, on either side of it, without tearing anything
+// down twice.
+func TestCleanTargetsMatchPatterns(t *testing.T) {
+	artifacts := t.TempDir()
+	writeComboArtifacts(t, artifacts,
+		"colocated-ipv4-netboot-direct", "colocated-ipv6-netboot-direct", "external-ipv6-isoboot-direct")
+
+	r := newTestRunner()
+	r.Opts.ArtifactsDir = artifacts
+	r.Opts.Combos = []string{"colocated-ipv6-netboot-direct", "*-ipv6-*", "external-ipv6-isoboot-direct"}
+
+	targets, err := r.cleanTargets()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var names []string
+	for _, target := range targets {
+		names = append(names, target.name)
+	}
+	if strings.Join(names, ",") != "colocated-ipv6-netboot-direct,external-ipv6-isoboot-direct" {
+		t.Errorf("targets = %v", names)
+	}
+}
+
+// Like an --all that finds nothing, a pattern with nothing to match leaves
+// nothing to clean; that is not a failure.
+func TestCleanTargetsPatternMatchingNothing(t *testing.T) {
+	artifacts := t.TempDir()
+	writeComboArtifacts(t, artifacts, "colocated-ipv4-netboot-direct")
+
+	r := newTestRunner()
+	r.Opts.ArtifactsDir = artifacts
+	r.Opts.Combos = []string{"external-*"}
+
+	targets, err := r.cleanTargets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 0 {
+		t.Errorf("targets = %+v", targets)
+	}
+
+	// A malformed pattern is still an error, even with nothing to match it to.
+	r.Opts.ArtifactsDir = t.TempDir()
+	r.Opts.Combos = []string{"external-[*"}
+	if _, err := r.cleanTargets(); err == nil || !strings.Contains(err.Error(), "invalid combo pattern") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 // A combo's playground is described by the files in its own artifact
 // directory, never by the ones at the capt root.
 func TestCleanTargetsUseComboArtifacts(t *testing.T) {

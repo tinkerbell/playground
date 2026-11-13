@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -97,6 +98,7 @@ func (r *Runner) execClean() int {
 // cleanTargets resolves what to tear down: the named combos, every combo with
 // artifacts, or — with nothing named — the playground the capt directory's own
 // config and state describe, which is what an interactive `task` run leaves.
+// A glob pattern selects the combos with a state file whose names it matches.
 func (r *Runner) cleanTargets() ([]cleanTarget, error) {
 	if err := r.resolveArtifactsDir(); err != nil {
 		return nil, err
@@ -113,7 +115,38 @@ func (r *Runner) cleanTargets() ([]cleanTarget, error) {
 	}
 
 	targets := make([]cleanTarget, 0, len(r.Opts.Combos))
+	seen := make(map[string]bool, len(r.Opts.Combos))
+	var onDisk []cleanTarget
+	scanned := false
 	for _, combo := range r.Opts.Combos {
+		if isComboPattern(combo) {
+			// Patterns match what is on disk rather than the matrix, as --all
+			// does, so they reach combos the matrix no longer defines. One
+			// that matches nothing has nothing to tear down, which is no more
+			// an error here than an --all that finds nothing.
+			if err := checkComboPattern(combo); err != nil {
+				return nil, err
+			}
+			if !scanned {
+				var err error
+				if onDisk, err = r.comboArtifacts(); err != nil {
+					return nil, err
+				}
+				scanned = true
+			}
+			for _, t := range onDisk {
+				if ok, _ := path.Match(combo, t.name); ok && !seen[t.name] {
+					seen[t.name] = true
+					targets = append(targets, t)
+				}
+			}
+			continue
+		}
+		if seen[combo] {
+			continue
+		}
+		seen[combo] = true
+
 		pg := playgroundAt(filepath.Join(r.Opts.ArtifactsDir, combo))
 		if _, err := os.Stat(pg.Config); err != nil {
 			return nil, fmt.Errorf("no artifacts for combo %q under %s\nRun '%s clean' with no combo to tear down the playground capt/.state records.",
